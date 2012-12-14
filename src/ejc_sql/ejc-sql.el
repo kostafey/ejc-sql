@@ -56,6 +56,10 @@
     "         })"
     )))
 
+(defun create-output-buffer ()
+    (toggle-read-only t)
+    (setq view-read-only t))
+
 (defun eval-user-sql (sql)
   (progn    
     (nrepl-eval 
