@@ -1,0 +1,12 @@
+/target
+/lib
+/classes
+/checkouts
+/maven_repository
+pom.xml
+*.jar
+*.class
+*.txt
+.lein-deps-sum
+.lein-failures
+.lein-plugins
