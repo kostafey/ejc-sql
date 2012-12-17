@@ -140,10 +140,20 @@ buffer."
         (replace-string " and " "\n and " nil beg end)))
     (apply-in-sql-boundaries 
      '(lambda (beg end)
-        (replace-string " or " "\n or " nil beg end)))
+        (replace-string " or " "\n  or " nil beg end)))
     (apply-in-sql-boundaries 
      '(lambda (beg end)
-        (replace-string " order by " "\norder by \n" nil beg end)))))
+        (replace-string " order by " "\norder by \n" nil beg end)))
+    (apply-in-sql-boundaries 
+     '(lambda (beg end)
+        (replace-string " inner join " "\ninner join " nil beg end)))
+    (apply-in-sql-boundaries 
+     '(lambda (beg end)
+        (replace-string " left join " "\nleft join " nil beg end)))
+    (apply-in-sql-boundaries 
+     '(lambda (beg end)
+        (replace-string " on " "\n  on " nil beg end)))
+    ))
 
 (defun format-sql-at-point ()
   (interactive)  
