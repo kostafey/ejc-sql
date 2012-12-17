@@ -6,10 +6,19 @@
 
 (def db "DataBase connection properties list." nil)
 
+(def isWindows
+  "The value is true if it runs under the os Windows."
+  (>= 0 (.indexOf (System/getProperty "os.name") "Windows")))
+
+(def isLinux
+  "The value is true if it runs under the os Linux."
+  (>= 0 (.indexOf (System/getProperty "os.name") "Linux")))
+
 (def output-file-path 
   "The sql queries results output filepath."
   (str (System/getProperty  "user.home")
-       "/Application Data" ;; TODO: remove os-dependency
+       (if (true? isWindows)
+         "/Application Data")
        "/.emacs.d/tmp/sql_output.txt"))
 
 (defn get-user-output-file-path []
