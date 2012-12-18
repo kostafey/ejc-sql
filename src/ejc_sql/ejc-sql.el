@@ -1,11 +1,47 @@
+;;; ejc-sql.el -- Uses clojure jdbc lib to eval sql scripts from emacs.
+
+;;; Copyright © 2012 - Kostafey <kostafey@gmail.com>
+
+;;; This program is free software; you can redistribute it and/or modify
+;;; it under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation; either version 2, or (at your option)
+;;; any later version.
+;;;
+;;; This program is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;; GNU General Public License for more details.
+;;;
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program; if not, write to the Free Software Foundation,
+;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
+
+;;; Commentary:
+
+;; The aim is to make access to SQL databases through emacs easy.
+
+;;; Usage:
+
+;; (require 'ejc-sql)
+;;
+;; (global-set-key (kbd "C-x S") 'ejc-eval-user-sql-region)
+;; (global-set-key (kbd "C-x s") 'ejc-eval-user-sql-at-point)
+
+
 (require 'cl)
 (require 'nrepl)
+(require 'popwin)
 
-(defvar results-buffer-name "sql_output.txt")
-(defvar results-file-name "temp.txt")
-(defvar results-file-path nil) ;"sql_output.txt"
-(defvar clojure-src-file "connect.clj")
-(defvar sql-separator "/")
+(defvar results-buffer nil
+  "The results buffer.")
+(defvar results-buffer-name "sql_output.txt" ; "*ejc-sql-output*"
+  "The results buffer name.")
+(defvar results-file-path nil ;; "/<path>/sql_output.txt"
+  "This value is returned by the clojure side.")
+(defvar clojure-src-file "connect.clj"
+  "Main clojure src file name.")
+(defvar sql-separator "/"
+  "The char with purpose to separate the SQL statement both other.")
 
 (defstruct db-conn
   "DB connection information structure"
@@ -56,32 +92,50 @@
     "         })"
     )))
 
-(defun create-output-buffer ()
-    (toggle-read-only t)
-    (setq view-read-only t))
+(defun ejc-create-output-buffer ()
+  (set-buffer (get-buffer-create results-buffer-name))
+  (setq results-buffer (current-buffer))
+  (set-visited-file-name results-file-path t t)  
+  (setq view-read-only t)
+  results-buffer)
 
-(defun eval-user-sql (sql)
-  (progn
+(defun ejc-get-output-buffer ()
+  (if (and results-buffer (buffer-live-p results-buffer))
+      results-buffer
+    (ejc-create-output-buffer)))
+
+(defun ejc-eval-user-sql (sql)
+  "Evaluate SQL, reload and show query results buffer."
+  (let ((output-buffer (ejc-get-output-buffer)))
     (message "Processing SQL query...")
-    (nrepl-eval
-     ;; nrepl-eval-async
-     (concat "(eval-user-sql" (add-quotes sql) ")"))
-
-    (set-buffer (get-buffer-create results-buffer-name))
-    ;(set-visited-file-name results-file-path)
-
-    ;; (set-visited-file-name
-    ;;  (expand-file-name 
-    ;;   results-file-name
-    ;;   (file-name-as-directory 
-    ;;    (expand-file-name ".." (expand-file-name ".." default-directory)))))
+    (ejc-eval-sql sql)
+    (set-buffer output-buffer)
     (revert-buffer t t)
+    (toggle-read-only t)
+    (beginning-of-buffer)
+    (popwin:popup-buffer output-buffer)
     (message "Done SQL query.")))
 
-(defun eval-user-sql-region (beg end)
+(defun ejc-eval-sql (sql)
+  "Core function to evaluate SQL queries."
+  (nrepl-eval
+   ;; nrepl-eval-async
+   (concat "(eval-user-sql" (add-quotes sql) ")")))
+
+(defun ejc-eval-user-sql-region (beg end)
+  "Evaluate SQL bounded by the selection area."
   (interactive "r")
   (let ((sql (buffer-substring beg end)))
-    (eval-user-sql sql)))
+    (ejc-eval-user-sql sql)))
+
+(defun ejc-eval-user-sql-at-point ()
+  "Evaluate SQL bounded by the `sql-separator' or/and buffer boundaries."
+  (interactive)  
+  (let* ((boundaries (get-sql-boundaries-at-point))
+         (beg (car boundaries))
+         (end (car (cdr boundaries)))
+         (sql (buffer-substring beg end)))
+    (ejc-eval-user-sql sql)))
 
 (defun get-sql-boundaries-at-point ()
   "Returns list of the boundaries of the current sql expression.
@@ -120,14 +174,6 @@ buffer."
     ;; (message beg)
     ;; (message end)
     (apply func (list beg end))))
-
-(defun eval-user-sql-at-point ()
-  (interactive)  
-  (let* ((boundaries (get-sql-boundaries-at-point))
-         (beg (car boundaries))
-         (end (car (cdr boundaries)))
-         (sql (buffer-substring beg end)))
-    (eval-user-sql sql)))
 
 (defun format-sql (beg end)
   (interactive "r")
