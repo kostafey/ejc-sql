@@ -3,6 +3,7 @@
 (use 'clojure.java.io)
 (use 'clojure.java.jdbc)
 (import com.informix.jdbc.IfxDriver)
+(import java.sql.SQLException)
 
 (def db "DataBase connection properties list." nil)
 
@@ -14,7 +15,7 @@
   "The value is true if it runs under the os Linux."
   (>= 0 (.indexOf (System/getProperty "os.name") "Linux")))
 
-(def output-file-path 
+(def output-file-path
   "The sql queries results output filepath."
   (str (System/getProperty  "user.home")
        (if (true? isWindows)
@@ -28,11 +29,17 @@
   (eval-sql sql get-user-output-file-path))
 
 (defn eval-sql [sql, get-output-file-path]
+(try 
   (with-connection db 
     (with-query-results rs [sql] 
       (with-open 
           [wrtr (writer (get-output-file-path))]                
-        (.write wrtr (format-output rs))))))
+        (.write wrtr (format-output rs)))))
+
+  (catch SQLException e 
+    (with-open 
+        [wrtr (writer (get-output-file-path))]
+      (.write wrtr (str "Error: " (.getMessage e)))))))
 
 
 (defn format-output [rs]

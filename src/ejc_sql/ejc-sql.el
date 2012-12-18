@@ -61,8 +61,9 @@
     (setq view-read-only t))
 
 (defun eval-user-sql (sql)
-  (progn    
-    (nrepl-eval 
+  (progn
+    (message "Processing SQL query...")
+    (nrepl-eval
      ;; nrepl-eval-async
      (concat "(eval-user-sql" (add-quotes sql) ")"))
 
@@ -74,7 +75,8 @@
     ;;   results-file-name
     ;;   (file-name-as-directory 
     ;;    (expand-file-name ".." (expand-file-name ".." default-directory)))))
-    (revert-buffer t t)))
+    (revert-buffer t t)
+    (message "Done SQL query.")))
 
 (defun eval-user-sql-region (beg end)
   (interactive "r")
@@ -99,6 +101,17 @@ buffer."
                     (end-of-buffer))
                   (point))))
       (list beg end))))
+
+;; TODO: wrong
+(defun ejc-mark-this-sql ()
+  (interactive)
+  (let* ((boundaries (get-sql-boundaries-at-point))
+         (beg (car boundaries))
+         (end (car (cdr boundaries))))
+    (setq mark-active nil)
+    (goto-char beg)
+    (setq mark-active t)
+    (goto-char end)))
 
 (defun apply-in-sql-boundaries (func)
   (let* ((boundaries (get-sql-boundaries-at-point))
@@ -155,7 +168,7 @@ buffer."
         (replace-string " on " "\n  on " nil beg end)))
     ))
 
-(defun format-sql-at-point ()
+(defun ejc-format-sql-at-point ()
   (interactive)  
   (let* ((boundaries (get-sql-boundaries-at-point))
          (beg (car boundaries))
