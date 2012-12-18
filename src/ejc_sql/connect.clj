@@ -3,17 +3,18 @@
 (use 'clojure.java.io)
 (use 'clojure.java.jdbc)
 (import com.informix.jdbc.IfxDriver)
+;; (import com.mysql.jdbc.Driver)
 (import java.sql.SQLException)
 
 (def db "DataBase connection properties list." nil)
 
 (def isWindows
   "The value is true if it runs under the os Windows."
-  (>= 0 (.indexOf (System/getProperty "os.name") "Windows")))
+  (<= 0 (.indexOf (System/getProperty "os.name") "Windows")))
 
 (def isLinux
   "The value is true if it runs under the os Linux."
-  (>= 0 (.indexOf (System/getProperty "os.name") "Linux")))
+  (<= 0 (.indexOf (System/getProperty "os.name") "Linux")))
 
 (def output-file-path
   "The sql queries results output filepath."
@@ -140,4 +141,9 @@
 ;;    ))
 
 ;; (eval-user-sql " SELECT superregions.* from superregions ")
+
+;; (with-connection db 
+;;   (with-query-results rs 
+;;     [" SELECT superregions.* from superregions "] 
+;;     (doseq [row rs] (println  row))))
 

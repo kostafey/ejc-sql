@@ -38,6 +38,8 @@
   "The results buffer name.")
 (defvar results-file-path nil ;; "/<path>/sql_output.txt"
   "This value is returned by the clojure side.")
+;; TODO:
+(defvar clojure-scr-dir default-directory)
 (defvar clojure-src-file "connect.clj"
   "Main clojure src file name.")
 (defvar sql-separator "/"
@@ -63,7 +65,7 @@
   (user "<user-name>")
   (password "<password>"))
 
-(defun launch-nrepl () 
+(defun launch-nrepl ()
   (nrepl-jack-in))
 
 ;; TODO:
@@ -72,11 +74,11 @@
     (if (file-exists-p (expand-file-name clojure-src-file clojure-scr-dir))
         (progn
           (nrepl-load-file clojure-src-file)
-          (setq results-file-path 
+          (setq results-file-path
                 (plist-get (nrepl-eval "(print output-file-path)") :stdout))
-      (error (concat "Can't find file " clojure-src-file)))))
+      (error (concat "Can't find file " clojure-src-file))))))
 
-;; nrepl-eval-buffer
+;; (load-clojure-side)
 
 (defun add-quotes (str)
   (concat "\"" str "\""))
