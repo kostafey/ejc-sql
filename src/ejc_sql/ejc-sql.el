@@ -22,11 +22,26 @@
 
 ;;; Usage:
 
+;; (defvar site-lisp-path "~/.emacs.d/")
+;;
+;; (add-to-list 
+;;  'load-path 
+;;  (expand-file-name "ejc-sql/src/ejc_sql/" site-lisp-path))
+;;
 ;; (require 'ejc-sql)
+;;
+;; (setq my-db-connection (make-db-conn
+;;                         :classname "com.mysql.jdbc.Driver"
+;;                         :subprotocol "mysql"
+;;                         :subname "//localhost:3306/my_db_name"
+;;                         :user "a_user"
+;;                         :password "secret"))
 ;;
 ;; (global-set-key (kbd "C-x S") 'ejc-eval-user-sql-region)
 ;; (global-set-key (kbd "C-x s") 'ejc-eval-user-sql-at-point)
-
+;;
+;; (ejc-launch-nrepl)
+;; (ejc-connect "my-db-connection")
 
 (require 'cl)
 (require 'nrepl)
@@ -42,6 +57,8 @@
   "Main clojure src file name.")
 (defvar sql-separator "/"
   "The char with purpose to separate the SQL statement both other.")
+(defvar ejc-popup-results-buffer nil
+  "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
 (defstruct db-conn
   "DB connection information structure"
@@ -93,8 +110,6 @@
   (setq results-file-path
         (plist-get (nrepl-eval "(print output-file-path)") :stdout)))
 
-;; (ejc-load-clojure-side)
-
 (defun add-quotes (str)
   (concat "\"" str "\""))
 
@@ -121,6 +136,10 @@
       results-buffer
     (ejc-create-output-buffer)))
 
+(defun ejc-toggle-popup-results-buffer ()
+  (interactive)
+  (setq ejc-popup-results-buffer (not ejc-popup-results-buffer)))
+
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL, reload and show query results buffer."
   (let ((output-buffer (ejc-get-output-buffer)))
@@ -130,7 +149,9 @@
     (revert-buffer t t)
     (toggle-read-only t)
     (beginning-of-buffer)
-    (popwin:popup-buffer output-buffer)
+    (if ejc-popup-results-buffer
+        (popwin:popup-buffer output-buffer)
+      (popwin:display-buffer output-buffer))
     (message "Done SQL query.")))
 
 (defun ejc-eval-sql (sql)

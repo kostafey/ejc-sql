@@ -5,6 +5,8 @@
 (import com.informix.jdbc.IfxDriver)
 ;; (import com.mysql.jdbc.Driver)
 (import java.sql.SQLException)
+(import java.util.Date)
+(import java.text.SimpleDateFormat)
 
 (def db "DataBase connection properties list." nil)
 
@@ -23,74 +25,29 @@
          "/Application Data")
        "/.emacs.d/tmp/sql_output.txt"))
 
+(def sql-log-file-path
+  "The sql queries logging filepath."
+  (str (System/getProperty  "user.home")
+       (if (true? isWindows)
+         "/Application Data")
+       "/.emacs.d/tmp/sql_log.txt"))
+
 (defn get-user-output-file-path []
   (-> (java.io.File. output-file-path) .getAbsolutePath))
 
-(defn eval-sql [sql, get-output-file-path]
-(try 
-  (with-connection db 
-    (with-query-results rs [sql] 
-      (with-open 
-          [wrtr (writer (get-output-file-path))]                
-        (.write wrtr (format-output rs)))))
-
-  (catch SQLException e 
-    (with-open 
-        [wrtr (writer (get-output-file-path))]
-      (.write wrtr (str "Error: " (.getMessage e)))))))
-
-(defn eval-user-sql [sql]
-  (eval-sql sql get-user-output-file-path))
-
-(defn format-output [rs]
-  (let [records-data (filter-data (get-rs-data rs))
-        headers-data (get-rs-headers rs)
-        longest-list (find-longest-list 
-                      (get-rs-lengths (cons headers-data records-data)))
-        col-step 2
-        result (new StringBuffer "")]
-
-    (doseq [val (map vector longest-list headers-data)]
-      (.append result (format (str "%-" (get val 0) "s") (get val 1)))
-      (.append result (simple-join col-step " ")))
-
-    (.append result "\n")
-
-    (doseq [len longest-list]
-      (.append result (simple-join len "-"))
-      (.append result (simple-join col-step " ")))
-
-    (.append result "\n")
-
-    (doseq [row records-data]
-      (doseq [val (map vector longest-list row)]
-        (.append result (format (str "%-" (get val 0) "s") (get val 1) ))
-        (.append result (simple-join col-step " ")))
-      (.append result "\n"))
-
-    (.toString result)))
-
-
-(defn simple-join [n s]
-  (clojure.string/join 
-   (for [x (range 0 n)] s)))
-
-(defn str-length [s]
-  (.length (str s)))
-
-(defn get-rs-lengths [rs]
-  (map #(map str-length %) rs))
-
-(defn get-rs-data [rs]
-  (map vals rs))
-
-(defn filter-data [rs]
-  (map #(map trim %) rs))
+(defn get-sql-log-file-path []
+  (-> (java.io.File. sql-log-file-path) .getAbsolutePath))
 
 (defn trim [s]
   (if (instance? java.lang.String s)
     (.trim s)
     s))
+
+(defn filter-data [rs]
+  (map #(map trim %) rs))
+
+(defn get-rs-data [rs]
+  (map vals rs))
 
 (defn get-rs-headers [rs]  
    (for [[k _] (first rs)] 
@@ -103,6 +60,71 @@
   "Returns the list of the longest lengths per column."
   [lst]
   (map #(apply max %) (transpose lst)))
+
+(defn simple-join [n s]
+  (clojure.string/join 
+   (for [x (range 0 n)] s)))
+
+(defn str-length [s]
+  (.length (str s)))
+
+(defn get-rs-lengths [rs]
+  (map #(map str-length %) rs))
+
+(defn format-output [rs]
+  (let [records-data (filter-data (get-rs-data rs))
+        headers-data (get-rs-headers rs)
+        longest-list (find-longest-list 
+                      (get-rs-lengths (cons headers-data records-data)))
+        col-step 2
+        result (new StringBuffer "")]
+    (doseq [val (map vector longest-list headers-data)]
+      (.append result (format (str "%-" (get val 0) "s") (get val 1)))
+      (.append result (simple-join col-step " ")))
+    (.append result "\n")
+    (doseq [len longest-list]
+      (.append result (simple-join len "-"))
+      (.append result (simple-join col-step " ")))
+    (.append result "\n")
+    (doseq [row records-data]
+      (doseq [val (map vector longest-list row)]
+        (.append result (format (str "%-" (get val 0) "s") (get val 1) ))
+        (.append result (simple-join col-step " ")))
+      (.append result "\n"))
+    (.toString result)))
+
+(defn eval-commands [sql wrtr] 
+  (try
+    (with-connection db 
+      (let [res (str (with-connection db 
+                       (clojure.java.jdbc/do-commands sql)))]
+        (.write wrtr (str "Execution returns: " res))))
+    (catch SQLException e 
+      (.write wrtr (str "Error: " (.getMessage e))))))
+
+(defn log-sql [sql]
+  (with-open 
+      [wrtr (writer (get-sql-log-file-path) :append true)]
+    (.write wrtr (str (simple-join 50 "-") " " 
+                      (.format (new SimpleDateFormat "yyyy.MM.dd HH:mm:ss.S")
+                               (new Date))
+                      " " (simple-join 2 "-") "\n" sql "\n"))))
+
+(defn eval-sql [sql, get-output-file-path]
+  (log-sql sql)
+  (with-open 
+      [wrtr (writer (get-output-file-path))]
+    (try 
+      (with-connection db 
+        (with-query-results rs [sql] 
+          (.write wrtr (format-output rs))))
+      (catch SQLException e 
+        (if (.equals (.getMessage e) "Method only for queries")
+          (eval-commands sql wrtr)
+          (.write wrtr (str "Error: " (.getMessage e))))))))
+ 
+(defn eval-user-sql [sql]
+  (eval-sql sql get-user-output-file-path))
 
 
 ;; (defn eval-sql [sql, get-output-file-path]
