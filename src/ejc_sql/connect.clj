@@ -26,9 +26,6 @@
 (defn get-user-output-file-path []
   (-> (java.io.File. output-file-path) .getAbsolutePath))
 
-(defn eval-user-sql [sql]
-  (eval-sql sql get-user-output-file-path))
-
 (defn eval-sql [sql, get-output-file-path]
 (try 
   (with-connection db 
@@ -42,6 +39,8 @@
         [wrtr (writer (get-output-file-path))]
       (.write wrtr (str "Error: " (.getMessage e)))))))
 
+(defn eval-user-sql [sql]
+  (eval-sql sql get-user-output-file-path))
 
 (defn format-output [rs]
   (let [records-data (filter-data (get-rs-data rs))

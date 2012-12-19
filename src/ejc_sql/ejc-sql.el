@@ -38,8 +38,6 @@
   "The results buffer name.")
 (defvar results-file-path nil ;; "/<path>/sql_output.txt"
   "This value is returned by the clojure side.")
-;; TODO:
-(defvar clojure-scr-dir default-directory)
 (defvar clojure-src-file "connect.clj"
   "Main clojure src file name.")
 (defvar sql-separator "/"
@@ -65,25 +63,42 @@
   (user "<user-name>")
   (password "<password>"))
 
-(defun launch-nrepl ()
+;; TODO:
+(defun ejc-connect (arg)
+  (interactive "sDataBase connection name: ")
+  (let ((db (eval (intern arg))))
+    (message "Connection started...")
+    ;; (ejc-launch-nrepl)
+    (ejc-load-clojure-side)
+    (ejc-connect-to-db db)
+    (message "Connected.")))
+
+(defun ejc-launch-nrepl ()
   (nrepl-jack-in))
 
-;; TODO:
-(defun load-clojure-side ()
-  (let ((clojure-scr-dir default-directory))
-    (if (file-exists-p (expand-file-name clojure-src-file clojure-scr-dir))
-        (progn
-          (nrepl-load-file clojure-src-file)
-          (setq results-file-path
-                (plist-get (nrepl-eval "(print output-file-path)") :stdout))
-      (error (concat "Can't find file " clojure-src-file))))))
+(defun ejc-find-clojure-file ()
+  "Return the full path to `clojure-src-file'."
+  (let ((result))
+    (dolist (path load-path)
+      (let ((clojure-scr-file-path (expand-file-name clojure-src-file path)))
+        (if (file-exists-p clojure-scr-file-path)
+            (setq result clojure-scr-file-path))))
+    (if (not result)
+        (error (concat "Can't find file " clojure-src-file))
+      result)))
 
-;; (load-clojure-side)
+(defun ejc-load-clojure-side ()
+  "Evaluate clojure side, run startup initialization functions."
+  (nrepl-load-file (ejc-find-clojure-file))
+  (setq results-file-path
+        (plist-get (nrepl-eval "(print output-file-path)") :stdout)))
+
+;; (ejc-load-clojure-side)
 
 (defun add-quotes (str)
   (concat "\"" str "\""))
 
-(defun connect-to-db (conn-struct)
+(defun ejc-connect-to-db (conn-struct)
   (nrepl-eval 
    (concat 
     " (def db {:classname " (add-quotes (db-conn-classname conn-struct))
