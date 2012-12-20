@@ -2,6 +2,7 @@
 
 (use 'clojure.java.io)
 (use 'clojure.java.jdbc)
+(require 'clojure.contrib.java-utils)
 (import com.informix.jdbc.IfxDriver)
 ;; (import com.mysql.jdbc.Driver)
 (import java.sql.SQLException)
@@ -98,30 +99,36 @@
     (with-connection db 
       (let [res (str (with-connection db 
                        (clojure.java.jdbc/do-commands sql)))]
-        (.write wrtr (str "Execution returns: " res))))
+        (.write wrtr (str "Records affected: " res))))
     (catch SQLException e 
       (.write wrtr (str "Error: " (.getMessage e))))))
 
 (defn log-sql [sql]
-  (with-open 
-      [wrtr (writer (get-sql-log-file-path) :append true)]
-    (.write wrtr (str (simple-join 50 "-") " " 
-                      (.format (new SimpleDateFormat "yyyy.MM.dd HH:mm:ss.S")
-                               (new Date))
-                      " " (simple-join 2 "-") "\n" sql "\n"))))
+  (let [is-new-file (if (not (. (clojure.contrib.java-utils/file 
+                                 (get-sql-log-file-path)) exists)) 
+                      true false)]
+    (with-open 
+        [wrtr (writer (get-sql-log-file-path) :append true)]
+      (if is-new-file
+        (.write wrtr "-*- mode: sql; -*-*/\n"))
+      (.write wrtr (str (simple-join 50 "-") " " 
+                        (.format (new SimpleDateFormat "yyyy.MM.dd HH:mm:ss.S")
+                                 (new Date))
+                        " " (simple-join 2 "-") "\n" sql "\n")))))
 
 (defn eval-sql [sql, get-output-file-path]
-  (log-sql sql)
-  (with-open 
-      [wrtr (writer (get-output-file-path))]
-    (try 
-      (with-connection db 
-        (with-query-results rs [sql] 
-          (.write wrtr (format-output rs))))
-      (catch SQLException e 
-        (if (.equals (.getMessage e) "Method only for queries")
-          (eval-commands sql wrtr)
-          (.write wrtr (str "Error: " (.getMessage e))))))))
+  (let [clear-sql (.trim sql)]
+    (log-sql (str clear-sql "\n"))
+    (with-open 
+        [wrtr (writer (get-output-file-path))]
+      (try 
+        (with-connection db 
+          (with-query-results rs [clear-sql] 
+            (.write wrtr (format-output rs))))
+        (catch SQLException e 
+          (if (.equals (.getMessage e) "Method only for queries")
+            (eval-commands clear-sql wrtr)
+            (.write wrtr (str "Error: " (.getMessage e)))))))))
  
 (defn eval-user-sql [sql]
   (eval-sql sql get-user-output-file-path))

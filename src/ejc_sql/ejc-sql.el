@@ -39,6 +39,7 @@
 ;;
 ;; (global-set-key (kbd "C-x S") 'ejc-eval-user-sql-region)
 ;; (global-set-key (kbd "C-x s") 'ejc-eval-user-sql-at-point)
+;; (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
 ;;
 ;; (ejc-launch-nrepl)
 ;; (ejc-connect "my-db-connection")
@@ -136,23 +137,29 @@
       results-buffer
     (ejc-create-output-buffer)))
 
+(defun ejc-eval-user-sql (sql)
+  "Evaluate SQL, reload and show query results buffer."
+    (message "Processing SQL query...")
+    (ejc-eval-sql sql)
+    (ejc-show-last-result t)
+    (message "Done SQL query."))
+
 (defun ejc-toggle-popup-results-buffer ()
   (interactive)
   (setq ejc-popup-results-buffer (not ejc-popup-results-buffer)))
 
-(defun ejc-eval-user-sql (sql)
-  "Evaluate SQL, reload and show query results buffer."
+(defun ejc-show-last-result (&optional revert)
+  "Popup buffer with last SQL execution result output."
+  (interactive)
   (let ((output-buffer (ejc-get-output-buffer)))
-    (message "Processing SQL query...")
-    (ejc-eval-sql sql)
     (set-buffer output-buffer)
-    (revert-buffer t t)
+    (when revert
+      (revert-buffer t t))
     (toggle-read-only t)
     (beginning-of-buffer)
     (if ejc-popup-results-buffer
         (popwin:popup-buffer output-buffer)
-      (popwin:display-buffer output-buffer))
-    (message "Done SQL query.")))
+      (popwin:display-buffer output-buffer))))
 
 (defun ejc-eval-sql (sql)
   "Core function to evaluate SQL queries."
