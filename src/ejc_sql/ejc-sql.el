@@ -30,7 +30,7 @@
 ;;
 ;; (require 'ejc-sql)
 ;;
-;; (setq my-db-connection (make-db-conn
+;; (setq my-db-connection (make-ejc-db-conn
 ;;                         :classname "com.mysql.jdbc.Driver"
 ;;                         :subprotocol "mysql"
 ;;                         :subname "//localhost:3306/my_db_name"
@@ -61,8 +61,10 @@
 (defvar ejc-popup-results-buffer nil
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
-(defstruct db-conn
+(defstruct ejc-db-conn
   "DB connection information structure"
+                                        ; path to jdbc jar file
+  (classpath "<path>/<filename>.jar")
                                         ; the JDBC driver class
   (classname "<com.povider.jdbc.DataBaseDriver>")
                                         ; the kind of database, e.g:
@@ -117,12 +119,14 @@
 (defun ejc-connect-to-db (conn-struct)
   (nrepl-eval 
    (concat 
-    " (def db {:classname " (add-quotes (db-conn-classname conn-struct))
-    "          :subprotocol " (add-quotes (db-conn-subprotocol conn-struct))
-    "          :subname " (add-quotes (db-conn-subname conn-struct))
-    "          :user " (add-quotes (db-conn-user conn-struct))
-    "          :password " (add-quotes (db-conn-password conn-struct))
-    "         })"
+    " (add-to-cp " (add-quotes (ejc-db-conn-classpath conn-struct)) ")"
+    " (import " (ejc-db-conn-classname conn-struct)")"
+    " (def db {:classname " (add-quotes (ejc-db-conn-classname conn-struct))
+    "          :subprotocol " (add-quotes (ejc-db-conn-subprotocol conn-struct))
+    "          :subname " (add-quotes (ejc-db-conn-subname conn-struct))
+    "          :user " (add-quotes (ejc-db-conn-user conn-struct))
+    "          :password " (add-quotes (ejc-db-conn-password conn-struct))
+    "         })"    
     )))
 
 (defun ejc-create-output-buffer ()

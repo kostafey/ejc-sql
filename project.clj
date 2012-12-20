@@ -7,6 +7,5 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojure/java.jdbc "0.2.3"]
-                 [mysql/mysql-connector-java "5.1.6"]
-                 [ifxjdbc/ifxjdbcx "1.0"]
-                 [ifxjdbc/ifxjdbc "1.0"]])
+                 ;; [com.cemerick/pomegranate "0.0.13"]
+                 ])

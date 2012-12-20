@@ -3,13 +3,35 @@
 (use 'clojure.java.io)
 (use 'clojure.java.jdbc)
 (require 'clojure.contrib.java-utils)
-(import com.informix.jdbc.IfxDriver)
-;; (import com.mysql.jdbc.Driver)
+
 (import java.sql.SQLException)
 (import java.util.Date)
 (import java.text.SimpleDateFormat)
 
+(import (java.io File) 
+        (java.net URL URLClassLoader) 
+        (java.lang.reflect Method))
+
 (def db "DataBase connection properties list." nil)
+
+;; (use '[cemerick.pomegranate :only (add-classpath)])
+
+;; (defn add-classpath2
+;;   "Since add-classpath is deprecated."
+;;   [path-to-jar] ; e.g. "file:///<path>/<filename>.jar"
+;;   (let [cl (-> (Thread/currentThread) (.getContextClassLoader))]
+;;     (-> cl (.addURL (java.net.URL. path-to-jar)))))
+
+(defn add-to-cp [#^String jarpath] ; path without "file:///..." prefix.
+  (let [#^URL url (.. (File. jarpath) toURI toURL) 
+        url-ldr-cls (. (URLClassLoader. (into-array URL [])) getClass) 
+        arr-cls (into-array Class [(. url getClass)]) 
+        arr-obj (into-array Object [url]) 
+        #^Method mthd (. url-ldr-cls getDeclaredMethod "addURL" arr-cls)] 
+    (doto mthd 
+      (.setAccessible true) 
+      (.invoke (ClassLoader/getSystemClassLoader) arr-obj)) 
+    (println (format "Added %s to classpath" jarpath))))
 
 (def isWindows
   "The value is true if it runs under the os Windows."
