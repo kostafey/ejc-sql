@@ -14,14 +14,6 @@
 
 (def db "DataBase connection properties list." nil)
 
-;; (use '[cemerick.pomegranate :only (add-classpath)])
-
-;; (defn add-classpath2
-;;   "Since add-classpath is deprecated."
-;;   [path-to-jar] ; e.g. "file:///<path>/<filename>.jar"
-;;   (let [cl (-> (Thread/currentThread) (.getContextClassLoader))]
-;;     (-> cl (.addURL (java.net.URL. path-to-jar)))))
-
 (defn add-to-cp [#^String jarpath] ; path without "file:///..." prefix.
   (let [#^URL url (.. (File. jarpath) toURI toURL) 
         url-ldr-cls (. (URLClassLoader. (into-array URL [])) getClass) 
@@ -138,6 +130,20 @@
                                  (new Date))
                         " " (simple-join 2 "-") "\n" sql "\n")))))
 
+(def select-on-manipulation-errors
+  (list 
+   "Method only for queries" ; informix
+   "Can not issue data manipulation statements with executeQuery()." ; mySQL
+   ))
+
+(defn in? 
+  "true if seq contains elm"
+  [seq elm]
+  (some #(= elm %) seq))
+
+(defn is-manipulation-error [err-msg]
+  (in? (map #(.equals err-msg %) select-on-manipulation-errors) true))
+
 (defn eval-sql [sql, get-output-file-path]
   (let [clear-sql (.trim sql)]
     (log-sql (str clear-sql "\n"))
@@ -145,10 +151,10 @@
         [wrtr (writer (get-output-file-path))]
       (try 
         (with-connection db 
-          (with-query-results rs [clear-sql] 
+          (with-query-results rs [clear-sql]
             (.write wrtr (format-output rs))))
         (catch SQLException e 
-          (if (.equals (.getMessage e) "Method only for queries")
+          (if (is-manipulation-error (.getMessage e))
             (eval-commands clear-sql wrtr)
             (.write wrtr (str "Error: " (.getMessage e)))))))))
  

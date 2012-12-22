@@ -22,27 +22,43 @@
 
 ;;; Usage:
 
-;; (defvar site-lisp-path "~/.emacs.d/")
+;; The configuration of ejs-sql might looks like this:
 ;;
+;; ; Append ejs-sql to `load-path':
+;; (defvar site-lisp-path "~/.emacs.d/")
 ;; (add-to-list 
 ;;  'load-path 
 ;;  (expand-file-name "ejc-sql/src/ejc_sql/" site-lisp-path))
 ;;
 ;; (require 'ejc-sql)
 ;;
+;; ; Create your database connection configuration:
 ;; (setq my-db-connection (make-ejc-db-conn
+;;                         :classpath (concat 
+;;                                     "/home/user/lib/"
+;;                                     "mysql-connector-java-3.1.13-bin.jar")
 ;;                         :classname "com.mysql.jdbc.Driver"
 ;;                         :subprotocol "mysql"
 ;;                         :subname "//localhost:3306/my_db_name"
 ;;                         :user "a_user"
 ;;                         :password "secret"))
 ;;
+;; ; Some keybindings - modify this on your taste:
 ;; (global-set-key (kbd "C-x S") 'ejc-eval-user-sql-region)
 ;; (global-set-key (kbd "C-x s") 'ejc-eval-user-sql-at-point)
 ;; (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
 ;;
-;; (ejc-launch-nrepl)
-;; (ejc-connect "my-db-connection")
+;; * Using ejc-sql reqires nrepl process is running, so execution
+;; `ejc-ensure-nrepl-runnig' ensures this.
+;;
+;; * Run to connect (ejc-connect "my-db-connection")
+;; or M-x ejc-connect <RET> my-db-connection <RET>
+;;
+;; * `ejc-toggle-popup-results-buffer' -- Swithes between auto hidding results
+;; buffer, or not.
+;; 
+;; * `ejc-eval-user-sql-at-point' -- Evaluate SQL bounded by the
+;; `sql-separator' or/and buffer boundaries. 
 
 (require 'cl)
 (require 'nrepl)
@@ -58,7 +74,7 @@
   "Main clojure src file name.")
 (defvar sql-separator "/"
   "The char with purpose to separate the SQL statement both other.")
-(defvar ejc-popup-results-buffer nil
+(defvar ejc-popup-results-buffer t
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
 (defstruct ejc-db-conn
@@ -83,17 +99,41 @@
   (user "<user-name>")
   (password "<password>"))
 
-;; TODO:
 (defun ejc-connect (arg)
+  "Connect to selected db."
   (interactive "sDataBase connection name: ")
   (let ((db (eval (intern arg))))
     (message "Connection started...")
-    ;; (ejc-launch-nrepl)
-    (ejc-load-clojure-side)
-    (ejc-connect-to-db db)
-    (message "Connected.")))
+    (if (ejc-ensure-nrepl-runnig)
+        (progn
+          (ejc-load-clojure-side)
+          (ejc-connect-to-db db)
+          (message "Connected.")))))
+
+(defun ejc-ensure-nrepl-runnig ()
+  "Ensures nrepl is runnig.
+If not, launch it, return nil. Return t otherwise."  
+  (interactive)
+  (let ((is-running t))
+    (when (not (ejc-is-nrepl-runnig))
+      (setq is-running nil)
+      (ejc-launch-nrepl))
+    is-running))
+
+(defun ejc-is-nrepl-runnig ()
+  "Return t if nrepl process is running, nil otherwise."
+  (let ((ncb (get-buffer nrepl-connection-buffer)))
+    (save-excursion
+      (if (and nrepl-connection-buffer 
+               (buffer-live-p ncb)
+               (progn
+                 (set-buffer ncb)
+                 nrepl-session))
+          t nil))))
 
 (defun ejc-launch-nrepl ()
+  ;; TODO: It looks like ad-hoc implementation, and it is, surely :).
+  (set-buffer (find-file-noselect (ejc-find-clojure-file)))
   (nrepl-jack-in))
 
 (defun ejc-find-clojure-file ()
