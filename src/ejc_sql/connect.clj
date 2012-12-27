@@ -1,4 +1,6 @@
-;; (ns ejc-sql.core)
+(ns ejc-sql.core)
+
+(in-ns 'ejc-sql.core)
 
 (use 'clojure.java.io)
 (use 'clojure.java.jdbc)
@@ -14,7 +16,8 @@
 
 (def db "DataBase connection properties list." nil)
 
-(defn add-to-cp [#^String jarpath] ; path without "file:///..." prefix.
+(defn add-to-cp "Since add-classpath is deprecated."
+  [#^String jarpath] ; path without "file:///..." prefix.
   (let [#^URL url (.. (File. jarpath) toURI toURL) 
         url-ldr-cls (. (URLClassLoader. (into-array URL [])) getClass) 
         arr-cls (into-array Class [(. url getClass)]) 
@@ -65,8 +68,8 @@
   (map vals rs))
 
 (defn get-rs-headers [rs]  
-   (for [[k _] (first rs)] 
-     (subs (str k) 1)))
+  (for [[k _] (first rs)] 
+    (subs (str k) 1)))
 
 (defn transpose [m]
   (apply mapv vector m))

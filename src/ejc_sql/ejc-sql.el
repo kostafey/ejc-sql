@@ -47,6 +47,7 @@
 ;; (global-set-key (kbd "C-x S") 'ejc-eval-user-sql-region)
 ;; (global-set-key (kbd "C-x s") 'ejc-eval-user-sql-at-point)
 ;; (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
+;; (global-set-key (kbd "C-x C-s") 'ejc-switch-to-sql-editor-buffer)
 ;;
 ;; * Using ejc-sql reqires nrepl process is running, so execution
 ;; `ejc-ensure-nrepl-runnig' ensures this.
@@ -68,6 +69,8 @@
   "The results buffer.")
 (defvar results-buffer-name "sql_output.txt" ; "*ejc-sql-output*"
   "The results buffer name.")
+(defvar ejc-sql-editor-buffer-name "*sql-editor*"
+  "The buffer for conveniently edit ad-hoc SQL scripts.")
 (defvar results-file-path nil ;; "/<path>/sql_output.txt"
   "This value is returned by the clojure side.")
 (defvar clojure-src-file "connect.clj"
@@ -149,9 +152,14 @@ If not, launch it, return nil. Return t otherwise."
 
 (defun ejc-load-clojure-side ()
   "Evaluate clojure side, run startup initialization functions."
-  (nrepl-load-file (ejc-find-clojure-file))
-  (setq results-file-path
-        (plist-get (nrepl-eval "(print output-file-path)") :stdout)))
+  (if (not results-file-path)
+      (progn
+        (nrepl-load-file (ejc-find-clojure-file))
+        (setq results-file-path
+              (plist-get (nrepl-eval 
+                          (concat
+                           " (in-ns 'ejc-sql.core)"
+                           " (print output-file-path)")) :stdout)))))
 
 (defun add-quotes (str)
   (concat "\"" str "\""))
@@ -159,6 +167,7 @@ If not, launch it, return nil. Return t otherwise."
 (defun ejc-connect-to-db (conn-struct)
   (nrepl-eval 
    (concat 
+    " (in-ns 'ejc-sql.core)"
     " (add-to-cp " (add-quotes (ejc-db-conn-classpath conn-struct)) ")"
     " (import " (ejc-db-conn-classname conn-struct)")"
     " (def db {:classname " (add-quotes (ejc-db-conn-classname conn-struct))
@@ -309,6 +318,27 @@ buffer."
          (beg (car boundaries))
          (end (car (cdr boundaries))))
     (format-sql beg end)))
+
+(defun ejc-create-sql-editor-buffer ()
+  "Create buffer dedicated to ad-hoc edit and SQL scripts."
+  (let ((sql-editor-buffer (get-buffer-create ejc-sql-editor-buffer-name)))
+    (save-excursion
+      (set-buffer sql-editor-buffer)
+      (sql-ansi-mode)
+      (auto-complete-mode t)
+      (auto-fill-mode t))
+    sql-editor-buffer))
+
+(defun ejc-switch-to-sql-editor-buffer ()
+  "Switch to buffer dedicated to ad-hoc edit and SQL scripts.
+If the buffer is not exists - create it."
+  (interactive)
+  (let ((sql-editor-buffer (get-buffer ejc-sql-editor-buffer-name)))
+    (switch-to-buffer
+     (if (and sql-editor-buffer
+              (buffer-live-p sql-editor-buffer))
+         sql-editor-buffer
+       (ejc-create-sql-editor-buffer)))))
 
 ;; (shell-command "lein repl :headless")
 
