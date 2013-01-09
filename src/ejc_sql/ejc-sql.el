@@ -69,14 +69,23 @@
   "The results buffer.")
 (defvar results-buffer-name "sql_output.txt" ; "*ejc-sql-output*"
   "The results buffer name.")
-(defvar ejc-sql-editor-buffer-name "*sql-editor*"
-  "The buffer for conveniently edit ad-hoc SQL scripts.")
 (defvar results-file-path nil ;; "/<path>/sql_output.txt"
   "This value is returned by the clojure side.")
+
+(defvar ejc-sql-editor-buffer-name "*sql-editor*"
+  "The buffer for conveniently edit ad-hoc SQL scripts.")
+
+(defvar ejc-sql-log-file-path nil
+  "SQL scripts logs filepath.")
+(defvar ejc-sql-log-buffer-name "sql_log.txt"
+  "The buffer for view SQL scripts logs.")
+
 (defvar clojure-src-file "connect.clj"
   "Main clojure src file name.")
+
 (defvar sql-separator "/"
   "The char with purpose to separate the SQL statement both other.")
+
 (defvar ejc-popup-results-buffer t
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
@@ -150,16 +159,22 @@ If not, launch it, return nil. Return t otherwise."
         (error (concat "Can't find file " clojure-src-file))
       result)))
 
+(defun ejc-get-nrepl-stdout (expr)
+  "Evaluate `expr', print it and return printed text as function's result."
+  (plist-get (nrepl-eval
+              (concat
+               " (in-ns 'ejc-sql.core)"
+               " (print " expr ")")) :stdout))
+
 (defun ejc-load-clojure-side ()
   "Evaluate clojure side, run startup initialization functions."
   (if (not results-file-path)
       (progn
         (nrepl-load-file (ejc-find-clojure-file))
-        (setq results-file-path
-              (plist-get (nrepl-eval 
-                          (concat
-                           " (in-ns 'ejc-sql.core)"
-                           " (print output-file-path)")) :stdout)))))
+        (setq results-file-path 
+              (ejc-get-nrepl-stdout "output-file-path"))
+        (setq ejc-sql-log-file-path 
+              (ejc-get-nrepl-stdout "sql-log-file-path")))))
 
 (defun add-quotes (str)
   (concat "\"" str "\""))
@@ -178,23 +193,16 @@ If not, launch it, return nil. Return t otherwise."
     "         })"    
     )))
 
-(defun ejc-create-output-buffer ()
-  (set-buffer (get-buffer-create results-buffer-name))
-  (setq results-buffer (current-buffer))
-  (set-visited-file-name results-file-path t t)  
-  (setq view-read-only t)
-  results-buffer)
-
-(defun ejc-get-output-buffer ()
-  (if (and results-buffer (buffer-live-p results-buffer))
-      results-buffer
-    (ejc-create-output-buffer)))
-
 (defun ejc-eval-user-sql (sql)
-  "Evaluate SQL, reload and show query results buffer."
+  "Evaluate SQL by user: reload and show query results buffer, update log."
     (message "Processing SQL query...")
     (ejc-eval-sql sql)
     (ejc-show-last-result t)
+    (save-excursion
+      (set-buffer (ejc-get-buffer-or-create
+                   ejc-sql-log-buffer-name
+                   'ejc-create-sql-log-buffer))
+      (revert-buffer t t))
     (message "Done SQL query."))
 
 (defun ejc-toggle-popup-results-buffer ()
@@ -319,6 +327,37 @@ buffer."
          (end (car (cdr boundaries))))
     (format-sql beg end)))
 
+;;-----------------------------------------------------------------------------
+;; results buffer
+;;
+(defun ejc-create-output-buffer ()
+  (set-buffer (get-buffer-create results-buffer-name))
+  (setq results-buffer (current-buffer))
+  (set-visited-file-name results-file-path t t)
+  (setq view-read-only t)
+  results-buffer)
+
+(defun ejc-get-buffer-or-create (buffer-or-name create-buffer-fn)
+  "Return buffer passed in `buffer-or-name' parameter.
+If this buffer is not exists or it was killed - create buffer via
+`create-buffer-fn' function (this function must return buffer)."
+  (let ((buf (if (bufferp buffer-or-name) 
+                 buffer-or-name 
+               (get-buffer buffer-or-name))))
+    (if (and buf (buffer-live-p buf))
+        buf
+      (apply create-buffer-fn nil))))
+
+(defun ejc-get-output-buffer ()
+  (if (and results-buffer (buffer-live-p results-buffer))
+      results-buffer
+    (ejc-create-output-buffer)))
+;;
+;;-----------------------------------------------------------------------------
+
+;;-----------------------------------------------------------------------------
+;; editor buffer
+;;
 (defun ejc-create-sql-editor-buffer ()
   "Create buffer dedicated to ad-hoc edit and SQL scripts."
   (let ((sql-editor-buffer (get-buffer-create ejc-sql-editor-buffer-name)))
@@ -333,12 +372,35 @@ buffer."
   "Switch to buffer dedicated to ad-hoc edit and SQL scripts.
 If the buffer is not exists - create it."
   (interactive)
-  (let ((sql-editor-buffer (get-buffer ejc-sql-editor-buffer-name)))
-    (switch-to-buffer
-     (if (and sql-editor-buffer
-              (buffer-live-p sql-editor-buffer))
-         sql-editor-buffer
-       (ejc-create-sql-editor-buffer)))))
+  (switch-to-buffer
+   (ejc-get-buffer-or-create
+    ejc-sql-editor-buffer-name
+    'ejc-create-sql-editor-buffer)))
+;;
+;;-----------------------------------------------------------------------------
+
+;;-----------------------------------------------------------------------------
+;; log buffer
+;;
+(defun ejc-create-sql-log-buffer ()
+  (let ((sql-log-buffer (get-buffer-create ejc-sql-log-buffer-name)))
+    (save-excursion
+      (set-buffer sql-log-buffer)
+      (set-visited-file-name ejc-sql-log-file-path t t)
+      (setq view-read-only t)
+      (sql-ansi-mode)
+      (auto-complete-mode t)
+      (auto-fill-mode t))
+    sql-log-buffer))
+
+(defun ejc-switch-to-sql-log-buffer ()
+  (interactive)
+  (switch-to-buffer
+   (ejc-get-buffer-or-create
+    ejc-sql-log-buffer-name
+    'ejc-create-sql-log-buffer)))
+;;
+;;-----------------------------------------------------------------------------
 
 ;; (shell-command "lein repl :headless")
 
