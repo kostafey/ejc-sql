@@ -59,17 +59,18 @@
 ;; buffer, or not.
 ;; 
 ;; * `ejc-eval-user-sql-at-point' -- Evaluate SQL bounded by the
-;; `sql-separator' or/and buffer boundaries. 
+;; `ejc-sql-separator' or/and buffer boundaries. 
 
 (require 'cl)
 (require 'nrepl)
 (require 'popwin)
+(require 'ejc-format)
 
-(defvar results-buffer nil
+(defvar ejc-results-buffer nil
   "The results buffer.")
-(defvar results-buffer-name "sql_output.txt" ; "*ejc-sql-output*"
+(defvar ejc-results-buffer-name "sql_output.txt" ; "*ejc-sql-output*"
   "The results buffer name.")
-(defvar results-file-path nil ;; "/<path>/sql_output.txt"
+(defvar ejc-results-file-path nil ;; "/<path>/sql_output.txt"
   "This value is returned by the clojure side.")
 
 (defvar ejc-sql-editor-buffer-name "*sql-editor*"
@@ -83,10 +84,7 @@
 (defvar clojure-src-file "connect.clj"
   "Main clojure src file name.")
 
-(defvar sql-separator "/"
-  "The char with purpose to separate the SQL statement both other.")
-
-(defvar ejc-popup-results-buffer t
+(defvar ejc-popup-ejc-results-buffer t
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
 (defstruct ejc-db-conn
@@ -168,10 +166,10 @@ If not, launch it, return nil. Return t otherwise."
 
 (defun ejc-load-clojure-side ()
   "Evaluate clojure side, run startup initialization functions."
-  (if (not results-file-path)
+  (if (not ejc-results-file-path)
       (progn
         (nrepl-load-file (ejc-find-clojure-file))
-        (setq results-file-path 
+        (setq ejc-results-file-path 
               (ejc-get-nrepl-stdout "output-file-path"))
         (setq ejc-sql-log-file-path 
               (ejc-get-nrepl-stdout "sql-log-file-path")))))
@@ -205,23 +203,6 @@ If not, launch it, return nil. Return t otherwise."
       (revert-buffer t t))
     (message "Done SQL query."))
 
-(defun ejc-toggle-popup-results-buffer ()
-  (interactive)
-  (setq ejc-popup-results-buffer (not ejc-popup-results-buffer)))
-
-(defun ejc-show-last-result (&optional revert)
-  "Popup buffer with last SQL execution result output."
-  (interactive)
-  (let ((output-buffer (ejc-get-output-buffer)))
-    (set-buffer output-buffer)
-    (when revert
-      (revert-buffer t t))
-    (toggle-read-only t)
-    (beginning-of-buffer)
-    (if ejc-popup-results-buffer
-        (popwin:popup-buffer output-buffer)
-      (popwin:display-buffer output-buffer))))
-
 (defun ejc-eval-sql (sql)
   "Core function to evaluate SQL queries."
   (nrepl-eval
@@ -235,107 +216,19 @@ If not, launch it, return nil. Return t otherwise."
     (ejc-eval-user-sql sql)))
 
 (defun ejc-eval-user-sql-at-point ()
-  "Evaluate SQL bounded by the `sql-separator' or/and buffer boundaries."
+  "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer boundaries."
   (interactive)  
-  (let* ((boundaries (get-sql-boundaries-at-point))
-         (beg (car boundaries))
-         (end (car (cdr boundaries)))
-         (sql (buffer-substring beg end)))
-    (ejc-eval-user-sql sql)))
-
-(defun get-sql-boundaries-at-point ()
-  "Returns list of the boundaries of the current sql expression.
-The current sql expression is the expression under the point.
-The boundaries are marked by `sql-separator's. If the top or
-bottom boundary is absent - it returns beginning or end of the
-buffer."
-  (save-excursion
-    (let* ((beg (progn
-                  (if (search-backward sql-separator nil t nil)
-                      (forward-char)
-                    (beginning-of-buffer))
-                  (point)))
-           (end (progn
-                  (if (search-forward sql-separator nil t nil)
-                      (backward-char)
-                    (end-of-buffer))
-                  (point))))
-      (list beg end))))
-
-;; TODO: wrong
-(defun ejc-mark-this-sql ()
-  (interactive)
-  (let* ((boundaries (get-sql-boundaries-at-point))
-         (beg (car boundaries))
-         (end (car (cdr boundaries))))
-    (setq mark-active nil)
-    (goto-char beg)
-    (setq mark-active t)
-    (goto-char end)))
-
-(defun apply-in-sql-boundaries (func)
-  (let* ((boundaries (get-sql-boundaries-at-point))
-         (beg (car boundaries))
-         (end (car (cdr boundaries))))
-    ;; (message beg)
-    ;; (message end)
-    (apply func (list beg end))))
-
-(defun format-sql (beg end)
-  (interactive "r")
-  (save-excursion
-    ;; (setq mark-active nil)
-    ;; (goto-char beg)
-    ;; (setq mark-active t)
-    ;; (goto-char end)
-    (apply-in-sql-boundaries 
-     '(lambda (beg end) 
-        (replace-string "," ",\n    " nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string "select" "select \n    " nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " from " "\nfrom \n     " nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " where " "\nwhere \n     " nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " and " "\n and " nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " or " "\n  or " nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " order by " "\norder by \n" nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " inner join " "\ninner join " nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " left join " "\nleft join " nil beg end)))
-    (apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " on " "\n  on " nil beg end)))
-    ))
-
-(defun ejc-format-sql-at-point ()
-  (interactive)  
-  (let* ((boundaries (get-sql-boundaries-at-point))
-         (beg (car boundaries))
-         (end (car (cdr boundaries))))
-    (format-sql beg end)))
+  (ejc-eval-user-sql (ejc-get-sql-at-point)))
 
 ;;-----------------------------------------------------------------------------
 ;; results buffer
 ;;
 (defun ejc-create-output-buffer ()
-  (set-buffer (get-buffer-create results-buffer-name))
-  (setq results-buffer (current-buffer))
-  (set-visited-file-name results-file-path t t)
+  (set-buffer (get-buffer-create ejc-results-buffer-name))
+  (setq ejc-results-buffer (current-buffer))
+  (set-visited-file-name ejc-results-file-path t t)
   (setq view-read-only t)
-  results-buffer)
+  ejc-results-buffer)
 
 (defun ejc-get-buffer-or-create (buffer-or-name create-buffer-fn)
   "Return buffer passed in `buffer-or-name' parameter.
@@ -349,9 +242,26 @@ If this buffer is not exists or it was killed - create buffer via
       (apply create-buffer-fn nil))))
 
 (defun ejc-get-output-buffer ()
-  (if (and results-buffer (buffer-live-p results-buffer))
-      results-buffer
+  (if (and ejc-results-buffer (buffer-live-p ejc-results-buffer))
+      ejc-results-buffer
     (ejc-create-output-buffer)))
+
+(defun ejc-toggle-popup-ejc-results-buffer ()
+  (interactive)
+  (setq ejc-popup-ejc-results-buffer (not ejc-popup-ejc-results-buffer)))
+
+(defun ejc-show-last-result (&optional revert)
+  "Popup buffer with last SQL execution result output."
+  (interactive)
+  (let ((output-buffer (ejc-get-output-buffer)))
+    (set-buffer output-buffer)
+    (when revert
+      (revert-buffer t t))
+    (toggle-read-only t)
+    (beginning-of-buffer)
+    (if ejc-popup-ejc-results-buffer
+        (popwin:popup-buffer output-buffer)
+      (popwin:display-buffer output-buffer))))
 ;;
 ;;-----------------------------------------------------------------------------
 
