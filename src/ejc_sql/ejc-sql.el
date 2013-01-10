@@ -44,10 +44,12 @@
 ;;                         :password "secret"))
 ;;
 ;; ; Some keybindings - modify this on your taste:
-;; (global-set-key (kbd "C-x S") 'ejc-eval-user-sql-region)
-;; (global-set-key (kbd "C-x s") 'ejc-eval-user-sql-at-point)
 ;; (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
 ;; (global-set-key (kbd "C-x C-s") 'ejc-switch-to-sql-editor-buffer)
+;;
+;; New keybindings added to `sql-mode-map':
+;; * (kbd "C-x C-e") 'ejc-eval-user-sql-at-point
+;; * (kbd "C-x t")   'ejc-toggle-popup-results-buffer
 ;;
 ;; * Using ejc-sql reqires nrepl process is running, so execution
 ;; `ejc-ensure-nrepl-runnig' ensures this.
@@ -62,9 +64,13 @@
 ;; `ejc-sql-separator' or/and buffer boundaries. 
 
 (require 'cl)
+(require 'sql)
 (require 'nrepl)
 (require 'popwin)
 (require 'ejc-format)
+
+(define-key sql-mode-map (kbd "C-x C-e") 'ejc-eval-user-sql-at-point)
+(define-key sql-mode-map (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
@@ -84,7 +90,7 @@
 (defvar clojure-src-file "connect.clj"
   "Main clojure src file name.")
 
-(defvar ejc-popup-ejc-results-buffer t
+(defvar ejc-popup-results-buffer t
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
 (defstruct ejc-db-conn
@@ -246,9 +252,12 @@ If this buffer is not exists or it was killed - create buffer via
       ejc-results-buffer
     (ejc-create-output-buffer)))
 
-(defun ejc-toggle-popup-ejc-results-buffer ()
+(defun ejc-toggle-popup-results-buffer ()
   (interactive)
-  (setq ejc-popup-ejc-results-buffer (not ejc-popup-ejc-results-buffer)))
+  (setq ejc-popup-results-buffer (not ejc-popup-results-buffer))
+  (if ejc-popup-results-buffer
+      (message "Popup window.")
+    (message "Normal window.")))
 
 (defun ejc-show-last-result (&optional revert)
   "Popup buffer with last SQL execution result output."
@@ -259,7 +268,7 @@ If this buffer is not exists or it was killed - create buffer via
       (revert-buffer t t))
     (toggle-read-only t)
     (beginning-of-buffer)
-    (if ejc-popup-ejc-results-buffer
+    (if ejc-popup-results-buffer
         (popwin:popup-buffer output-buffer)
       (popwin:display-buffer output-buffer))))
 ;;
