@@ -50,6 +50,7 @@
 ;; New keybindings added to `sql-mode-map':
 ;; * (kbd "C-x C-e") 'ejc-eval-user-sql-at-point
 ;; * (kbd "C-x t")   'ejc-toggle-popup-results-buffer
+;; * (kbd "C-x h")   'ejc-describe-table
 ;;
 ;; * Using ejc-sql reqires nrepl process is running, so execution
 ;; `ejc-ensure-nrepl-runnig' ensures this.
@@ -71,6 +72,7 @@
 
 (define-key sql-mode-map (kbd "C-x C-e") 'ejc-eval-user-sql-at-point)
 (define-key sql-mode-map (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
+(define-key sql-mode-map (kbd "C-h v") 'ejc-describe-table)
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
@@ -170,6 +172,13 @@ If not, launch it, return nil. Return t otherwise."
                " (in-ns 'ejc-sql.core)"
                " (print " expr ")")) :stdout))
 
+(defun ejc-get-nrepl-result (expr)
+  "Evaluate `expr', and return expression's evaluation result."
+  (plist-get (nrepl-eval
+              (concat
+               " (in-ns 'ejc-sql.core)"
+               " " expr)) :value))
+
 (defun ejc-load-clojure-side ()
   "Evaluate clojure side, run startup initialization functions."
   (if (not ejc-results-file-path)
@@ -180,22 +189,57 @@ If not, launch it, return nil. Return t otherwise."
         (setq ejc-sql-log-file-path 
               (ejc-get-nrepl-stdout "sql-log-file-path")))))
 
-(defun add-quotes (str)
+(defun ejc-add-quotes (str)
   (concat "\"" str "\""))
 
 (defun ejc-connect-to-db (conn-struct)
   (nrepl-eval 
    (concat 
     " (in-ns 'ejc-sql.core)"
-    " (add-to-cp " (add-quotes (ejc-db-conn-classpath conn-struct)) ")"
+    " (add-to-cp " (ejc-add-quotes (ejc-db-conn-classpath conn-struct)) ")"
     " (import " (ejc-db-conn-classname conn-struct)")"
-    " (def db {:classname " (add-quotes (ejc-db-conn-classname conn-struct))
-    "          :subprotocol " (add-quotes (ejc-db-conn-subprotocol conn-struct))
-    "          :subname " (add-quotes (ejc-db-conn-subname conn-struct))
-    "          :user " (add-quotes (ejc-db-conn-user conn-struct))
-    "          :password " (add-quotes (ejc-db-conn-password conn-struct))
+    " (def db {:classname " (ejc-add-quotes (ejc-db-conn-classname conn-struct))
+    "          :subprotocol " (ejc-add-quotes (ejc-db-conn-subprotocol conn-struct))
+    "          :subname " (ejc-add-quotes (ejc-db-conn-subname conn-struct))
+    "          :user " (ejc-add-quotes (ejc-db-conn-user conn-struct))
+    "          :password " (ejc-add-quotes (ejc-db-conn-password conn-struct))
     "         })"    
     )))
+
+(defun ejc-get-word-at-point (pos)
+  "Return SQL word around the point."
+  (interactive "d")
+  (let* ((char (char-after pos))
+         (str (char-to-string char)))
+    (save-excursion
+      (let* ((end (if (member str '(" " ")" "<" ">" "="))
+                      (point)
+                    (progn
+                      (forward-same-syntax 1)
+                      (point))))
+             (beg (progn
+                    (forward-same-syntax -1)
+                    (point)))
+             (sql-word (buffer-substring beg end)))
+        sql-word))))
+
+(defun ejc-describe-table (table-name)
+  "Describe SQL table `table-name' (default table name - word around the point)."
+  (interactive
+   (let ((sql-symbol (ejc-get-word-at-point (point)))
+         (enable-recursive-minibuffers t)
+         val)
+     (setq val (completing-read
+                (if sql-symbol
+				    (format "Describe table (default %s): " sql-symbol)
+				  "Describe table: ")
+				obarray))
+     (list (if (equal val "")
+               sql-symbol
+             val))))
+  (ejc-get-nrepl-result 
+   (concat "(get-table-meta " (ejc-add-quotes table-name) ")"))
+  (ejc-show-last-result t))
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
@@ -213,7 +257,7 @@ If not, launch it, return nil. Return t otherwise."
   "Core function to evaluate SQL queries."
   (nrepl-eval
    ;; nrepl-eval-async
-   (concat "(eval-user-sql" (add-quotes sql) ")")))
+   (concat "(eval-user-sql" (ejc-add-quotes sql) ")")))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."

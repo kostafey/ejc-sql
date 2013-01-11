@@ -6,9 +6,14 @@
 (use 'clojure.java.jdbc)
 (require 'clojure.contrib.java-utils)
 
-(import java.sql.SQLException)
 (import java.util.Date)
 (import java.text.SimpleDateFormat)
+
+(import (java.sql Connection 
+                  DriverManager 
+                  PreparedStatement 
+                  ResultSet
+                  SQLException))
 
 (import (java.io File) 
         (java.net URL URLClassLoader) 
@@ -164,6 +169,42 @@
 (defn eval-user-sql [sql]
   (eval-sql sql get-user-output-file-path))
 
+(defn get-table-meta
+  "Discribe table."
+  [table-name]
+  (Class/forName (:classname db))
+  (let 
+      [connect (DriverManager/getConnection 
+                (str "jdbc:"
+                     (:subprotocol db)
+                     (:subname db)
+                     "user="(:user db) ";"
+                     "password="(:password db) ";"))
+       statement (.createStatement connect)
+       resultSet (.executeQuery 
+                  statement 
+                  (str "select * from " table-name " where 0 = 1"))
+       rsMeta (.getMetaData resultSet)
+       colCount (.getColumnCount rsMeta)]    
+    (with-open 
+        [wrtr (writer (get-user-output-file-path))]
+      (let [head (str "Table ``" table-name "`` description:\n")
+            head-length (dec (.length head))]
+        (.write wrtr 
+                (.toString
+                 (str head
+                      (simple-join head-length "-") "\n"
+                      (loop [i 1
+                             acc (new StringBuffer "")]
+                        (if (>= i colCount)
+                          acc
+                          (recur (inc i)
+                                 (do
+                                   (.append acc (.getColumnLabel rsMeta i))
+                                   (.append acc " ")
+                                   (.append acc (.getColumnTypeName rsMeta i))
+                                   (.append acc "\n")
+                                   acc)))))))))))
 
 ;; (defn eval-sql [sql, get-output-file-path]
 ;;   (with-connection db 

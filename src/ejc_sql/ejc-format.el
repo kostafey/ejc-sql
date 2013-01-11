@@ -68,40 +68,46 @@ buffer."
    (let ((sql (buffer-substring beg end)))
      sql)))
 
+(defmacro ejc-ensure-sql-mode (&rest body)
+  `(if (not (equal major-mode 'sql-mode))
+       (error "SQL formatting is suitable in sql-mode only.")
+     (progn ,@body)))
+
 (defun ejc-format-sql (beg end)
   (interactive "r")
-  (save-excursion
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end) 
-        (replace-string "," ",\n    " nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string "select" "select \n    " nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " from " "\nfrom \n     " nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " where " "\nwhere \n     " nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " and " "\n and " nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " or " "\n  or " nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " order by " "\norder by \n" nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " inner join " "\ninner join " nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " left join " "\nleft join " nil beg end)))
-    (ejc-apply-in-sql-boundaries 
-     '(lambda (beg end)
-        (replace-string " on " "\n  on " nil beg end)))
-    ))
+  (ejc-ensure-sql-mode
+   (save-excursion
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end) 
+         (replace-string "," ",\n    " nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string "select" "select \n    " nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string " from " "\nfrom \n     " nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string " where " "\nwhere \n     " nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string " and " "\n and " nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string " or " "\n  or " nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string " order by " "\norder by \n" nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string " inner join " "\ninner join " nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string " left join " "\nleft join " nil beg end)))
+     (ejc-apply-in-sql-boundaries 
+      '(lambda (beg end)
+         (replace-string " on " "\n  on " nil beg end)))
+     )))
 
 (defun ejc-format-sql-at-point ()
   (interactive)  
