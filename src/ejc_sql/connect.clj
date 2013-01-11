@@ -181,30 +181,37 @@
                      "user="(:user db) ";"
                      "password="(:password db) ";"))
        statement (.createStatement connect)
-       resultSet (.executeQuery 
-                  statement 
-                  (str "select * from " table-name " where 0 = 1"))
-       rsMeta (.getMetaData resultSet)
-       colCount (.getColumnCount rsMeta)]    
+       execResult (try (list 
+                        (.executeQuery 
+                         statement 
+                         (str "select * from " table-name " where 0 = 1")) true)
+                       (catch SQLException e 
+                         (list (str "Error: " (.getMessage e)) nil)))
+       resultSet (first execResult)
+       success (last execResult)]    
     (with-open 
         [wrtr (writer (get-user-output-file-path))]
-      (let [head (str "Table ``" table-name "`` description:\n")
-            head-length (dec (.length head))]
-        (.write wrtr 
-                (.toString
-                 (str head
-                      (simple-join head-length "-") "\n"
-                      (loop [i 1
-                             acc (new StringBuffer "")]
-                        (if (>= i colCount)
-                          acc
-                          (recur (inc i)
-                                 (do
-                                   (.append acc (.getColumnLabel rsMeta i))
-                                   (.append acc " ")
-                                   (.append acc (.getColumnTypeName rsMeta i))
-                                   (.append acc "\n")
-                                   acc)))))))))))
+      (if success
+        (let [rsMeta (.getMetaData resultSet)
+              colCount (.getColumnCount rsMeta)
+              head (str "Table ``" table-name "`` description:\n")
+              head-length (dec (.length head))]
+          (.write wrtr 
+                  (.toString
+                   (str head
+                        (simple-join head-length "-") "\n"
+                        (loop [i 1
+                               acc (new StringBuffer "")]
+                          (if (> i colCount)
+                            acc
+                            (recur (inc i)
+                                   (do
+                                     (.append acc (.getColumnLabel rsMeta i))
+                                     (.append acc " ")
+                                     (.append acc (.getColumnTypeName rsMeta i))
+                                     (.append acc "\n")
+                                     acc))))))))
+        (.write wrtr resultSet)))))
 
 ;; (defn eval-sql [sql, get-output-file-path]
 ;;   (with-connection db 
