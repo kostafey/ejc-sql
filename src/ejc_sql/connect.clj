@@ -169,49 +169,53 @@
 (defn eval-user-sql [sql]
   (eval-sql sql get-user-output-file-path))
 
+(defn table-meta
+  [table-name]
+  (with-connection db
+    (let 
+        [connect (connection)
+         statement (.createStatement connect)
+         execResult (try 
+                      (list 
+                       (.executeQuery 
+                        statement 
+                        (str "select * from " table-name " where 0 = 1")) true)
+                      (catch SQLException e 
+                        (list (str "Error: " (.getMessage e)) false)))
+         result-data (first execResult)
+         success (last execResult)]    
+      (if success
+        {:success true
+         :result
+         (let [resultSet result-data
+               rsMeta (.getMetaData resultSet)
+               colCount (.getColumnCount rsMeta)]
+           (loop [i 1
+                  acc []]
+             (if (> i colCount)
+               acc
+               (recur (inc i)
+                      (conj acc {:name (.getColumnLabel rsMeta i)
+                                 :type (.getColumnTypeName rsMeta i)})))))}
+        {:success false :result result-data}))))
+
 (defn get-table-meta
   "Discribe table."
   [table-name]
-  (Class/forName (:classname db))
-  (let 
-      [connect (DriverManager/getConnection 
-                (str "jdbc:"
-                     (:subprotocol db)
-                     (:subname db)
-                     "user="(:user db) ";"
-                     "password="(:password db) ";"))
-       statement (.createStatement connect)
-       execResult (try (list 
-                        (.executeQuery 
-                         statement 
-                         (str "select * from " table-name " where 0 = 1")) true)
-                       (catch SQLException e 
-                         (list (str "Error: " (.getMessage e)) nil)))
-       resultSet (first execResult)
-       success (last execResult)]    
+  (let [result-map (table-meta table-name)
+        success (:success result-map)
+        result-data (:result result-map)
+        head (str "Table ``" table-name "`` description:\n")
+        head-length (dec (.length head))]
     (with-open 
         [wrtr (writer (get-user-output-file-path))]
-      (if success
-        (let [rsMeta (.getMetaData resultSet)
-              colCount (.getColumnCount rsMeta)
-              head (str "Table ``" table-name "`` description:\n")
-              head-length (dec (.length head))]
-          (.write wrtr 
-                  (.toString
-                   (str head
-                        (simple-join head-length "-") "\n"
-                        (loop [i 1
-                               acc (new StringBuffer "")]
-                          (if (> i colCount)
-                            acc
-                            (recur (inc i)
-                                   (do
-                                     (.append acc (.getColumnLabel rsMeta i))
-                                     (.append acc " ")
-                                     (.append acc (.getColumnTypeName rsMeta i))
-                                     (.append acc "\n")
-                                     acc))))))))
-        (.write wrtr resultSet)))))
+      (.write wrtr              
+              (if success
+                (str head
+                     (simple-join head-length "-") "\n"
+                     (format-output result-data))
+                result-data)))))
+
 
 ;; (defn eval-sql [sql, get-output-file-path]
 ;;   (with-connection db 
