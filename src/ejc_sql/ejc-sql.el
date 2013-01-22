@@ -74,6 +74,9 @@
 (define-key sql-mode-map (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
 (define-key sql-mode-map (kbd "C-h v") 'ejc-describe-table)
 
+(defvar ejc-db-type nil
+  "The type of RDBMS.")
+
 (defvar ejc-results-buffer nil
   "The results buffer.")
 (defvar ejc-results-buffer-name "sql_output.txt" ; "*ejc-sql-output*"
@@ -196,7 +199,7 @@ If not, launch it, return nil. Return t otherwise."
   (nrepl-eval 
    (concat 
     " (in-ns 'ejc-sql.core)"
-    " (add-to-cp " (ejc-add-quotes (ejc-db-conn-classpath conn-struct)) ")"
+    " (ejc-sql.lib/add-to-cp " (ejc-add-quotes (ejc-db-conn-classpath conn-struct)) ")"
     " (import " (ejc-db-conn-classname conn-struct)")"
     " (def db {:classname " (ejc-add-quotes (ejc-db-conn-classname conn-struct))
     "          :subprotocol " (ejc-add-quotes (ejc-db-conn-subprotocol conn-struct))
@@ -204,7 +207,8 @@ If not, launch it, return nil. Return t otherwise."
     "          :user " (ejc-add-quotes (ejc-db-conn-user conn-struct))
     "          :password " (ejc-add-quotes (ejc-db-conn-password conn-struct))
     "         })"    
-    )))
+    ))
+  (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct)))
 
 (defun ejc-get-word-at-point (pos)
   "Return SQL word around the point."

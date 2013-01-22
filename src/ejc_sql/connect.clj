@@ -1,3 +1,21 @@
+;;; connect.clj -- Core clojure functions for ejc-sql emacs extension.
+
+;;; Copyright © 2013 - Kostafey <kostafey@gmail.com>
+
+;;; This program is free software; you can redistribute it and/or modify
+;;; it under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation; either version 2, or (at your option)
+;;; any later version.
+;;;
+;;; This program is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;; GNU General Public License for more details.
+;;;
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program; if not, write to the Free Software Foundation,
+;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
+
 (ns ejc-sql.core)
 
 (in-ns 'ejc-sql.core)
@@ -5,9 +23,7 @@
 (use 'clojure.java.io)
 (use 'clojure.java.jdbc)
 (require 'clojure.contrib.java-utils)
-
-(import java.util.Date)
-(import java.text.SimpleDateFormat)
+(use 'ejc-sql.lib)
 
 (import (java.sql Connection 
                   DriverManager 
@@ -15,106 +31,27 @@
                   ResultSet
                   SQLException))
 
-(import (java.io File) 
-        (java.net URL URLClassLoader) 
-        (java.lang.reflect Method))
-
 (def db "DataBase connection properties list." nil)
-
-(defn add-to-cp "Since add-classpath is deprecated."
-  [#^String jarpath] ; path without "file:///..." prefix.
-  (let [#^URL url (.. (File. jarpath) toURI toURL) 
-        url-ldr-cls (. (URLClassLoader. (into-array URL [])) getClass) 
-        arr-cls (into-array Class [(. url getClass)]) 
-        arr-obj (into-array Object [url]) 
-        #^Method mthd (. url-ldr-cls getDeclaredMethod "addURL" arr-cls)] 
-    (doto mthd 
-      (.setAccessible true) 
-      (.invoke (ClassLoader/getSystemClassLoader) arr-obj)) 
-    (println (format "Added %s to classpath" jarpath))))
-
-(def isWindows
-  "The value is true if it runs under the os Windows."
-  (<= 0 (.indexOf (System/getProperty "os.name") "Windows")))
-
-(def isLinux
-  "The value is true if it runs under the os Linux."
-  (<= 0 (.indexOf (System/getProperty "os.name") "Linux")))
 
 (def output-file-path
   "The sql queries results output filepath."
   (str (System/getProperty  "user.home")
-       (if (true? isWindows)
+       (if (true? ejc-sql.lib/isWindows)
          "/Application Data")
        "/.emacs.d/tmp/sql_output.txt"))
 
 (def sql-log-file-path
   "The sql queries logging filepath."
   (str (System/getProperty  "user.home")
-       (if (true? isWindows)
+       (if (true? ejc-sql.lib/isWindows)
          "/Application Data")
        "/.emacs.d/tmp/sql_log.txt"))
 
 (defn get-user-output-file-path []
-  (-> (java.io.File. output-file-path) .getAbsolutePath))
+  (ejc-sql.lib/get-absolute-file-path output-file-path))
 
 (defn get-sql-log-file-path []
-  (-> (java.io.File. sql-log-file-path) .getAbsolutePath))
-
-(defn trim [s]
-  (if (instance? java.lang.String s)
-    (.trim s)
-    s))
-
-(defn filter-data [rs]
-  (map #(map trim %) rs))
-
-(defn get-rs-data [rs]
-  (map vals rs))
-
-(defn get-rs-headers [rs]  
-  (for [[k _] (first rs)] 
-    (subs (str k) 1)))
-
-(defn transpose [m]
-  (apply mapv vector m))
-
-(defn find-longest-list
-  "Returns the list of the longest lengths per column."
-  [lst]
-  (map #(apply max %) (transpose lst)))
-
-(defn simple-join [n s]
-  (clojure.string/join 
-   (for [x (range 0 n)] s)))
-
-(defn str-length [s]
-  (.length (str s)))
-
-(defn get-rs-lengths [rs]
-  (map #(map str-length %) rs))
-
-(defn format-output [rs]
-  (let [records-data (filter-data (get-rs-data rs))
-        headers-data (get-rs-headers rs)
-        longest-list (find-longest-list 
-                      (get-rs-lengths (cons headers-data records-data)))
-        col-step 2
-        result (new StringBuffer "")]
-    (doseq [val (map vector longest-list headers-data)]
-      (.append result (format (str "%-" (get val 0) "s") (get val 1)))
-      (.append result (simple-join col-step " ")))
-    (.append result "\n")
-    (doseq [len longest-list]
-      (.append result (simple-join len "-"))
-      (.append result (simple-join col-step " ")))
-    (.append result "\n")
-    (doseq [row records-data]
-      (doseq [val (map vector longest-list row)]
-        (.append result (format (str "%-" (get val 0) "s") (get val 1) ))
-        (.append result (simple-join col-step " ")))
-      (.append result "\n"))
-    (.toString result)))
+  (ejc-sql.lib/get-absolute-file-path sql-log-file-path))
 
 (defn eval-commands [sql wrtr] 
   (try
@@ -125,49 +62,63 @@
     (catch SQLException e 
       (.write wrtr (str "Error: " (.getMessage e))))))
 
-(defn log-sql [sql]
-  (let [is-new-file (if (not (. (clojure.contrib.java-utils/file 
-                                 (get-sql-log-file-path)) exists)) 
-                      true false)]
-    (with-open 
-        [wrtr (writer (get-sql-log-file-path) :append true)]
-      (if is-new-file
-        (.write wrtr "-*- mode: sql; -*-*/\n"))
-      (.write wrtr (str (simple-join 50 "-") " " 
-                        (.format (new SimpleDateFormat "yyyy.MM.dd HH:mm:ss.S")
-                                 (new Date))
-                        " " (simple-join 2 "-") "\n" sql "\n")))))
-
 (def select-on-manipulation-errors
   (list 
    "Method only for queries" ; informix
    "Can not issue data manipulation statements with executeQuery()." ; mySQL
    ))
 
-(defn in? 
-  "true if seq contains elm"
-  [seq elm]
-  (some #(= elm %) seq))
-
 (defn is-manipulation-error [err-msg]
-  (in? (map #(.equals err-msg %) select-on-manipulation-errors) true))
+  (ejc-sql.lib/in? (map #(.equals err-msg %) select-on-manipulation-errors) true))
 
-(defn eval-sql [sql, get-output-file-path]
+(defn eval-sql-core [sql rs-processing exec-or-err-processing]
   (let [clear-sql (.trim sql)]
-    (log-sql (str clear-sql "\n"))
+    (try 
+      (with-connection db 
+        (with-query-results rs [clear-sql]
+          (rs-processing rs)))
+      (catch SQLException e 
+        (if (is-manipulation-error (.getMessage e))
+          (let [[message result] 
+                (try 
+                  (list 
+                   (str "Records affected:"
+                        (with-connection db
+                          (clojure.java.jdbc/do-commands clear-sql)))
+                   true)
+                  (catch SQLException e
+                    (list 
+                     (str "Error: "(.getMessage e)) 
+                     false)))]
+            (exec-or-err-processing message result))
+          (exec-or-err-processing (str "Error: " (.getMessage e)) false))))))
+
+(defn row-to-list "Feach ResultSet to plain list. 
+The every element of the list is a map {:column-name value}"
+  [rs]
+  (loop [currRs rs
+         acc (list)]
+    (if (= currRs (list))
+      acc
+      (recur (rest currRs)
+             (conj acc (first currRs))))))
+
+(defn eval-sql [sql, output-file-path sql-log-file-path]
+  (let [clear-sql (.trim sql)]
+    (ejc-sql.lib/log-sql (str clear-sql "\n") sql-log-file-path)
     (with-open 
-        [wrtr (writer (get-output-file-path))]
+        [wrtr (writer output-file-path)]
       (try 
         (with-connection db 
           (with-query-results rs [clear-sql]
-            (.write wrtr (format-output rs))))
+            (.write wrtr (ejc-sql.lib/format-output rs))))
         (catch SQLException e 
           (if (is-manipulation-error (.getMessage e))
             (eval-commands clear-sql wrtr)
             (.write wrtr (str "Error: " (.getMessage e)))))))))
  
 (defn eval-user-sql [sql]
-  (eval-sql sql get-user-output-file-path))
+  (eval-sql sql (get-user-output-file-path) (get-sql-log-file-path)))
 
 (defn table-meta
   [table-name]
@@ -212,8 +163,8 @@
       (.write wrtr              
               (if success
                 (str head
-                     (simple-join head-length "-") "\n"
-                     (format-output result-data))
+                     (ejc-sql.lib/simple-join head-length "-") "\n"
+                     (ejc-sql.lib/format-output result-data))
                 result-data)))))
 
 
@@ -257,4 +208,7 @@
 ;;   (with-query-results rs 
 ;;     [" SELECT superregions.* from superregions "] 
 ;;     (doseq [row rs] (println  row))))
+
+;; (eval-sql-core "SELECT * from superregions" row-to-list print)
+;; (eval-sql-core "execute procedure SomeProc(103)" print print)
 
