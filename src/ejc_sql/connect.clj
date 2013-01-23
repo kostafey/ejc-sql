@@ -53,15 +53,6 @@
 (defn get-sql-log-file-path []
   (ejc-sql.lib/get-absolute-file-path sql-log-file-path))
 
-(defn eval-commands [sql wrtr] 
-  (try
-    (with-connection db 
-      (let [res (str (with-connection db 
-                       (clojure.java.jdbc/do-commands sql)))]
-        (.write wrtr (str "Records affected: " res))))
-    (catch SQLException e 
-      (.write wrtr (str "Error: " (.getMessage e))))))
-
 (def select-on-manipulation-errors
   (list 
    "Method only for queries" ; informix
@@ -71,12 +62,26 @@
 (defn is-manipulation-error [err-msg]
   (ejc-sql.lib/in? (map #(.equals err-msg %) select-on-manipulation-errors) true))
 
-(defn eval-sql-core [sql rs-processing exec-or-err-processing]
+(defn eval-sql-core 
+  "The core SQL evaluation function. 
+Params list:
+* sql          -- SQL script to send to JDBC.
+* rs-handler   -- function with 1 arg, the returned ResultSet.
+* exec-handler -- function with 1 arg, the returned by JDBC text in case of 
+                  SQL, which is not results in ResultSet or error text.
+* err-handler  -- function with 1 arg, the returned by JDBC text in case of 
+                  SQL, which results in error text.
+* log-handler  -- function with 1 arg, the cleaned up SQL script."
+  [& {:keys [sql log-handler rs-handler exec-handler err-handler]
+      :or {log-handler (fn [sql]) 
+           rs-handler (fn [rs])
+           exec-handler (fn [str])
+           err-handler (fn [str])}}]
   (let [clear-sql (.trim sql)]
     (try 
       (with-connection db 
         (with-query-results rs [clear-sql]
-          (rs-processing rs)))
+          (rs-handler rs)))
       (catch SQLException e 
         (if (is-manipulation-error (.getMessage e))
           (let [[message result] 
@@ -90,8 +95,33 @@
                     (list 
                      (str "Error: "(.getMessage e)) 
                      false)))]
-            (exec-or-err-processing message result))
-          (exec-or-err-processing (str "Error: " (.getMessage e)) false))))))
+            (if result
+              (exec-handler message)
+              (err-handler message)))
+          (err-handler (str "Error: " (.getMessage e))))))))
+
+(defn write-to-temp-file "Write string to temp file 
+- the file, showing in the results buffer."
+  [str output-file-path]
+  (with-open 
+      [wrtr (writer output-file-path)]
+    (.write wrtr str)))
+
+(defn eval-sql "Evaluate users SQL scripts - common functtion."
+  [sql, output-file-path sql-log-file-path]
+  (eval-sql-core :sql sql
+                 :rs-handler (fn [rs] (write-to-temp-file 
+                                       (ejc-sql.lib/format-output rs)
+                                       output-file-path))
+                 :log-handler (fn [clear-sql] (ejc-sql.lib/log-sql 
+                                               (str clear-sql "\n") 
+                                               sql-log-file-path))
+                 :exec-handler (fn [str] (write-to-temp-file output-file-path))
+                 :err-handler (fn [str] (write-to-temp-file output-file-path))))
+
+(defn eval-user-sql "Evaluate users SQL scripts."
+  [sql]
+  (eval-sql sql (get-user-output-file-path) (get-sql-log-file-path)))
 
 (defn row-to-list "Feach ResultSet to plain list. 
 The every element of the list is a map {:column-name value}"
@@ -103,22 +133,11 @@ The every element of the list is a map {:column-name value}"
       (recur (rest currRs)
              (conj acc (first currRs))))))
 
-(defn eval-sql [sql, output-file-path sql-log-file-path]
-  (let [clear-sql (.trim sql)]
-    (ejc-sql.lib/log-sql (str clear-sql "\n") sql-log-file-path)
-    (with-open 
-        [wrtr (writer output-file-path)]
-      (try 
-        (with-connection db 
-          (with-query-results rs [clear-sql]
-            (.write wrtr (ejc-sql.lib/format-output rs))))
-        (catch SQLException e 
-          (if (is-manipulation-error (.getMessage e))
-            (eval-commands clear-sql wrtr)
-            (.write wrtr (str "Error: " (.getMessage e)))))))))
- 
-(defn eval-user-sql [sql]
-  (eval-sql sql (get-user-output-file-path) (get-sql-log-file-path)))
+(defn eval-sql-internal [sql]
+  (eval-sql-core :sql sql
+                 :rs-handler row-to-list
+                 :exec-handler (fn [str] str)
+                 :err-handler (fn [str] str)))
 
 (defn table-meta
   [table-name]
