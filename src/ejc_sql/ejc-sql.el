@@ -260,9 +260,10 @@ If not, launch it, return nil. Return t otherwise."
 
 (defun ejc-eval-sql (sql)
   "Core function to evaluate SQL queries."
-  (nrepl-eval
-   ;; nrepl-eval-async
-   (concat "(eval-user-sql" (ejc-add-quotes sql) ")")))
+  (let ((prepared-sql (replace-regexp-in-string "\"" "'" sql)))
+    (nrepl-eval
+     ;; nrepl-eval-async
+     (concat "(eval-user-sql" (ejc-add-quotes prepared-sql) ")"))))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
