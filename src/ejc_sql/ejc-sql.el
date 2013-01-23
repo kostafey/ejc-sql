@@ -48,9 +48,9 @@
 ;; (global-set-key (kbd "C-x C-s") 'ejc-switch-to-sql-editor-buffer)
 ;;
 ;; New keybindings added to `sql-mode-map':
-;; * (kbd "C-x C-e") 'ejc-eval-user-sql-at-point
+;; * (kbd "C-c C-c") 'ejc-eval-user-sql-at-point
 ;; * (kbd "C-x t")   'ejc-toggle-popup-results-buffer
-;; * (kbd "C-x h")   'ejc-describe-table
+;; * (kbd "C-h t")   'ejc-describe-table
 ;;
 ;; * Using ejc-sql reqires nrepl process is running, so execution
 ;; `ejc-ensure-nrepl-runnig' ensures this.
@@ -69,10 +69,11 @@
 (require 'nrepl)
 (require 'popwin)
 (require 'ejc-format)
+(require 'ejc-autocomplete)
 
-(define-key sql-mode-map (kbd "C-x C-e") 'ejc-eval-user-sql-at-point)
+(define-key sql-mode-map (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key sql-mode-map (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
-(define-key sql-mode-map (kbd "C-h v") 'ejc-describe-table)
+(define-key sql-mode-map (kbd "C-h t") 'ejc-describe-table)
 
 (defvar ejc-db-type nil
   "The type of RDBMS.")
@@ -332,7 +333,8 @@ If this buffer is not exists or it was killed - create buffer via
       (set-buffer sql-editor-buffer)
       (sql-ansi-mode)
       (auto-complete-mode t)
-      (auto-fill-mode t))
+      (auto-fill-mode t)
+      (ejc-ac-setup))
     sql-editor-buffer))
 
 (defun ejc-switch-to-sql-editor-buffer ()

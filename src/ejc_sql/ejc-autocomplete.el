@@ -18,8 +18,11 @@
 
 (require 'auto-complete)
 
+;; TODO: test
+(setq ejc-db-type "informix")
+
 (defvar ejc-select-tables
-  (cond ((string-match "informix" ejc-db-type) 
+  (cond ((string-match "informix" ejc-db-type)
          "SELECT TRIM(t.tabname) as tablesList
            FROM systables AS t
           WHERE t.tabtype = 'T'
@@ -33,13 +36,36 @@
           ORDER BY t.tabname;")
         ))
 
+;;;###autoload
+(defun ejc-get-tables-list ()
+  (let ((tables-list-string (ejc-get-nrepl-stdout
+                             (concat "(eval-sql-internal-get-column " 
+                                     (ejc-add-quotes ejc-select-tables) " )"))))
+    (split-string
+     (substring tables-list-string
+                1 (- (length tables-list-string) 1)))))
 
-"SELECT TRIM(t.tabname) || '.' || TRIM(c.colname) AS table_dot_column
-  FROM systables AS t, syscolumns AS c
- WHERE t.tabid = c.tabid
-   AND t.tabtype = 'T'
-   AND t.tabid >= 100
- ORDER BY t.tabname, c.colno;"
+;;;###autoload
+(defun ejc-candidates ()
+  (append '("select" "where" "from" "insert" "update" "delete" "drop")
+           (ejc-get-tables-list)))
+
+(defvar ac-source-ejc-sql
+  '((candidates . ejc-candidates)))
+
+;;;###autoload
+(defun ejc-ac-setup ()
+  "Add the completion sources to the front of `ac-sources'.
+This affects only the current buffer."
+  (interactive)
+  (add-to-list 'ac-sources 'ac-source-ejc-sql))
+
+;; "SELECT TRIM(t.tabname) || '.' || TRIM(c.colname) AS table_dot_column
+;;   FROM systables AS t, syscolumns AS c
+;;  WHERE t.tabid = c.tabid
+;;    AND t.tabtype = 'T'
+;;    AND t.tabid >= 100
+;;  ORDER BY t.tabname, c.colno;"
 
 ;; (add-hook 'text-mode-hook 'turn-on-auto-fill)
 
@@ -88,12 +114,5 @@
 ;;       (nrepl-completion-complete-op-fn str)
 ;;     (nrepl-completion-complete-core-fn str)))
 
-(defun mysource1-candidates ()
-  '("select" "where" "from" "insert" "update" "delete" ""drop))
-
-(defvar ac-source-mysource1
-  '((candidates . mysource1-candidates)))
-
-(setq ac-sources (cons ac-source-mysource1 ac-sources))
 
 (provide 'ejc-autocomplete)

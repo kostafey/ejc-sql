@@ -116,14 +116,18 @@ Params list:
                  :log-handler (fn [clear-sql] (ejc-sql.lib/log-sql 
                                                (str clear-sql "\n") 
                                                sql-log-file-path))
-                 :exec-handler (fn [str] (write-to-temp-file output-file-path))
-                 :err-handler (fn [str] (write-to-temp-file output-file-path))))
+                 :exec-handler (fn [str] (write-to-temp-file 
+                                          str
+                                          output-file-path))
+                 :err-handler (fn [str] (write-to-temp-file 
+                                         str                                         
+                                         output-file-path))))
 
 (defn eval-user-sql "Evaluate users SQL scripts."
   [sql]
   (eval-sql sql (get-user-output-file-path) (get-sql-log-file-path)))
 
-(defn row-to-list "Feach ResultSet to plain list. 
+(defn rs-to-list "Feach ResultSet to plain list. 
 The every element of the list is a map {:column-name value}"
   [rs]
   (loop [currRs rs
@@ -133,9 +137,24 @@ The every element of the list is a map {:column-name value}"
       (recur (rest currRs)
              (conj acc (first currRs))))))
 
+(defn column-to-list
+  [rs]
+  (loop [currRs rs
+         acc (list)]
+    (if (= currRs (list))
+      acc
+      (recur (rest currRs)
+             (conj acc (last (first (first currRs))))))))
+
 (defn eval-sql-internal [sql]
   (eval-sql-core :sql sql
-                 :rs-handler row-to-list
+                 :rs-handler rs-to-list
+                 :exec-handler (fn [str] str)
+                 :err-handler (fn [str] str)))
+
+(defn eval-sql-internal-get-column [sql]
+  (eval-sql-core :sql sql
+                 :rs-handler column-to-list
                  :exec-handler (fn [str] str)
                  :err-handler (fn [str] str)))
 
