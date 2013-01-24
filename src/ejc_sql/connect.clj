@@ -33,22 +33,12 @@
 
 (def db "DataBase connection properties list." nil)
 
-(def output-file-path
-  "The sql queries results output filepath."
-  (str (System/getProperty  "user.home")
-       (if (true? ejc-sql.lib/isWindows)
-         "/Application Data")
-       "/.emacs.d/tmp/sql_output.txt"))
-
 (def sql-log-file-path
   "The sql queries logging filepath."
   (str (System/getProperty  "user.home")
        (if (true? ejc-sql.lib/isWindows)
          "/Application Data")
        "/.emacs.d/tmp/sql_log.txt"))
-
-(defn get-user-output-file-path []
-  (ejc-sql.lib/get-absolute-file-path output-file-path))
 
 (defn get-sql-log-file-path []
   (ejc-sql.lib/get-absolute-file-path sql-log-file-path))
@@ -100,32 +90,15 @@ Params list:
               (err-handler message)))
           (err-handler (str "Error: " (.getMessage e))))))))
 
+;;----------------------------------------------------------------------
+;; handlers
+;; TODO: unused
 (defn write-to-temp-file "Write string to temp file 
 - the file, showing in the results buffer."
   [str output-file-path]
   (with-open 
       [wrtr (writer output-file-path)]
     (.write wrtr str)))
-
-(defn eval-sql "Evaluate users SQL scripts - common functtion."
-  [sql, output-file-path sql-log-file-path]
-  (eval-sql-core :sql sql
-                 :rs-handler (fn [rs] (write-to-temp-file 
-                                       (ejc-sql.lib/format-output rs)
-                                       output-file-path))
-                 :log-handler (fn [clear-sql] (ejc-sql.lib/log-sql 
-                                               (str clear-sql "\n") 
-                                               sql-log-file-path))
-                 :exec-handler (fn [str] (write-to-temp-file 
-                                          str
-                                          output-file-path))
-                 :err-handler (fn [str] (write-to-temp-file 
-                                         str                                         
-                                         output-file-path))))
-
-(defn eval-user-sql "Evaluate users SQL scripts."
-  [sql]
-  (eval-sql sql (get-user-output-file-path) (get-sql-log-file-path)))
 
 (defn rs-to-list "Feach ResultSet to plain list. 
 The every element of the list is a map {:column-name value}"
@@ -137,7 +110,7 @@ The every element of the list is a map {:column-name value}"
       (recur (rest currRs)
              (conj acc (first currRs))))))
 
-(defn column-to-list
+(defn column-to-list "Feach first column of the ResultSet to plain list."
   [rs]
   (loop [currRs rs
          acc (list)]
@@ -145,18 +118,34 @@ The every element of the list is a map {:column-name value}"
       acc
       (recur (rest currRs)
              (conj acc (last (first (first currRs))))))))
+;;
+;;----------------------------------------------------------------------
+
+(defn eval-sql "Evaluate users SQL scripts - common functtion."
+  [sql, sql-log-file-path]
+  (eval-sql-core :sql sql
+                 :rs-handler (fn [rs] (ejc-sql.lib/format-output rs))
+                 :log-handler (fn [clear-sql] (ejc-sql.lib/log-sql 
+                                               (str clear-sql "\n") 
+                                               sql-log-file-path))
+                 :exec-handler identity
+                 :err-handler identity))
+
+(defn eval-user-sql "Evaluate users SQL scripts."
+  [sql]
+  (eval-sql sql (get-sql-log-file-path)))
 
 (defn eval-sql-internal [sql]
   (eval-sql-core :sql sql
                  :rs-handler rs-to-list
-                 :exec-handler (fn [str] str)
-                 :err-handler (fn [str] str)))
+                 :exec-handler identity
+                 :err-handler identity))
 
 (defn eval-sql-internal-get-column [sql]
   (eval-sql-core :sql sql
                  :rs-handler column-to-list
-                 :exec-handler (fn [str] str)
-                 :err-handler (fn [str] str)))
+                 :exec-handler identity
+                 :err-handler identity))
 
 (defn table-meta
   [table-name]
@@ -196,57 +185,9 @@ The every element of the list is a map {:column-name value}"
         result-data (:result result-map)
         head (str "Table ``" table-name "`` description:\n")
         head-length (dec (.length head))]
-    (with-open 
-        [wrtr (writer (get-user-output-file-path))]
-      (.write wrtr              
-              (if success
-                (str head
-                     (ejc-sql.lib/simple-join head-length "-") "\n"
-                     (ejc-sql.lib/format-output result-data))
-                result-data)))))
-
-
-;; (defn eval-sql [sql, get-output-file-path]
-;;   (with-connection db 
-;;     (with-query-results rs [sql] 
-;;       (with-open 
-;;           [wrtr (writer (get-output-file-path))]
-;;         (doseq [row rs] (.write wrtr (str  row "\n")))
-;;         ))))
-
-
-;; (eval-user-sql "
-;; SELECT TRIM(t.tabname) || '.' || TRIM(c.colname) AS table_dot_column
-;;   FROM \"informix\".systables AS t, \"informix\".syscolumns AS c
-;;  WHERE t.tabid = c.tabid
-;;    AND t.tabtype = 'T'
-;;    AND t.tabid >= 100
-;;  ORDER BY t.tabname, c.colno;
-;; ")
-
-
-;; (def mm {:key "value" :key2 "value2"})
-
-
-;; (print (clojure.string/join (for [[_ v] mm] 
-;;        (str v " "))))
-
-;; (print
-;;  (format-output rs-dd))
-
-;; (def rs-dd 
-;;  '({:id "1", :name "Some text",  :dataname "qweqweqwe"}
-;;    {:id "2", :name "Other text", :dataname "asdsdfsdf"}
-;;    {:id "3", :name "More text",  :dataname "sdfsdfjkllk"}
-;;    ))
-
-;; (eval-user-sql " SELECT superregions.* from superregions ")
-
-;; (with-connection db 
-;;   (with-query-results rs 
-;;     [" SELECT superregions.* from superregions "] 
-;;     (doseq [row rs] (println  row))))
-
-;; (eval-sql-core "SELECT * from superregions" row-to-list print)
-;; (eval-sql-core "execute procedure SomeProc(103)" print print)
+    (if success
+      (str head
+           (ejc-sql.lib/simple-join head-length "-") "\n"
+           (ejc-sql.lib/format-output result-data))
+      result-data)))
 

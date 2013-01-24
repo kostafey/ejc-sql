@@ -80,10 +80,8 @@
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
-(defvar ejc-results-buffer-name "sql_output.txt" ; "*ejc-sql-output*"
+(defvar ejc-results-buffer-name "*ejc-sql-output*"
   "The results buffer name.")
-(defvar ejc-results-file-path nil ;; "/<path>/sql_output.txt"
-  "This value is returned by the clojure side.")
 
 (defvar ejc-sql-editor-buffer-name "*sql-editor*"
   "The buffer for conveniently edit ad-hoc SQL scripts.")
@@ -171,6 +169,7 @@ If not, launch it, return nil. Return t otherwise."
 
 (defun ejc-get-nrepl-stdout (expr)
   "Evaluate `expr', print it and return printed text as function's result."
+  ;; nrepl-eval-async
   (plist-get (nrepl-eval
               (concat
                " (in-ns 'ejc-sql.core)"
@@ -185,11 +184,9 @@ If not, launch it, return nil. Return t otherwise."
 
 (defun ejc-load-clojure-side ()
   "Evaluate clojure side, run startup initialization functions."
-  (if (not ejc-results-file-path)
+  (if (not ejc-sql-log-file-path)
       (progn
         (nrepl-load-file (ejc-find-clojure-file))
-        (setq ejc-results-file-path 
-              (ejc-get-nrepl-stdout "output-file-path"))
         (setq ejc-sql-log-file-path 
               (ejc-get-nrepl-stdout "sql-log-file-path")))))
 
@@ -241,29 +238,23 @@ If not, launch it, return nil. Return t otherwise."
 				obarray))
      (list (if (equal val "")
                sql-symbol
-             val))))
-  (ejc-get-nrepl-result 
-   (concat "(get-table-meta " (ejc-add-quotes table-name) ")"))
-  (ejc-show-last-result t))
+             val))))  
+  (ejc-show-last-result 
+   (ejc-get-nrepl-stdout 
+    (concat "(get-table-meta " (ejc-add-quotes table-name) ")"))))
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
-    (message "Processing SQL query...")
-    (ejc-eval-sql sql)
-    (ejc-show-last-result t)
-    (save-excursion
-      (set-buffer (ejc-get-buffer-or-create
-                   ejc-sql-log-buffer-name
-                   'ejc-create-sql-log-buffer))
-      (revert-buffer t t))
+    (message "Processing SQL query...")    
+    (ejc-show-last-result (ejc-eval-sql sql))
     (message "Done SQL query."))
 
 (defun ejc-eval-sql (sql)
   "Core function to evaluate SQL queries."
-  (let ((prepared-sql (replace-regexp-in-string "\"" "'" sql)))
-    (nrepl-eval
-     ;; nrepl-eval-async
-     (concat "(eval-user-sql" (ejc-add-quotes prepared-sql) ")"))))
+  (let* ((prepared-sql (replace-regexp-in-string "\"" "'" sql))
+         (result (ejc-get-nrepl-stdout 
+                  (concat "(eval-user-sql " (ejc-add-quotes prepared-sql) ")"))))
+    result))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
@@ -282,8 +273,8 @@ If not, launch it, return nil. Return t otherwise."
 (defun ejc-create-output-buffer ()
   (set-buffer (get-buffer-create ejc-results-buffer-name))
   (setq ejc-results-buffer (current-buffer))
-  (set-visited-file-name ejc-results-file-path t t)
   (setq view-read-only t)
+  (rst-mode)
   ejc-results-buffer)
 
 (defun ejc-get-buffer-or-create (buffer-or-name create-buffer-fn)
@@ -309,14 +300,16 @@ If this buffer is not exists or it was killed - create buffer via
       (message "Popup window.")
     (message "Normal window.")))
 
-(defun ejc-show-last-result (&optional revert)
+(defun ejc-show-last-result (&optional result)
   "Popup buffer with last SQL execution result output."
   (interactive)
   (let ((output-buffer (ejc-get-output-buffer)))
     (set-buffer output-buffer)
-    (when revert
-      (revert-buffer t t))
-    (toggle-read-only t)
+    (when result
+      (toggle-read-only -1)
+      (erase-buffer)
+      (insert result))
+    (toggle-read-only 1)
     (beginning-of-buffer)
     (if ejc-popup-results-buffer
         (popwin:popup-buffer output-buffer)
