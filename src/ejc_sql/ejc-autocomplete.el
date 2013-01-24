@@ -28,13 +28,10 @@
           WHERE t.tabtype = 'T'
             AND t.tabid >= 100
           ORDER BY t.tabname;")
-        ((string-match "mysql" ejc-db-type) 
-         "SELECT TRIM(t.tabname) as tablesList
-           FROM systables AS t
-          WHERE t.tabtype = 'T'
-            AND t.tabid >= 100
-          ORDER BY t.tabname;")
-        ))
+        ((string-match "mysql" ejc-db-type)
+         (concat"SELECT table_name FROM INFORMATION_SCHEMA.TABLES
+          WHERE table_schema = '" "db-name" "'")))) ;; TODO: db-name
+ 
 
 ;;;###autoload
 (defun ejc-get-tables-list ()
