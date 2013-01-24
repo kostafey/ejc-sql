@@ -12,3 +12,4 @@ FIXME
 Copyright © 2012 kostafey <kostafey@gmail.com>
 
 Distributed under the General Public License 2.0+
+The included clojure.java.jdbc distributed under the Eclipse Public License 1.0
