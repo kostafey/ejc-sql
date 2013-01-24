@@ -4,7 +4,7 @@ The project is still in deep alpha...
 
 The idea is to use clojure jdbc lib to eval sql scripts from emacs.
 
-## Usage
+## Installation
 
 The configuration of ejs-sql might looks like this:
 
@@ -27,16 +27,27 @@ The configuration of ejs-sql might looks like this:
                         :subname "//localhost:3306/my_db_name"
                         :user "a_user"
                         :password "secret"))
+```
 
+## Configuration
+
+```lisp
 ; Some keybindings - modify this on your taste:
 (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
 (global-set-key (kbd "C-x C-s") 'ejc-switch-to-sql-editor-buffer)
 ```
 
+## Usage
+
 New keybindings added to `sql-mode-map`:
+
 * <kbd>C-c C-c</kbd> `ejc-eval-user-sql-at-point`
+
 * <kbd>C-x t</kbd> `ejc-toggle-popup-results-buffer`
+
 * <kbd>C-h t</kbd> `ejc-describe-table`
+
+Some usage remarks:
 
 * Using ejc-sql reqires nrepl process is running, so execution
 `ejc-ensure-nrepl-runnig` ensures this.
@@ -50,10 +61,23 @@ buffer, or not.
 * `ejc-eval-user-sql-at-point` -- Evaluate SQL bounded by the
 `ejc-sql-separator` or/and buffer boundaries.
 
+## Requirements:
+
+* [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 24.
+
+* [Leiningen](http://leiningen.org) 2.x
+
+* [nrepl.el](https://github.com/kingtim/nrepl.el)
+
+* [popwin-el](https://github.com/m2ym/popwin-el)
+
+* [auto-complete](https://github.com/auto-complete/auto-complete)
+
 ## License
 
 Copyright © 2012 kostafey <kostafey@gmail.com>
 
 Distributed under the General Public License 2.0+
 
-The included clojure.java.jdbc distributed under the Eclipse Public License 1.0
+The included clojure.java.jdbc is distributed under the 
+Eclipse Public License 1.0
