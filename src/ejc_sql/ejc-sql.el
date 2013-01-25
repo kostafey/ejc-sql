@@ -71,9 +71,53 @@
 (require 'ejc-format)
 (require 'ejc-autocomplete)
 
-(define-key sql-mode-map (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
-(define-key sql-mode-map (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
-(define-key sql-mode-map (kbd "C-h t") 'ejc-describe-table)
+(defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
+(define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
+(define-key ejc-sql-mode-keymap (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
+(define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
+
+(defvar ejc-sql-minor-mode-exit-hook nil
+  "*Functions to be called when `ejc-sql-mode' is exited.")
+
+(defvar ejc-sql-minor-mode-hook nil
+  "*Functions to be called when `ejc-sql-mode' is entered.")
+
+(defvar ejc-sql-mode nil)
+
+;;;###autoload
+(define-minor-mode ejc-sql-mode
+  "Toggle ejc-sql mode."
+  :lighter " ejc"
+  :keymap ejc-sql-mode-keymap
+  :group 'ejc
+  :global nil
+  ;; :after-hook (ejc-create-menu)
+  (if ejc-sql-mode
+      (progn
+        (ejc-ac-setup)
+        (ejc-create-menu)
+        (run-hooks 'ejc-sql-minor-mode-hook))
+    (progn 
+      ;; (global-unset-key [menu-bar ejc-menu])     
+      (run-hooks 'ejc-sql-minor-mode-exit-hook))))
+
+;;;###autoload
+(defun ejc-create-menu ()
+  (define-key-after
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu]
+    (cons "ejc-sql" (make-sparse-keymap "ejc-sql mode"))
+    'tools )
+
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu ev]
+    '("Eval SQL" . ejc-eval-user-sql-at-point))
+
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu tg]
+    '("Toggle popup results" . ejc-toggle-popup-results-buffer)))
 
 (defvar ejc-db-type nil
   "The type of RDBMS.")
@@ -83,7 +127,7 @@
 (defvar ejc-results-buffer-name "*ejc-sql-output*"
   "The results buffer name.")
 
-(defvar ejc-sql-editor-buffer-name "*sql-editor*"
+(defvar ejc-sql-editor-buffer-name "*ejc-sql-editor*"
   "The buffer for conveniently edit ad-hoc SQL scripts.")
 
 (defvar ejc-sql-log-file-path nil
@@ -328,7 +372,7 @@ If this buffer is not exists or it was killed - create buffer via
       (sql-ansi-mode)
       (auto-complete-mode t)
       (auto-fill-mode t)
-      (ejc-ac-setup))
+      (ejc-sql-mode))
     sql-editor-buffer))
 
 (defun ejc-switch-to-sql-editor-buffer ()
