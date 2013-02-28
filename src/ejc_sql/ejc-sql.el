@@ -130,6 +130,8 @@
 (defvar ejc-sql-editor-buffer-name "*ejc-sql-editor*"
   "The buffer for conveniently edit ad-hoc SQL scripts.")
 
+(defvar ejc-nrepl-connrection-buffer-name (nrepl-connection-buffer-name))
+
 (defvar ejc-sql-log-file-path nil
   "SQL scripts logs filepath.")
 (defvar ejc-sql-log-buffer-name "sql_log.txt"
@@ -186,9 +188,9 @@ If not, launch it, return nil. Return t otherwise."
 
 (defun ejc-is-nrepl-runnig ()
   "Return t if nrepl process is running, nil otherwise."
-  (let ((ncb (get-buffer nrepl-connection-buffer)))
+  (let ((ncb (get-buffer ejc-nrepl-connrection-buffer-name)))
     (save-excursion
-      (if (and nrepl-connection-buffer 
+      (if (and ejc-nrepl-connrection-buffer-name
                (buffer-live-p ncb)
                (progn
                  (set-buffer ncb)
