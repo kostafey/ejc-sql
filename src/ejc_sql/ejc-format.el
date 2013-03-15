@@ -1,6 +1,6 @@
 ;;; ejc-format.el -- SQL formatting library (the part of ejc-sql).
 
-;;; Copyright © 2012 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012, 2013 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -40,18 +40,18 @@ buffer."
                   (point))))
       (list beg end))))
 
-(defmacro ejc--in-sql-boundaries (&rest body)
+(defmacro ejc--in-sql-boundaries (beg end &rest body)
   "Inject `beg' and `end' local variables to the `body' scope.
 `beg' and `end' are the boundaries of the current sql expression."
   `(let* ((boundaries (ejc-get-sql-boundaries-at-point))
-          (beg (car boundaries))
-          (end (car (cdr boundaries))))
+          (,beg (car boundaries))
+          (,end (car (cdr boundaries))))
      ,@body))
 
 (defun ejc-mark-this-sql ()
   "Select (mark) SQL around the point."
   (interactive)
-  (ejc--in-sql-boundaries
+  (ejc--in-sql-boundaries beg end
    (when mark-active
      (setq mark-active nil))
    (goto-char beg)
@@ -59,12 +59,12 @@ buffer."
    (goto-char end)))
 
 (defun ejc-apply-in-sql-boundaries (func)
-  (ejc--in-sql-boundaries
+  (ejc--in-sql-boundaries beg end
    (apply func (list beg end))))
 
 (defun ejc-get-sql-at-point ()
   "Return SQL around the point."
-  (ejc--in-sql-boundaries
+  (ejc--in-sql-boundaries beg end
    (let ((sql (buffer-substring beg end)))
      sql)))
 
@@ -111,8 +111,15 @@ buffer."
 
 (defun ejc-format-sql-at-point ()
   (interactive)  
-  (ejc--in-sql-boundaries
+  (ejc--in-sql-boundaries beg end
    (ejc-format-sql beg end)))
+
+(defun ejc-insert-file-header ()
+  (interactive)
+  (insert (concat "-- -*- mode: sql; -*-\n"
+                  "-- Local Variables:\n"
+                  "-- eval: (ejc-sql-mode)\n"
+                  "-- End:\n")))
 
 (provide 'ejc-format)
 

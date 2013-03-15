@@ -1,6 +1,6 @@
 ;;; ejc-sql.el -- Uses clojure jdbc lib to eval sql scripts from emacs.
 
-;;; Copyright © 2012 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012, 2013 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -108,16 +108,22 @@
     [menu-bar ejc-menu]
     (cons "ejc-sql" (make-sparse-keymap "ejc-sql mode"))
     'tools )
-
   (define-key
     ejc-sql-mode-keymap
     [menu-bar ejc-menu ev]
     '("Eval SQL" . ejc-eval-user-sql-at-point))
-
   (define-key
     ejc-sql-mode-keymap
     [menu-bar ejc-menu tg]
-    '("Toggle popup results" . ejc-toggle-popup-results-buffer)))
+    '("Toggle popup results" . ejc-toggle-popup-results-buffer))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu fs]
+    '("Format SQL" . ejc-format-sql-at-point))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu ms]
+    '("Mark SQL" . ejc-mark-this-sql)))
 
 (defvar ejc-db-type nil
   "The type of RDBMS.")
@@ -291,7 +297,7 @@ If not, launch it, return nil. Return t otherwise."
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
-    (message "Processing SQL query...")    
+    (message "Processing SQL query...") 
     (ejc-show-last-result (ejc-eval-sql sql))
     (message "Done SQL query."))
 
