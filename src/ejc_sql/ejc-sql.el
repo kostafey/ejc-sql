@@ -172,8 +172,13 @@
   (password "<password>"))
 
 (defun ejc-connect (arg)
-  "Connect to selected db."
-  (interactive "sDataBase connection name: ")
+  "Connect to selected db."  
+  (interactive
+   (list
+    (read-from-minibuffer "DataBase connection name: "
+                          (car ejc-connection-name-history) nil nil
+                          'ejc-connection-name-history
+                          (car ejc-connection-name-history))))
   (let ((db (eval (intern arg))))
     (message "Connection started...")
     (if (ejc-ensure-nrepl-runnig)
