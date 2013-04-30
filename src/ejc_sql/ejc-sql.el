@@ -68,7 +68,9 @@
 (require 'sql)
 (require 'nrepl)
 (require 'popwin)
+(require 'ejc-lib)
 (require 'ejc-format)
+(require 'ejc-interaction)
 (require 'ejc-autocomplete)
 
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
@@ -125,9 +127,6 @@
     [menu-bar ejc-menu ms]
     '("Mark SQL" . ejc-mark-this-sql)))
 
-(defvar ejc-db-type nil
-  "The type of RDBMS.")
-
 (defvar ejc-results-buffer nil
   "The results buffer.")
 (defvar ejc-results-buffer-name "*ejc-sql-output*"
@@ -135,8 +134,6 @@
 
 (defvar ejc-sql-editor-buffer-name "*ejc-sql-editor*"
   "The buffer for conveniently edit ad-hoc SQL scripts.")
-
-(defvar ejc-nrepl-connrection-buffer-name (nrepl-connection-buffer-name))
 
 (defvar ejc-sql-log-file-path nil
   "SQL scripts logs filepath.")
@@ -149,36 +146,13 @@
 (defvar ejc-popup-results-buffer t
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
-(defstruct ejc-db-conn
-  "DB connection information structure"
-                                        ; path to jdbc jar file
-  (classpath "<path>/<filename>.jar")
-                                        ; the JDBC driver class
-  (classname "<com.povider.jdbc.DataBaseDriver>")
-                                        ; the kind of database, e.g:
-                                        ; informix-sqli, mysql, postgresql,
-                                        ; oracle, sqlserver, etc.
-  (subprotocol "<sql-kind>") 
-                                        ; db connection path
-                                        ; locale, like ru_RU.1251
-  (subname (concat
-            "://<db-host>:<db-port>:"
-            "<db-server>=<server-name>;" 
-            "database=<db-name>;"
-            "DB_LOCALE=<locale>;"
-            "CLIENT_LOCALE=<locale>;"
-            ))
-  (user "<user-name>")
-  (password "<password>"))
-
 (defun ejc-connect (arg)
   "Connect to selected db."  
   (interactive
    (list
     (read-from-minibuffer "DataBase connection name: "
                           (car ejc-connection-name-history) nil nil
-                          'ejc-connection-name-history
-                          (car ejc-connection-name-history))))
+                          'ejc-connection-name-history)))
   (let ((db (eval (intern arg))))
     (message "Connection started...")
     (if (ejc-ensure-nrepl-runnig)
@@ -186,84 +160,6 @@
           (ejc-load-clojure-side)
           (ejc-connect-to-db db)
           (message "Connected.")))))
-
-(defun ejc-ensure-nrepl-runnig ()
-  "Ensures nrepl is runnig.
-If not, launch it, return nil. Return t otherwise."  
-  (interactive)
-  (let ((is-running t))
-    (when (not (ejc-is-nrepl-runnig))
-      (setq is-running nil)
-      (ejc-launch-nrepl))
-    is-running))
-
-(defun ejc-is-nrepl-runnig ()
-  "Return t if nrepl process is running, nil otherwise."
-  (let ((ncb (get-buffer ejc-nrepl-connrection-buffer-name)))
-    (save-excursion
-      (if (and ejc-nrepl-connrection-buffer-name
-               (buffer-live-p ncb)
-               (progn
-                 (set-buffer ncb)
-                 nrepl-session))
-          t nil))))
-
-(defun ejc-launch-nrepl ()
-  ;; TODO: It looks like ad-hoc implementation, and it is, surely :).
-  (set-buffer (find-file-noselect (ejc-find-clojure-file)))
-  (nrepl-jack-in))
-
-(defun ejc-find-clojure-file ()
-  "Return the full path to `clojure-src-file'."
-  (let ((result))
-    (dolist (path load-path)
-      (let ((clojure-scr-file-path (expand-file-name clojure-src-file path)))
-        (if (file-exists-p clojure-scr-file-path)
-            (setq result clojure-scr-file-path))))
-    (if (not result)
-        (error (concat "Can't find file " clojure-src-file))
-      result)))
-
-(defun ejc-get-nrepl-stdout (expr)
-  "Evaluate `expr', print it and return printed text as function's result."
-  ;; nrepl-eval-async
-  (plist-get (nrepl-eval
-              (concat
-               " (in-ns 'ejc-sql.core)"
-               " (print " expr ")")) :stdout))
-
-(defun ejc-get-nrepl-result (expr)
-  "Evaluate `expr', and return expression's evaluation result."
-  (plist-get (nrepl-eval
-              (concat
-               " (in-ns 'ejc-sql.core)"
-               " " expr)) :value))
-
-(defun ejc-load-clojure-side ()
-  "Evaluate clojure side, run startup initialization functions."
-  (if (not ejc-sql-log-file-path)
-      (progn
-        (nrepl-load-file (ejc-find-clojure-file))
-        (setq ejc-sql-log-file-path 
-              (ejc-get-nrepl-stdout "sql-log-file-path")))))
-
-(defun ejc-add-quotes (str)
-  (concat "\"" str "\""))
-
-(defun ejc-connect-to-db (conn-struct)
-  (nrepl-eval 
-   (concat 
-    " (in-ns 'ejc-sql.core)"
-    " (ejc-sql.lib/add-to-cp " (ejc-add-quotes (ejc-db-conn-classpath conn-struct)) ")"
-    " (import " (ejc-db-conn-classname conn-struct)")"
-    " (def db {:classname " (ejc-add-quotes (ejc-db-conn-classname conn-struct))
-    "          :subprotocol " (ejc-add-quotes (ejc-db-conn-subprotocol conn-struct))
-    "          :subname " (ejc-add-quotes (ejc-db-conn-subname conn-struct))
-    "          :user " (ejc-add-quotes (ejc-db-conn-user conn-struct))
-    "          :password " (ejc-add-quotes (ejc-db-conn-password conn-struct))
-    "         })"    
-    ))
-  (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct)))
 
 (defun ejc-get-word-at-point (pos)
   "Return SQL word around the point."
@@ -285,7 +181,9 @@ If not, launch it, return nil. Return t otherwise."
 (defun ejc-describe-table (table-name)
   "Describe SQL table `table-name' (default table name - word around the point)."
   (interactive
-   (let ((sql-symbol (ejc-get-word-at-point (point)))
+   (let ((sql-symbol (if mark-active
+                         (buffer-substring (mark) (point))
+                       (ejc-get-word-at-point (point))))
          (enable-recursive-minibuffers t)
          val)
      (setq val (completing-read
@@ -305,13 +203,6 @@ If not, launch it, return nil. Return t otherwise."
     (message "Processing SQL query...") 
     (ejc-show-last-result (ejc-eval-sql sql))
     (message "Done SQL query."))
-
-(defun ejc-eval-sql (sql)
-  "Core function to evaluate SQL queries."
-  (let* ((prepared-sql (replace-regexp-in-string "\"" "'" sql))
-         (result (ejc-get-nrepl-stdout 
-                  (concat "(eval-user-sql " (ejc-add-quotes prepared-sql) ")"))))
-    result))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."

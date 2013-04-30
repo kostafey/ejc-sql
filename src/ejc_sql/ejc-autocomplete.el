@@ -17,35 +17,105 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (require 'auto-complete)
+(require 'ejc-lib)
 
-;; TODO: test
-(setq ejc-db-type "informix")
-
-(defvar ejc-select-tables
-  (cond ((string-match "informix" ejc-db-type)
-         "SELECT TRIM(t.tabname) as tablesList
-           FROM systables AS t
-          WHERE t.tabtype = 'T'
-            AND t.tabid >= 100
-          ORDER BY t.tabname;")
-        ((string-match "mysql" ejc-db-type)
-         (concat"SELECT table_name FROM INFORMATION_SCHEMA.TABLES
-          WHERE table_schema = '" "db-name" "'")))) ;; TODO: db-name
- 
+(defvar ejc-owners-list nil
+  "Owners list cache.
+The owners list probably should not be changed very often.")
 
 ;;;###autoload
-(defun ejc-get-tables-list ()
-  (let ((tables-list-string (ejc-get-nrepl-stdout
-                             (concat "(eval-sql-internal-get-column " 
-                                     (ejc-add-quotes ejc-select-tables) " )"))))
-    (split-string
-     (substring tables-list-string
-                1 (- (length tables-list-string) 1)))))
+(defun ejc--select-db-meta-script (meta-type &optional owner)
+  (cond
+   ;;----------
+   ;; informix
+   ;;----------
+   ((string-match "informix" ejc-db-type)
+    (cond
+     ((eq :owners meta-type) nil)
+     ((eq :tables meta-type)
+      (concat " SELECT TRIM(t.tabname) as tablesList "
+              " FROM systables AS t   "
+              " WHERE t.tabtype = 'T' "
+              "   AND t.tabid >= 100  "
+              " ORDER BY t.tabname;   "))))
+   ;;-------
+   ;; mysql
+   ;;-------
+   ((string-match "mysql" ejc-db-type)
+    (cond
+     ((eq :owners meta-type) nil)
+     ((eq :tables meta-type)
+      (concat
+       " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
+       " WHERE table_schema = '" ejc-db-name "'"))))
+   ;;--------
+   ;; oracle
+   ;;--------
+   ((string-match "oracle" ejc-db-type)
+    (cond
+     ((eq :owners meta-type)
+      (concat "select DISTINCT(owner) "
+              " from ALL_OBJECTS"))
+     ((eq :tables meta-type)
+      (concat " SELECT table_name, owner \n"
+              " FROM all_tables          \n"
+              " WHERE owner = " (if owner
+                                    (ejc-add-squotes owner)
+                                  (ejc-add-squotes ejc-db-owner))))))))
+
+;; "SELECT TRIM(t.tabname) || '.' || TRIM(c.colname) AS table_dot_column
+;;   FROM systables AS t, syscolumns AS c
+;;  WHERE t.tabid = c.tabid
+;;    AND t.tabtype = 'T'
+;;    AND t.tabid >= 100
+;;  ORDER BY t.tabname, c.colno;"
+
+(defun ejc-get-owners-list ()
+  (ejc--eval-get-list (ejc--select-db-meta-script :owners)))
+
+(defun ejc-get-tables-list (&optional owner)
+  (ejc--eval-get-list (ejc--select-db-meta-script :tables owner)))
+
+(defun ejc-get-prefix-word ()
+  "Return the word preceding dot before the typing."
+  (let ((dot (save-excursion
+               (search-backward "." nil t)))
+        (space (save-excursion
+                 (re-search-backward "[ \n\t\r^.]+" nil t))))
+    (if (and dot
+             space
+             (> dot space)) ; is a dot completition
+        (buffer-substring (1+ space) dot)
+      nil)))
+
+(defun ejc-get-completitions-list ()
+  (if (and (ejc--select-db-meta-script :qwners)
+           (not ejc-owners-list))
+      (setq ejc-owners-list (ejc-get-owners-list)))
+  (let ((prefix-1 (ejc-get-prefix-word))
+        (prefix-2 (save-excursion
+                    (search-backward "." nil t)
+                    (ejc-get-prefix-word)))
+        (owner)
+        (table))
+    (if prefix-1
+        (progn
+          (if (member prefix-1 ejc-owners-list)
+              (setq owner prefix-1)
+            (setq table prefix-1))
+          (if (and prefix-2
+                   (member prefix-2 ejc-owners-list))
+              (setq owner prefix-2))))
+    (if (and (not table)
+             (not owner))
+        (append ejc-owners-list (ejc-get-tables-list))
+      (if (not table)
+          (ejc-get-tables-list owner)))))
 
 ;;;###autoload
 (defun ejc-candidates ()
   (append '("select" "where" "from" "insert" "update" "delete" "drop")
-           (ejc-get-tables-list)))
+           (ejc-get-completitions-list)))
 
 (defvar ac-source-ejc-sql
   '((candidates . ejc-candidates)))
@@ -56,60 +126,5 @@
 This affects only the current buffer."
   (interactive)
   (add-to-list 'ac-sources 'ac-source-ejc-sql))
-
-;; "SELECT TRIM(t.tabname) || '.' || TRIM(c.colname) AS table_dot_column
-;;   FROM systables AS t, syscolumns AS c
-;;  WHERE t.tabid = c.tabid
-;;    AND t.tabtype = 'T'
-;;    AND t.tabid >= 100
-;;  ORDER BY t.tabname, c.colno;"
-
-;; (add-hook 'text-mode-hook 'turn-on-auto-fill)
-
-;; (defun nrepl-indent-and-complete-symbol ()
-;;   "Indent the current line and perform symbol completion.
-;; First indent the line. If indenting doesn't move point, complete
-;; the symbol. "
-;;   (interactive)
-;;   (let ((pos (point)))
-;;     (lisp-indent-line)
-;;     (when (= pos (point))
-;;       (if (save-excursion (re-search-backward "[^() \n\t\r]+\\=" nil t))
-;;           (completion-at-point)))))
-
-;; (define-minor-mode nrepl-interaction-mode
-;;   "Minor mode for nrepl interaction from a Clojure buffer.
-
-;; \\{nrepl-interaction-mode-map}"
-;;    nil
-;;    " nREPL"
-;;    nrepl-interaction-mode-map
-;;    (make-local-variable 'completion-at-point-functions)
-;;    (add-to-list 'completion-at-point-functions
-;;                 'nrepl-complete-at-point))
-;; (defun nrepl-complete-at-point ()
-;;   (let ((sap (symbol-at-point)))
-;;     (when (and sap (not (in-string-p)))
-;;       (let ((bounds (bounds-of-thing-at-point 'symbol)))
-;;         (list (car bounds) (cdr bounds)
-;;               (completion-table-dynamic #'nrepl-dispatch-complete-symbol))))))
-
-;; (defun nrepl-completion-complete-op-fn (str)
-;;   "Return a list of completions using the nREPL \"complete\" op."
-;;   (lexical-let ((strlst (plist-get
-;;                          (nrepl-send-request-sync
-;;                           (list "op" "complete"
-;;                                 "session" (nrepl-current-tooling-session)
-;;                                 "ns" nrepl-buffer-ns
-;;                                 "symbol" str))
-;;                          :value)))
-;;     (when strlst
-;;       (car strlst))))
-
-;; (defun nrepl-dispatch-complete-symbol (str)
-;;   (if (nrepl-op-supported-p "complete")
-;;       (nrepl-completion-complete-op-fn str)
-;;     (nrepl-completion-complete-core-fn str)))
-
 
 (provide 'ejc-autocomplete)
