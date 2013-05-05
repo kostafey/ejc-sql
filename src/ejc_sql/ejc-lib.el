@@ -25,10 +25,18 @@
 (defvar ejc-db-name nil
   "Database name.")
 
+(defun ejc-string-endswith-p (s ending)
+  "return non-nil if string S ends with ENDING."
+  (let ((elength (length ending)))
+    (string= (substring s (- 0 elength)) ending)))
+
 (defun ejc-get-db-name (subname)
-  (let ((raw-db-name
-         (first (last (split-string subname "/")))))
-    (substring raw-db-name 0 (1- (length raw-db-name)))))
+  (let* ((separator (if (equal (first (split-string subname "/")) subname)
+                        ":" "/"))
+         (raw-db-name (first (last (split-string subname separator)))))
+    (if (ejc-string-endswith-p raw-db-name "?")
+        (substring raw-db-name 0 (1- (length raw-db-name)))
+      raw-db-name)))
 
 (defstruct ejc-db-conn
   "DB connection information structure"
