@@ -87,6 +87,4 @@ If not, launch it, return nil. Return t otherwise."
      (substring sql-result-string
                 1 (- (length sql-result-string) 1)))))
 
-
-
 (provide 'ejc-interaction)

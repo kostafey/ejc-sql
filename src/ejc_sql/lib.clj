@@ -16,13 +16,12 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
-(ns ejc-sql.lib)
-(import (java.io File) 
-        (java.net URL URLClassLoader) 
-        (java.lang.reflect Method)
-        (java.util.Date)
-        (java.text.SimpleDateFormat))
-(use 'clojure.java.io)
+(ns ejc-sql.lib
+  (:import (java.io File)
+           (java.net URL URLClassLoader)
+           (java.lang.reflect Method)
+           (java.util.Date)
+           (java.text.SimpleDateFormat)))
 
 ;; (in-ns 'ejc-sql.lib)
 
@@ -33,21 +32,21 @@
 
 (defn add-to-cp "Since add-classpath is deprecated."
   [#^String jarpath] ; path without "file:///..." prefix.
-  (let [#^URL url (.. (File. jarpath) toURI toURL) 
-        url-ldr-cls (. (URLClassLoader. (into-array URL [])) getClass) 
-        arr-cls (into-array Class [(. url getClass)]) 
-        arr-obj (into-array Object [url]) 
-        #^Method mthd (. url-ldr-cls getDeclaredMethod "addURL" arr-cls)] 
-    (doto mthd 
-      (.setAccessible true) 
-      (.invoke (ClassLoader/getSystemClassLoader) arr-obj)) 
+  (let [#^URL url (.. (File. jarpath) toURI toURL)
+        url-ldr-cls (. (URLClassLoader. (into-array URL [])) getClass)
+        arr-cls (into-array Class [(. url getClass)])
+        arr-obj (into-array Object [url])
+        #^Method mthd (. url-ldr-cls getDeclaredMethod "addURL" arr-cls)]
+    (doto mthd
+      (.setAccessible true)
+      (.invoke (ClassLoader/getSystemClassLoader) arr-obj))
     (println (format "Added %s to classpath" jarpath))))
 
-(def isWindows
+(def is-windows
   "The value is true if it runs under the os Windows."
   (<= 0 (.indexOf (System/getProperty "os.name") "Windows")))
 
-(def isLinux
+(def is-linux
   "The value is true if it runs under the os Linux."
   (<= 0 (.indexOf (System/getProperty "os.name") "Linux")))
 
@@ -62,8 +61,8 @@
 (defn get-rs-data [rs]
   (map vals rs))
 
-(defn get-rs-headers [rs]  
-  (for [[k _] (first rs)] 
+(defn get-rs-headers [rs]
+  (for [[k _] (first rs)]
     (subs (str k) 1)))
 
 (defn transpose [m]
@@ -75,7 +74,7 @@
   (map #(apply max %) (transpose lst)))
 
 (defn simple-join [n s]
-  (clojure.string/join 
+  (clojure.string/join
    (for [x (range 0 n)] s)))
 
 (defn str-length [s]
@@ -84,41 +83,5 @@
 (defn get-rs-lengths [rs]
   (map #(map str-length %) rs))
 
-(defn format-output [rs]
-  (let [records-data (filter-data (get-rs-data rs))
-        headers-data (get-rs-headers rs)
-        longest-list (find-longest-list 
-                      (get-rs-lengths (cons headers-data records-data)))
-        col-step 2
-        result (new StringBuffer "")]
-    (doseq [val (map vector longest-list headers-data)]
-      (.append result (format (str "%-" (get val 0) "s") (get val 1)))
-      (.append result (simple-join col-step " ")))
-    (.append result "\n")
-    (doseq [len longest-list]
-      (.append result (simple-join len "-"))
-      (.append result (simple-join col-step " ")))
-    (.append result "\n")
-    (doseq [row records-data]
-      (doseq [val (map vector longest-list row)]
-        (.append result (format (str "%-" (get val 0) "s") (get val 1) ))
-        (.append result (simple-join col-step " ")))
-      (.append result "\n"))
-    (.toString result)))
-
 (defn get-absolute-file-path [relative-file-path]
   (-> (java.io.File. relative-file-path) .getAbsolutePath))
-
-(defn log-sql [sql sql-log-file-path]
-  (let [is-new-file (if (not (. (clojure.contrib.java-utils/file 
-                                 sql-log-file-path) exists)) 
-                      true false)]
-    (with-open 
-        [wrtr (clojure.java.io/writer (get-absolute-file-path sql-log-file-path) :append true)]
-      (if is-new-file
-        (.write wrtr "-*- mode: sql; -*-*/\n"))
-      (.write wrtr (str (simple-join 50 "-") " " 
-                        (.format (new java.text.SimpleDateFormat "yyyy.MM.dd HH:mm:ss.S")
-                                 (new java.util.Date))
-                        " " (simple-join 2 "-") "\n" sql "\n")))))
-
