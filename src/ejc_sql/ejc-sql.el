@@ -125,7 +125,19 @@
   (define-key
     ejc-sql-mode-keymap
     [menu-bar ejc-menu ms]
-    '("Mark SQL" . ejc-mark-this-sql)))
+    '("Mark SQL" . ejc-mark-this-sql))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu tl]
+    '("Tables list" . ejc-show-tables-list))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu ms]
+    '("Show tables list" . ejc-show-tables-list)))
+
+(defun ejc-show-tables-list ()
+  (interactive)
+  (ejc-show-last-result (ejc-get-tables-list)))
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
@@ -215,6 +227,10 @@
   (interactive)  
   (ejc-eval-user-sql (ejc-get-sql-at-point)))
 
+(defun ejc-show-tables-list (&optional owner)
+  (interactive)
+  (ejc-eval-user-sql (ejc--select-db-meta-script :tables owner)))
+
 ;;-----------------------------------------------------------------------------
 ;; results buffer
 ;;
@@ -276,7 +292,8 @@ If this buffer is not exists or it was killed - create buffer via
       (sql-ansi-mode)
       (auto-complete-mode t)
       (auto-fill-mode t)
-      (ejc-sql-mode))
+      (ejc-sql-mode)
+      (ejc-sql-mode t))
     sql-editor-buffer))
 
 (defun ejc-switch-to-sql-editor-buffer ()
