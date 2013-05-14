@@ -26,17 +26,18 @@
 ;;
 ;; ; Append ejs-sql to `load-path':
 ;; (defvar site-lisp-path "~/.emacs.d/")
-;; (add-to-list 
-;;  'load-path 
+;; (add-to-list
+;;  'load-path
 ;;  (expand-file-name "ejc-sql/src/ejc_sql/" site-lisp-path))
 ;;
 ;; (require 'ejc-sql)
 ;;
 ;; ; Create your database connection configuration:
 ;; (setq my-db-connection (make-ejc-db-conn
-;;                         :classpath (concat 
+;;                         :classpath (concat
 ;;                                     "/home/user/lib/"
-;;                                     "mysql-connector-java-3.1.13-bin.jar")
+;;
+"mysql-connector-java-3.1.13-bin.jar")
 ;;                         :classname "com.mysql.jdbc.Driver"
 ;;                         :subprotocol "mysql"
 ;;                         :subname "//localhost:3306/my_db_name"
@@ -58,11 +59,12 @@
 ;; * Run to connect (ejc-connect "my-db-connection")
 ;; or M-x ejc-connect <RET> my-db-connection <RET>
 ;;
-;; * `ejc-toggle-popup-results-buffer' -- Swithes between auto hidding results
+;; * `ejc-toggle-popup-results-buffer' -- Swithes between auto hidding
+results
 ;; buffer, or not.
-;; 
+;;
 ;; * `ejc-eval-user-sql-at-point' -- Evaluate SQL bounded by the
-;; `ejc-sql-separator' or/and buffer boundaries. 
+;; `ejc-sql-separator' or/and buffer boundaries.
 
 (require 'cl)
 (require 'sql)
@@ -75,7 +77,8 @@
 
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
-(define-key ejc-sql-mode-keymap (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
+(define-key ejc-sql-mode-keymap (kbd "C-x t")
+'ejc-toggle-popup-results-buffer)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
 
 (defvar ejc-sql-minor-mode-exit-hook nil
@@ -99,8 +102,8 @@
         (ejc-ac-setup)
         (ejc-create-menu)
         (run-hooks 'ejc-sql-minor-mode-hook))
-    (progn 
-      ;; (global-unset-key [menu-bar ejc-menu])     
+    (progn
+      ;; (global-unset-key [menu-bar ejc-menu])
       (run-hooks 'ejc-sql-minor-mode-exit-hook))))
 
 ;;;###autoload
@@ -128,16 +131,8 @@
     '("Mark SQL" . ejc-mark-this-sql))
   (define-key
     ejc-sql-mode-keymap
-    [menu-bar ejc-menu tl]
-    '("Tables list" . ejc-show-tables-list))
-  (define-key
-    ejc-sql-mode-keymap
     [menu-bar ejc-menu ms]
     '("Show tables list" . ejc-show-tables-list)))
-
-(defun ejc-show-tables-list ()
-  (interactive)
-  (ejc-show-last-result (ejc-get-tables-list)))
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
@@ -159,7 +154,7 @@
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
 (defun ejc-connect (arg)
-  "Connect to selected db."  
+  "Connect to selected db."
   (interactive
    (list
     (read-from-minibuffer "DataBase connection name: "
@@ -191,7 +186,8 @@
         sql-word))))
 
 (defun ejc-describe-table (table-name)
-  "Describe SQL table `table-name' (default table name - word around the point)."
+  "Describe SQL table `table-name' (default table name - word around the
+point)."
   (interactive
    (let ((sql-symbol (if mark-active
                          (buffer-substring (mark) (point))
@@ -200,19 +196,27 @@
          val)
      (setq val (completing-read
                 (if sql-symbol
-				    (format "Describe table (default %s): " sql-symbol)
-				  "Describe table: ")
-				obarray))
+        (format "Describe table (default %s): " sql-symbol)
+      "Describe table: ")
+    obarray))
      (list (if (equal val "")
                sql-symbol
-             val))))  
-  (ejc-show-last-result 
-   (ejc-get-nrepl-stdout 
-    (concat "(get-table-meta " (ejc-add-quotes table-name) ")"))))
+             val))))
+  (let* ((owner (car (split-string table-name "\\.")))
+         (table (cadr (split-string table-name "\\."))))
+    (when (not table)
+      (setq table owner)
+      (setq owner nil))
+    (ejc-show-last-result
+     (concat
+      (ejc-get-table-meta table-name)
+      "\n"
+      (ejc-eval-sql (ejc--select-db-meta-script
+                     :constraints owner table))))))
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
-    (message "Processing SQL query...") 
+    (message "Processing SQL query...")
     (ejc-show-last-result (ejc-eval-sql sql))
     (message "Done SQL query."))
 
@@ -223,11 +227,13 @@
     (ejc-eval-user-sql sql)))
 
 (defun ejc-eval-user-sql-at-point ()
-  "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer boundaries."
-  (interactive)  
+  "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer
+boundaries."
+  (interactive)
   (ejc-eval-user-sql (ejc-get-sql-at-point)))
 
 (defun ejc-show-tables-list (&optional owner)
+  "Output tables list."
   (interactive)
   (ejc-eval-user-sql (ejc--select-db-meta-script :tables owner)))
 
@@ -245,8 +251,8 @@
   "Return buffer passed in `buffer-or-name' parameter.
 If this buffer is not exists or it was killed - create buffer via
 `create-buffer-fn' function (this function must return buffer)."
-  (let ((buf (if (bufferp buffer-or-name) 
-                 buffer-or-name 
+  (let ((buf (if (bufferp buffer-or-name)
+                 buffer-or-name
                (get-buffer buffer-or-name))))
     (if (and buf (buffer-live-p buf))
         buf
@@ -333,4 +339,3 @@ If the buffer is not exists - create it."
 ;; (shell-command "lein repl :headless")
 
 (provide 'ejc-sql)
-

@@ -23,57 +23,67 @@
   "Owners list cache.
 The owners list probably should not be changed very often.")
 
+(defun ejc-clear-owners-list ()
+  (interactive)
+  (setq ejc-owners-list nil))
+
 ;;;###autoload
 (defun ejc--select-db-meta-script (meta-type &optional owner table)
-  (cond
-   ;;----------
-   ;; informix
-   ;;----------
-   ((string-match "informix" ejc-db-type)
+  (let ((owner (if owner
+                   (ejc-add-squotes owner)
+                 (ejc-add-squotes ejc-db-owner))))
     (cond
-     ((eq :owners meta-type) nil)
-     ((eq :tables meta-type)
-      (concat " SELECT TRIM(t.tabname) as tablesList "
-              " FROM systables AS t   "
-              " WHERE t.tabtype = 'T' "
-              "   AND t.tabid >= 100  "
-              " ORDER BY t.tabname;   ")))
-    ((eq :columns meta-type)
-     (concat " SELECT TRIM(c.colname) AS column_name \n"
-             "  FROM systables AS t, syscolumns AS c \n"
-             " WHERE t.tabid = c.tabid               \n"
-             "   AND t.tabtype = 'T'                 \n"
-             "   AND t.tabid >= 100                  \n"
-             "   AND TRIM(t.tabname) = '" table "'   \n"
-             " ORDER BY c.colno;                     \n")))
-   ;;-------
-   ;; mysql
-   ;;-------
-   ((string-match "mysql" ejc-db-type)
-    (cond
-     ((eq :owners meta-type) nil)
-     ((eq :tables meta-type)
-      (concat
-       " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
-       " WHERE table_schema = '" ejc-db-name "'"))))
-   ;;--------
-   ;; oracle
-   ;;--------
-   ((string-match "oracle" ejc-db-type)
-    (cond
-     ((eq :owners meta-type)
-      (concat "select DISTINCT(owner) "
-              " from ALL_OBJECTS"))
-     ((eq :tables meta-type)
-      (concat " SELECT table_name, owner \n"
-              " FROM all_tables          \n"
-              " WHERE owner = " (if owner
-                                    (ejc-add-squotes owner)
-                                  (ejc-add-squotes ejc-db-owner))))
-     ((eq :columns meta-type)
-      (concat " SELECT column_name             \n"
-              " FROM ALL_TAB_COLUMNS           \n"
-              " WHERE table_name = '" table "' \n"))))))
+     ;;----------
+     ;; informix
+     ;;----------
+     ((string-match "informix" ejc-db-type)
+      (cond
+       ((eq :owners meta-type) nil)
+       ((eq :tables meta-type)
+        (concat " SELECT TRIM(t.tabname) as tablesList "
+                " FROM systables AS t   "
+                " WHERE t.tabtype = 'T' "
+                "   AND t.tabid >= 100  "
+                " ORDER BY t.tabname;   ")))
+      ((eq :columns meta-type)
+       (concat " SELECT TRIM(c.colname) AS column_name \n"
+               "  FROM systables AS t, syscolumns AS c \n"
+               " WHERE t.tabid = c.tabid               \n"
+               "   AND t.tabtype = 'T'                 \n"
+               "   AND t.tabid >= 100                  \n"
+               "   AND TRIM(t.tabname) = '" table "'   \n"
+               " ORDER BY c.colno;                     \n")))
+     ;;-------
+     ;; mysql
+     ;;-------
+     ((string-match "mysql" ejc-db-type)
+      (cond
+       ((eq :owners meta-type) nil)
+       ((eq :tables meta-type)
+        (concat
+         " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
+         " WHERE table_schema = '" ejc-db-name "'"))))
+     ;;--------
+     ;; oracle
+     ;;--------
+     ((string-match "oracle" ejc-db-type)
+      (cond
+       ((eq :owners meta-type)
+        (concat "select DISTINCT(owner) "
+                " from ALL_OBJECTS"))
+       ((eq :tables meta-type)
+        (concat " SELECT table_name, owner \n"
+                " FROM all_tables          \n"
+                " WHERE owner = " owner))
+       ((eq :columns meta-type)
+        (concat " SELECT column_name             \n"
+                " FROM ALL_TAB_COLUMNS           \n"
+                " WHERE table_name = '" table "' \n"))
+       ((eq :constraints meta-type)
+        (if table
+            (concat " SELECT * FROM all_constraints    \n"
+                    " WHERE owner = "owner"            \n"
+                    "       AND table_name = '"table"' \n"))))))))
 
 (defun ejc-get-owners-list ()
   (ejc--eval-get-list (ejc--select-db-meta-script :owners)))
@@ -134,6 +144,8 @@ The owners list probably should not be changed very often.")
   "Add the completion sources to the front of `ac-sources'.
 This affects only the current buffer."
   (interactive)
-  (add-to-list 'ac-sources 'ac-source-ejc-sql))
+  (add-to-list 'ac-sources 'ac-source-ejc-sql)
+  ;(setq ac-auto-start 0)
+  )
 
 (provide 'ejc-autocomplete)

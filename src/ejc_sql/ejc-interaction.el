@@ -1,4 +1,3 @@
-
 (require 'ejc-lib)
 
 (defvar ejc-nrepl-connrection-buffer-name (nrepl-connection-buffer-name))
@@ -56,13 +55,17 @@ If not, launch it, return nil. Return t otherwise."
   (nrepl-eval
    (concat
     " (in-ns 'ejc-sql.core)"
-    " (ejc-sql.lib/add-to-cp " (ejc-add-quotes (ejc-db-conn-classpath conn-struct)) ")"
+    " (ejc-sql.lib/add-to-cp " (ejc-add-quotes (ejc-db-conn-classpath
+conn-struct)) ")"
     " (import " (ejc-db-conn-classname conn-struct)")"
-    " (def db {:classname " (ejc-add-quotes (ejc-db-conn-classname conn-struct))
-    "          :subprotocol " (ejc-add-quotes (ejc-db-conn-subprotocol conn-struct))
+    " (def db {:classname " (ejc-add-quotes (ejc-db-conn-classname
+conn-struct))
+    "          :subprotocol " (ejc-add-quotes (ejc-db-conn-subprotocol
+conn-struct))
     "          :subname " (ejc-add-quotes (ejc-db-conn-subname conn-struct))
     "          :user " (ejc-add-quotes (ejc-db-conn-user conn-struct))
-    "          :password " (ejc-add-quotes (ejc-db-conn-password conn-struct))
+    "          :password " (ejc-add-quotes (ejc-db-conn-password
+conn-struct))
     "         })"
     ))
   (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct))
@@ -73,7 +76,8 @@ If not, launch it, return nil. Return t otherwise."
   "Core function to evaluate SQL queries."
   (let* ((prepared-sql (replace-regexp-in-string "\"" "'" sql))
          (result (ejc-get-nrepl-stdout
-                  (concat "(eval-user-sql " (ejc-add-quotes prepared-sql) ")"))))
+                  (concat "(eval-user-sql " (ejc-add-quotes prepared-sql)
+")"))))
     result))
 
 (defun ejc--eval-get-column (sql)
@@ -86,5 +90,9 @@ If not, launch it, return nil. Return t otherwise."
     (split-string
      (substring sql-result-string
                 1 (- (length sql-result-string) 1)))))
+
+(defun ejc-get-table-meta (table-name)
+  (ejc-get-nrepl-stdout
+   (concat "(get-table-meta " (ejc-add-quotes table-name) ")")))
 
 (provide 'ejc-interaction)
