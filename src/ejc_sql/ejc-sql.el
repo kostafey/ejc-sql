@@ -36,8 +36,7 @@
 ;; (setq my-db-connection (make-ejc-db-conn
 ;;                         :classpath (concat
 ;;                                     "/home/user/lib/"
-;;
-"mysql-connector-java-3.1.13-bin.jar")
+;;                                     "mysql-connector-java-3.1.13-bin.jar")
 ;;                         :classname "com.mysql.jdbc.Driver"
 ;;                         :subprotocol "mysql"
 ;;                         :subname "//localhost:3306/my_db_name"
