@@ -1,7 +1,8 @@
 (ns ejc-sql.clojure-offline
-  (:use [clojure.string :only (join split)]
-        ejc-sql.lib)
-  (:import (java.io StringWriter File)))
+  (:use [clojure.string :only (join split)])
+  (:import (java.io StringWriter File)
+           (java.net URL URLClassLoader)
+           (java.lang.reflect Method)))
 
 (defn parse-artifact [artifact-name]
   "Parse `artifact-name' to list (`group-id' `artifact-id' `version')
@@ -42,6 +43,14 @@ scope."
                       ))]
     (.getPath (apply path-cons path-list))))
 
+(def is-windows
+  "The value is true if it runs under the os Windows."
+  (<= 0 (.indexOf (System/getProperty "os.name") "Windows")))
+
+(def is-linux
+  "The value is true if it runs under the os Linux."
+  (<= 0 (.indexOf (System/getProperty "os.name") "Linux")))
+
 (defn get-m2-path [artifact-name]
   (with-artifact
     artifact-name
@@ -64,12 +73,28 @@ scope."
   (str (get-m2-path artifact-name)
        (get-artifact-file-name artifact-name "jar")))
 
+(defn add-to-cp "Since add-classpath is deprecated."
+  [#^String jarpath] ; path without "file:///..." prefix.
+  (let [#^URL url (.. (File. jarpath) toURI toURL)
+        url-ldr-cls (. (URLClassLoader. (into-array URL [])) getClass)
+        arr-cls (into-array Class [(. url getClass)])
+        arr-obj (into-array Object [url])
+        #^Method mthd (. url-ldr-cls getDeclaredMethod "addURL" arr-cls)]
+    (doto mthd
+      (.setAccessible true)
+      (.invoke (ClassLoader/getSystemClassLoader) arr-obj))
+    (println (format "Added %s to classpath" jarpath))))
+
+(defn print-cp []
+  (doseq [url (seq
+               (.getURLs (java.lang.ClassLoader/getSystemClassLoader)))]
+    (println (.getFile url))))
+
 (comment
   (get-jar-location '[org.clojure/clojure-contrib "1.2.0"])
   (add-to-cp (get-jar-location '[org.clojure/clojure-contrib "1.2.0"]))
 
-  (clojure.contrib.java-utils/file "qwe")
-
+  (print-cp)
   ;; (add-to-cp (.replaceAll (get-jar-location '[org.clojure/clojure-contrib "1.2.0"]) "\\\\" "/"))
 
   ;; (require 'cemerick.pomegranate :as pom)

@@ -17,11 +17,7 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.lib
-  (:import (java.io File)
-           (java.net URL URLClassLoader)
-           (java.lang.reflect Method)
-           (java.util.Date)
-           (java.text.SimpleDateFormat)))
+  (:import (java.io File)))
 
 ;; (in-ns 'ejc-sql.lib)
 
@@ -29,26 +25,6 @@
   "true if seq contains elm"
   [seq elm]
   (some #(= elm %) seq))
-
-(defn add-to-cp "Since add-classpath is deprecated."
-  [#^String jarpath] ; path without "file:///..." prefix.
-  (let [#^URL url (.. (File. jarpath) toURI toURL)
-        url-ldr-cls (. (URLClassLoader. (into-array URL [])) getClass)
-        arr-cls (into-array Class [(. url getClass)])
-        arr-obj (into-array Object [url])
-        #^Method mthd (. url-ldr-cls getDeclaredMethod "addURL" arr-cls)]
-    (doto mthd
-      (.setAccessible true)
-      (.invoke (ClassLoader/getSystemClassLoader) arr-obj))
-    (println (format "Added %s to classpath" jarpath))))
-
-(def is-windows
-  "The value is true if it runs under the os Windows."
-  (<= 0 (.indexOf (System/getProperty "os.name") "Windows")))
-
-(def is-linux
-  "The value is true if it runs under the os Linux."
-  (<= 0 (.indexOf (System/getProperty "os.name") "Linux")))
 
 (defn trim [s]
   (if (instance? java.lang.String s)

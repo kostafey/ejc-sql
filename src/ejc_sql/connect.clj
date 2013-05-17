@@ -20,6 +20,10 @@
 
 (in-ns 'ejc-sql.core)
 
+;; Load all external namespaces
+(use 'ejc-sql.clojure-offline)
+(add-to-cp (get-jar-location '[org.clojure/clojure-contrib "1.2.0"]))
+
 (use 'clojure.java.io)
 (use 'clojure.java.jdbc)
 (require 'clojure.contrib.java-utils)
@@ -37,7 +41,7 @@
 (def sql-log-file-path
   "The sql queries logging filepath."
   (str (System/getProperty  "user.home")
-       (if (true? ejc-sql.lib/is-windows)
+       (if (true? is-windows)
          "/Application Data")
        "/.emacs.d/tmp/sql_log.txt"))
 

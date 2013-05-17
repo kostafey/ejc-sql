@@ -58,8 +58,7 @@
 ;; * Run to connect (ejc-connect "my-db-connection")
 ;; or M-x ejc-connect <RET> my-db-connection <RET>
 ;;
-;; * `ejc-toggle-popup-results-buffer' -- Swithes between auto hidding
-results
+;; * `ejc-toggle-popup-results-buffer' -- Swithes between auto hidding results
 ;; buffer, or not.
 ;;
 ;; * `ejc-eval-user-sql-at-point' -- Evaluate SQL bounded by the
@@ -145,9 +144,6 @@ results
   "SQL scripts logs filepath.")
 (defvar ejc-sql-log-buffer-name "sql_log.txt"
   "The buffer for view SQL scripts logs.")
-
-(defvar clojure-src-file "connect.clj"
-  "Main clojure src file name.")
 
 (defvar ejc-popup-results-buffer t
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")

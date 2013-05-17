@@ -2,6 +2,12 @@
 
 (defvar ejc-nrepl-connrection-buffer-name (nrepl-connection-buffer-name))
 
+(defvar ejc-clojure-src-file "connect.clj"
+  "Main clojure src file name.")
+
+(defvar ejc-clojure-offline-file "clojure_offline.clj"
+  "Clojure-offline src helper file name.")
+
 (defun ejc-ensure-nrepl-runnig ()
   "Ensures nrepl is runnig.
 If not, launch it, return nil. Return t otherwise."
@@ -43,11 +49,29 @@ If not, launch it, return nil. Return t otherwise."
                " (in-ns 'ejc-sql.core)"
                " " expr)) :value))
 
+(defun ejc-find-clojure-main-file ()
+  "Return the full path to `ejc-clojure-src-file'."
+  (ejc-find-file-in-load-path ejc-clojure-src-file))
+
+(defun ejc-find-clojure-offline-file ()
+  "Return the full path to `ejc-clojure-offline-file'."
+  (ejc-find-file-in-load-path ejc-clojure-offline-file))
+
 (defun ejc-load-clojure-side ()
   "Evaluate clojure side, run startup initialization functions."
   (if (not ejc-sql-log-file-path)
       (progn
-        (nrepl-load-file (ejc-find-clojure-file))
+        ;; load clojure-offline lib
+        (nrepl-load-file (ejc-find-clojure-offline-file))
+        ;; add clojure-side files to classpath
+        (nrepl-eval
+         (concat
+          " (ejc-sql.clojure-offline/add-to-cp "
+          (ejc-add-quotes
+           (file-name-directory
+            (expand-file-name ".." (ejc-find-clojure-main-file)))) ")"))
+        ;; load ejc-sql main clojure-side file
+        (nrepl-load-file (ejc-find-clojure-main-file))
         (setq ejc-sql-log-file-path
               (ejc-get-nrepl-stdout "sql-log-file-path")))))
 
@@ -55,17 +79,19 @@ If not, launch it, return nil. Return t otherwise."
   (nrepl-eval
    (concat
     " (in-ns 'ejc-sql.core)"
-    " (ejc-sql.lib/add-to-cp " (ejc-add-quotes (ejc-db-conn-classpath
-conn-struct)) ")"
+    " (ejc-sql.clojure-offline/add-to-cp "
+    (ejc-add-quotes (ejc-db-conn-classpath conn-struct)) ")"
     " (import " (ejc-db-conn-classname conn-struct)")"
-    " (def db {:classname " (ejc-add-quotes (ejc-db-conn-classname
-conn-struct))
-    "          :subprotocol " (ejc-add-quotes (ejc-db-conn-subprotocol
-conn-struct))
-    "          :subname " (ejc-add-quotes (ejc-db-conn-subname conn-struct))
-    "          :user " (ejc-add-quotes (ejc-db-conn-user conn-struct))
-    "          :password " (ejc-add-quotes (ejc-db-conn-password
-conn-struct))
+    " (def db {:classname " (ejc-add-quotes
+                             (ejc-db-conn-classname conn-struct))
+    "          :subprotocol " (ejc-add-quotes
+                               (ejc-db-conn-subprotocol conn-struct))
+    "          :subname " (ejc-add-quotes
+                           (ejc-db-conn-subname conn-struct))
+    "          :user " (ejc-add-quotes
+                        (ejc-db-conn-user conn-struct))
+    "          :password " (ejc-add-quotes
+                            (ejc-db-conn-password conn-struct))
     "         })"
     ))
   (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct))
@@ -77,7 +103,7 @@ conn-struct))
   (let* ((prepared-sql (replace-regexp-in-string "\"" "'" sql))
          (result (ejc-get-nrepl-stdout
                   (concat "(eval-user-sql " (ejc-add-quotes prepared-sql)
-")"))))
+                          ")"))))
     result))
 
 (defun ejc--eval-get-column (sql)

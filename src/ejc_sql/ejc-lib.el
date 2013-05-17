@@ -67,15 +67,16 @@
 (defun ejc-add-squotes (str)
   (concat "'" str "'"))
 
-(defun ejc-find-clojure-file ()
-  "Return the full path to `clojure-src-file'."
-  (let ((result))
+(defun ejc-find-file-in-load-path (search-file-name &optional fail-on-error)
+  "Return the full path to `file-name'.
+`file-name' is searching in the emacs `load-path'."
+  (let ((result nil))
     (dolist (path load-path)
-      (let ((clojure-scr-file-path (expand-file-name clojure-src-file path)))
-        (if (file-exists-p clojure-scr-file-path)
-            (setq result clojure-scr-file-path))))
-    (if (not result)
-        (error (concat "Can't find file " clojure-src-file))
+      (let ((search-file-path (expand-file-name search-file-name path)))
+        (if (file-exists-p search-file-path)
+            (setq result search-file-path))))
+    (if (and fail-on-error (not result))
+        (error (concat "Can't find file " search-file-name))
       result)))
 
 (provide 'ejc-lib)
