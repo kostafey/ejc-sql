@@ -100,11 +100,13 @@ If not, launch it, return nil. Return t otherwise."
 
 (defun ejc-eval-sql (sql)
   "Core function to evaluate SQL queries."
-  (let* ((prepared-sql (replace-regexp-in-string "\"" "'" sql))
-         (result (ejc-get-nrepl-stdout
-                  (concat "(eval-user-sql " (ejc-add-quotes prepared-sql)
-                          ")"))))
-    result))
+  (if sql
+      (let* ((prepared-sql (replace-regexp-in-string "\"" "'" sql))
+             (result (ejc-get-nrepl-stdout
+                      (concat "(eval-user-sql " (ejc-add-quotes prepared-sql)
+                              ")"))))
+        result)
+    ""))
 
 (defun ejc--eval-get-column (sql)
   (ejc-get-nrepl-stdout
