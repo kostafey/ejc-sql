@@ -29,9 +29,17 @@ If not, launch it, return nil. Return t otherwise."
                  nrepl-session))
           t nil))))
 
+(defun ejc-find-clojure-main-file ()
+  "Return the full path to `ejc-clojure-src-file'."
+  (ejc-find-file-in-load-path ejc-clojure-src-file))
+
+(defun ejc-find-clojure-offline-file ()
+  "Return the full path to `ejc-clojure-offline-file'."
+  (ejc-find-file-in-load-path ejc-clojure-offline-file))
+
 (defun ejc-launch-nrepl ()
   ;; TODO: It looks like ad-hoc implementation, and it is, surely :).
-  (set-buffer (find-file-noselect (ejc-find-clojure-file)))
+  (set-buffer (find-file-noselect (ejc-find-clojure-main-file)))
   (nrepl-jack-in))
 
 (defun ejc-get-nrepl-stdout (expr)
@@ -48,14 +56,6 @@ If not, launch it, return nil. Return t otherwise."
               (concat
                " (in-ns 'ejc-sql.core)"
                " " expr)) :value))
-
-(defun ejc-find-clojure-main-file ()
-  "Return the full path to `ejc-clojure-src-file'."
-  (ejc-find-file-in-load-path ejc-clojure-src-file))
-
-(defun ejc-find-clojure-offline-file ()
-  "Return the full path to `ejc-clojure-offline-file'."
-  (ejc-find-file-in-load-path ejc-clojure-offline-file))
 
 (defun ejc-load-clojure-side ()
   "Evaluate clojure side, run startup initialization functions."

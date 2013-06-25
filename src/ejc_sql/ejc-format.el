@@ -21,6 +21,9 @@
 (defvar ejc-sql-separator "/"
   "The char with purpose to separate the SQL statement both other.")
 
+(font-lock-add-keywords
+ 'sql-mode '(("/" 0 'font-lock-function-name-face t)))
+
 (defun ejc-get-sql-boundaries-at-point ()
   "Returns list of the boundaries of the current SQL expression.
 The current SQL expression is the expression under the point.
