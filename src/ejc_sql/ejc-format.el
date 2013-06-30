@@ -80,40 +80,40 @@ buffer."
   (interactive "r")
   (ejc-ensure-sql-mode
    (save-excursion
-     (ejc-apply-in-sql-boundaries 
-      '(lambda (beg end) 
+     (ejc-apply-in-sql-boundaries
+      '(lambda (beg end)
          (replace-string "," ",\n    " nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string "select" "select \n    " nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string " from " "\nfrom \n     " nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string " where " "\nwhere \n     " nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string " and " "\n and " nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string " or " "\n  or " nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string " order by " "\norder by \n" nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string " inner join " "\ninner join " nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string " left join " "\nleft join " nil beg end)))
-     (ejc-apply-in-sql-boundaries 
+     (ejc-apply-in-sql-boundaries
       '(lambda (beg end)
          (replace-string " on " "\n  on " nil beg end)))
      )))
 
 (defun ejc-format-sql-at-point ()
-  (interactive)  
+  (interactive)
   (ejc--in-sql-boundaries beg end
    (ejc-format-sql beg end)))
 
@@ -124,5 +124,68 @@ buffer."
                   "-- eval: (ejc-sql-mode)\n"
                   "-- End:\n")))
 
-(provide 'ejc-format)
+(defvar ejc-clear-sql-regexp
+  (concat "^\\s-*\\t*\""
+          "\\|\\\\n\"\s-*\\+$"
+          "\\|\\\\n\";$"))
 
+(defun ejc-strinp-sql-at-point ()
+  (interactive)
+  (ejc--in-sql-boundaries
+   beg end
+   (save-excursion
+     (replace-regexp ejc-clear-sql-regexp "" nil beg end)
+     (whitespace-cleanup-region beg end))))
+
+(defun ejc-longest-line-length (beg-line end-line)
+  (interactive)
+  (save-excursion
+    (let ((curr-line beg-line)
+          (max-length 0)
+          (new-length 0))
+      (while (<= curr-line end-line)
+        (goto-line curr-line)
+        (setq new-length (save-excursion
+                           (end-of-line)
+                           (current-column)))
+        (if (> new-length max-length)
+            (setq max-length new-length))
+        (setq curr-line (1+ curr-line)))
+      max-length)))
+
+(defun ejc-is-separator-string (pos)
+  (equal (trim-string (buffer-substring
+                       pos
+                       (save-excursion
+                         (end-of-line)
+                         (point))))
+         ejc-sql-separator))
+
+(defun ejc-dress-sql-at-point ()
+  (interactive)
+  (ejc-strinp-sql-at-point)
+  (save-excursion
+    (ejc--in-sql-boundaries
+     beg end
+     (let* ((beg-line (progn (goto-char beg)
+                             (right-char)
+                             (line-number-at-pos)))
+            (end-line (progn (goto-char end)
+                             (if (ejc-is-separator-string end)
+                                 (left-char 1))
+                             (line-number-at-pos)))
+            (length-line (ejc-longest-line-length beg-line end-line))
+            (curr-line beg-line))
+       (while (<= curr-line end-line)
+         (goto-line curr-line)
+         (beginning-of-line)
+         (insert-string "\"")
+         (end-of-line)
+         (dotimes (counter (+ 2 (- length-line (current-column))))
+           (insert-string " "))
+         (if (equal curr-line end-line)
+             (insert-string "\\n\";")
+           (insert-string "\\n\" +"))
+         (setq curr-line (1+ curr-line)))))))
+
+(provide 'ejc-format)

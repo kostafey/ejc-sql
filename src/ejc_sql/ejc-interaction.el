@@ -1,4 +1,5 @@
 (require 'ejc-lib)
+(require 'ejc-format)
 
 (defvar ejc-nrepl-connrection-buffer-name (nrepl-connection-buffer-name))
 
@@ -98,13 +99,18 @@ If not, launch it, return nil. Return t otherwise."
   (setq ejc-db-owner (ejc-db-conn-owner conn-struct))
   (setq ejc-db-name (ejc-get-db-name (ejc-db-conn-subname conn-struct))))
 
+(defun ejc-get-sql-from-string (sql)
+  (let* ((sql (replace-regexp-in-string ejc-clear-sql-regexp "" sql))
+         (sql (replace-regexp-in-string "\"" "'" sql)))
+    sql))
+
 (defun ejc-eval-sql (sql)
   "Core function to evaluate SQL queries."
   (if sql
-      (let* ((prepared-sql (replace-regexp-in-string "\"" "'" sql))
+      (let* ((prepared-sql (ejc-get-sql-from-string sql))
              (result (ejc-get-nrepl-stdout
-                      (concat "(eval-user-sql " (ejc-add-quotes prepared-sql)
-                              ")"))))
+                      (concat "(eval-user-sql "
+                              (ejc-add-quotes prepared-sql) ")"))))
         result)
     ""))
 

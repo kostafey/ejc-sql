@@ -75,9 +75,10 @@
 
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
-(define-key ejc-sql-mode-keymap (kbd "C-x t")
-'ejc-toggle-popup-results-buffer)
+(define-key ejc-sql-mode-keymap (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
+(define-key ejc-sql-mode-keymap (kbd "C-c s") 'ejc-strinp-sql-at-point)
+(define-key ejc-sql-mode-keymap (kbd "C-c S") 'ejc-dress-sql-at-point)
 
 (defvar ejc-sql-minor-mode-exit-hook nil
   "*Functions to be called when `ejc-sql-mode' is exited.")
@@ -129,8 +130,16 @@
     '("Mark SQL" . ejc-mark-this-sql))
   (define-key
     ejc-sql-mode-keymap
-    [menu-bar ejc-menu ms]
-    '("Show tables list" . ejc-show-tables-list)))
+    [menu-bar ejc-menu tl]
+    '("Show tables list" . ejc-show-tables-list))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu ss]
+    '("Strip SQL" . ejc-strinp-sql-at-point))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu ds]
+    '("Dress SQL" . ejc-dress-sql-at-point)))
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
