@@ -42,35 +42,27 @@ The configuration of ejs-sql might looks like this:
 New keybindings added to `sql-mode-map`:
 
 * <kbd>C-c C-c</kbd> `ejc-eval-user-sql-at-point`
-
 * <kbd>C-x t</kbd> `ejc-toggle-popup-results-buffer`
-
 * <kbd>C-h t</kbd> `ejc-describe-table`
 
 Some usage remarks:
 
 * Using ejc-sql reqires nrepl process is running, so execution
 `ejc-ensure-nrepl-runnig` ensures this.
-
 * Run to connect `(ejc-connect "my-db-connection")`
 or `M-x ejc-connect <RET> my-db-connection <RET>`
-
 * `ejc-toggle-popup-results-buffer` -- Swithes between auto hidding results
 buffer, or not.
-
 * `ejc-eval-user-sql-at-point` -- Evaluate SQL bounded by the
 `ejc-sql-separator` or/and buffer boundaries.
 
 ## Requirements:
 
 * [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 24.
-
 * [Leiningen](http://leiningen.org) 2.x
-
 * [nrepl.el](https://github.com/kingtim/nrepl.el)
-
+* [clomacs](https://github.com/kostafey/clomacs)
 * [popwin-el](https://github.com/m2ym/popwin-el)
-
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 
 ## License

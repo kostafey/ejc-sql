@@ -1,5 +1,7 @@
 (require 'ejc-lib)
 (require 'ejc-format)
+(require 'clomacs)
+(require 'clomacs-lib)
 
 (defvar ejc-nrepl-connrection-buffer-name (nrepl-connection-buffer-name))
 
@@ -14,34 +16,18 @@
 If not, launch it, return nil. Return t otherwise."
   (interactive)
   (let ((is-running t))
-    (when (not (ejc-is-nrepl-runnig))
+    (when (not (clomacs-is-nrepl-runnig))
       (setq is-running nil)
-      (ejc-launch-nrepl))
+      (clomacs-launch-nrepl (ejc-find-clojure-main-file)))
     is-running))
-
-(defun ejc-is-nrepl-runnig ()
-  "Return t if nrepl process is running, nil otherwise."
-  (let ((ncb (get-buffer ejc-nrepl-connrection-buffer-name)))
-    (save-excursion
-      (if (and ejc-nrepl-connrection-buffer-name
-               (buffer-live-p ncb)
-               (progn
-                 (set-buffer ncb)
-                 nrepl-session))
-          t nil))))
 
 (defun ejc-find-clojure-main-file ()
   "Return the full path to `ejc-clojure-src-file'."
-  (ejc-find-file-in-load-path ejc-clojure-src-file))
+  (find-file-in-load-path ejc-clojure-src-file))
 
 (defun ejc-find-clojure-offline-file ()
   "Return the full path to `ejc-clojure-offline-file'."
   (ejc-find-file-in-load-path ejc-clojure-offline-file))
-
-(defun ejc-launch-nrepl ()
-  ;; TODO: It looks like ad-hoc implementation, and it is, surely :).
-  (set-buffer (find-file-noselect (ejc-find-clojure-main-file)))
-  (nrepl-jack-in))
 
 (defun ejc-get-nrepl-stdout (expr)
   "Evaluate `expr', print it and return printed text as function's result."
