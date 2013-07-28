@@ -41,9 +41,7 @@
 (def sql-log-file-path
   "The sql queries logging filepath."
   (str (System/getProperty  "user.home")
-       (if (true? is-windows)
-         "/Application Data")
-       "/.emacs.d/tmp/sql_log.txt"))
+       "/.ejc-sql/sql_log.txt"))
 
 (defn get-sql-log-file-path []
   (ejc-sql.lib/get-absolute-file-path sql-log-file-path))
@@ -73,6 +71,7 @@ Params list:
            exec-handler (fn [str])
            err-handler (fn [str])}}]
   (let [clear-sql (.trim sql)]
+    (log-handler clear-sql)
     (try
       (with-connection db
         (with-query-results rs [clear-sql]

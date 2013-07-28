@@ -11,11 +11,19 @@
                                  sql-log-file-path) exists))
                       true false)]
     (with-open
-        [wrtr (clojure.java.io/writer (get-absolute-file-path sql-log-file-path) :append true)]
+        [wrtr (clojure.java.io/writer sql-log-file-path :append true)]
       (if is-new-file
-        (.write wrtr "-*- mode: sql; -*-*/\n"))
+        (do
+          (let [file (File. sql-log-file-path)]
+            (.mkdirs (File. (.getParent file)))
+            (.createNewFile file)
+            (.write wrtr (str "-- -*- mode: sql; -*-\n"
+                              "-- Local Variables:\n"
+                              "-- eval: (ejc-sql-mode)\n"
+                              "-- End:\n")))))
       (.write wrtr (str (simple-join 50 "-") " "
-                        (.format (new java.text.SimpleDateFormat "yyyy.MM.dd HH:mm:ss.S")
+                        (.format (new java.text.SimpleDateFormat
+                                      "yyyy.MM.dd HH:mm:ss.S")
                                  (new java.util.Date))
                         " " (simple-join 2 "-") "\n" sql "\n")))))
 
