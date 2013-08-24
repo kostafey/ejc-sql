@@ -10,17 +10,16 @@
   (let [is-new-file (if (not (. (clojure.contrib.java-utils/file
                                  sql-log-file-path) exists))
                       true false)]
-    (with-open
-        [wrtr (clojure.java.io/writer sql-log-file-path :append true)]
+    (if is-new-file
+      (let [file (File. sql-log-file-path)]
+        (.mkdirs (File. (.getParent file)))
+        (.createNewFile file)))
+    (with-open [wrtr (clojure.java.io/writer sql-log-file-path :append true)]
       (if is-new-file
-        (do
-          (let [file (File. sql-log-file-path)]
-            (.mkdirs (File. (.getParent file)))
-            (.createNewFile file)
-            (.write wrtr (str "-- -*- mode: sql; -*-\n"
-                              "-- Local Variables:\n"
-                              "-- eval: (ejc-sql-mode)\n"
-                              "-- End:\n")))))
+        (.write wrtr (str "-- -*- mode: sql; -*-\n"
+                          "-- Local Variables:\n"
+                          "-- eval: (ejc-sql-mode)\n"
+                          "-- End:\n")))
       (.write wrtr (str (simple-join 50 "-") " "
                         (.format (new java.text.SimpleDateFormat
                                       "yyyy.MM.dd HH:mm:ss.S")

@@ -144,7 +144,7 @@ The every element of the list is a map {:column-name value}"
                  :exec-handler identity
                  :err-handler identity))
 
-(defn eval-user-sql "Evaluate users SQL scripts."
+(defn eval-user-sql "Evaluate user's SQL scripts and write them to log file."
   [sql]
   (eval-sql sql (get-sql-log-file-path)))
 
