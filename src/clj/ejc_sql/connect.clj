@@ -16,7 +16,10 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
-(ns ejc-sql.connect)
+(ns ejc-sql.connect
+  (:use [clojure.java.jdbc :only [with-connection
+                                  with-query-results
+                                  connection]]))
 
 (in-ns 'ejc-sql.connect)
 
@@ -25,7 +28,6 @@
 (add-to-cp (get-jar-location '[org.clojure/clojure-contrib "1.2.0"]))
 
 (use 'clojure.java.io)
-(use 'clojure.java.jdbc)
 (require 'clojure.contrib.java-utils)
 (use 'ejc-sql.lib)
 (use 'ejc-sql.output)
@@ -201,3 +203,4 @@ The every element of the list is a map {:column-name value}"
            (ejc-sql.lib/simple-join head-length "-") "\n"
            (ejc-sql.output/format-output result-data))
       result-data)))
+

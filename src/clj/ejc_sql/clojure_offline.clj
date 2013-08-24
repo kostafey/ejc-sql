@@ -94,6 +94,7 @@ scope."
   (get-jar-location '[org.clojure/clojure-contrib "1.2.0"])
   (add-to-cp (get-jar-location '[org.clojure/clojure-contrib "1.2.0"]))
 
+  (in-ns 'ejc-sql.clojure-offline)
   (print-cp)
   ;; (add-to-cp (.replaceAll (get-jar-location '[org.clojure/clojure-contrib "1.2.0"]) "\\\\" "/"))
 

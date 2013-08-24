@@ -66,19 +66,11 @@ If not, launch it, return nil. Return t otherwise."
         (setq ejc-sql-log-file-path
               (ejc-get-nrepl-stdout "sql-log-file-path")))))
 
-;; (ejc-connect-to-db my-db-connection)
-;; (clomacs-print-cp)
-;; (ejc-db-conn-classname my-db-connection)
-
-;; (clomacs-add-to-cp (ejc-db-conn-classpath my-db-connection))
-;; (clomacs-import (read (ejc-db-conn-classname my-db-connection))) ;; string to symbol
-
 (clomacs-defun ejc-sql-set-db 
                ejc-sql.connect/set-db
                :lib-name "ejc-sql"
-               :namespace ejc-sql.connect) ; [classname subprotocol subname user password]
-
-;; (ejc-connect-to-db my-db-connection)
+               :namespace ejc-sql.connect
+               :doc "Define ejc-sql.connect/db var.")
 
 (defun ejc-connect-to-db (conn-struct)
   (clomacs-add-to-cp (ejc-db-conn-classpath conn-struct))
