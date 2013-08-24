@@ -48,19 +48,7 @@ If not, launch it, return nil. Return t otherwise."
 Prepare SQL string, evaluate SQL script and write them to log file"
   (if sql
       (let* ((prepared-sql (ejc-get-sql-from-string sql))
-             (result (ejc--eval-user-sql prepared-sql)))
-        result)
-    ""))
-
-;; (ejc-eval-sql-and-log "select * from users")
-
-(defun ejc-eval-sql (sql)
-  "Core function to evaluate SQL queries."
-  (if sql
-      (let* ((prepared-sql (ejc-get-sql-from-string sql))
-             (result (ejc-get-nrepl-stdout
-                      (concat "(eval-user-sql "
-                              (ejc-add-quotes prepared-sql) ")"))))
+             (result (ejc--eval-sql-and-log prepared-sql)))
         result)
     ""))
 

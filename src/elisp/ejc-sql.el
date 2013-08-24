@@ -218,10 +218,13 @@ point)."
       (ejc-eval-sql-and-log (ejc--select-db-meta-script
                              :constraints owner table))))))
 
+;; (ejc-connect-to-db my-db-connection)
+;; (ejc-eval-user-sql "select * from users")
+
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
     (message "Processing SQL query...")
-    (ejc-show-last-result (eval-sql-and-log sql))
+    (ejc-show-last-result (ejc-eval-sql-and-log sql))
     (message "Done SQL query."))
 
 (defun ejc-eval-user-sql-region (beg end)
