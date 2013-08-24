@@ -7,64 +7,11 @@
 (require 'clomacs)
 (require 'clomacs-lib)
 
-(defvar ejc-nrepl-connrection-buffer-name (nrepl-connection-buffer-name))
-
-(defvar ejc-clojure-src-file "connect.clj"
-  "Main clojure src file name.")
-
-(defvar ejc-clojure-offline-file "clojure_offline.clj"
-  "Clojure-offline src helper file name.")
-
 (defun ejc-ensure-nrepl-runnig ()
   "Ensures nrepl is runnig.
 If not, launch it, return nil. Return t otherwise."
   (interactive)
-  (let ((is-running t))
-    (when (not (clomacs-is-nrepl-runnig))
-      (setq is-running nil)
-      (clomacs-launch-nrepl (ejc-find-clojure-main-file)))
-    is-running))
-
-(defun ejc-find-clojure-main-file ()
-  "Return the full path to `ejc-clojure-src-file'."
-  (find-file-in-load-path ejc-clojure-src-file))
-
-(defun ejc-find-clojure-offline-file ()
-  "Return the full path to `ejc-clojure-offline-file'."
-  (ejc-find-file-in-load-path ejc-clojure-offline-file))
-
-(defun ejc-get-nrepl-stdout (expr)
-  "Evaluate `expr', print it and return printed text as function's result."
-  ;; nrepl-eval-async
-  (plist-get (nrepl-eval
-              (concat
-               " (in-ns 'ejc-sql.core)"
-               " (print " expr ")")) :stdout))
-
-(defun ejc-get-nrepl-result (expr)
-  "Evaluate `expr', and return expression's evaluation result."
-  (plist-get (nrepl-eval
-              (concat
-               " (in-ns 'ejc-sql.core)"
-               " " expr)) :value))
-
-(defun ejc-load-clojure-side ()
-  "Evaluate clojure side, run startup initialization functions."
-  (if (not ejc-sql-log-file-path)
-      (progn
-        ;; load clojure-offline lib
-        (nrepl-load-file (ejc-find-clojure-offline-file))
-        ;; add clojure-side files to classpath
-        (nrepl-eval
-         (concat
-          " (ejc-sql.clojure-offline/add-to-cp "
-          (ejc-add-quotes
-           (file-name-directory
-            (expand-file-name ".." (ejc-find-clojure-main-file)))) ")"))
-        ;; load ejc-sql main clojure-side file
-        (nrepl-load-file (ejc-find-clojure-main-file))
-        (setq ejc-sql-log-file-path
-              (ejc-get-nrepl-stdout "sql-log-file-path")))))
+  (clomacs-ensure-nrepl-runnig))
 
 (clomacs-defun ejc-sql-set-db 
                ejc-sql.connect/set-db
@@ -89,6 +36,23 @@ If not, launch it, return nil. Return t otherwise."
   (let* ((sql (replace-regexp-in-string ejc-clear-sql-regexp "" sql))
          (sql (replace-regexp-in-string "\"" "'" sql)))
     sql))
+
+(clomacs-defun ejc--eval-sql-and-log
+               ejc-sql.connect/eval-sql-and-log
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect
+               :doc "Evaluate user's SQL scripts and write them to log file.")
+
+(defun ejc-eval-sql-and-log (sql)
+  "Core function to evaluate SQL queries.
+Prepare SQL string, evaluate SQL script and write them to log file"
+  (if sql
+      (let* ((prepared-sql (ejc-get-sql-from-string sql))
+             (result (ejc--eval-user-sql prepared-sql)))
+        result)
+    ""))
+
+;; (ejc-eval-sql-and-log "select * from users")
 
 (defun ejc-eval-sql (sql)
   "Core function to evaluate SQL queries."
