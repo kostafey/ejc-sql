@@ -1,3 +1,7 @@
+;;; ejc-interaction.el -- ejc-sql interact with clojure.
+
+;;; Copyright © 2013 - Kostafey <kostafey@gmail.com>
+
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'clomacs)
@@ -62,25 +66,29 @@ If not, launch it, return nil. Return t otherwise."
         (setq ejc-sql-log-file-path
               (ejc-get-nrepl-stdout "sql-log-file-path")))))
 
+;; (ejc-connect-to-db my-db-connection)
+;; (clomacs-print-cp)
+;; (ejc-db-conn-classname my-db-connection)
+
+;; (clomacs-add-to-cp (ejc-db-conn-classpath my-db-connection))
+;; (clomacs-import (read (ejc-db-conn-classname my-db-connection))) ;; string to symbol
+
+(clomacs-defun ejc-sql-set-db 
+               ejc-sql.connect/set-db
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect) ; [classname subprotocol subname user password]
+
+;; (ejc-connect-to-db my-db-connection)
+
 (defun ejc-connect-to-db (conn-struct)
-  (nrepl-eval
-   (concat
-    " (in-ns 'ejc-sql.core)"
-    " (ejc-sql.clojure-offline/add-to-cp "
-    (ejc-add-quotes (ejc-db-conn-classpath conn-struct)) ")"
-    " (import " (ejc-db-conn-classname conn-struct)")"
-    " (def db {:classname " (ejc-add-quotes
-                             (ejc-db-conn-classname conn-struct))
-    "          :subprotocol " (ejc-add-quotes
-                               (ejc-db-conn-subprotocol conn-struct))
-    "          :subname " (ejc-add-quotes
-                           (ejc-db-conn-subname conn-struct))
-    "          :user " (ejc-add-quotes
-                        (ejc-db-conn-user conn-struct))
-    "          :password " (ejc-add-quotes
-                            (ejc-db-conn-password conn-struct))
-    "         })"
-    ))
+  (clomacs-add-to-cp (ejc-db-conn-classpath conn-struct))
+  (clomacs-import (read (ejc-db-conn-classname conn-struct)))
+  (ejc-sql-set-db (ejc-db-conn-classname   conn-struct)
+                  (ejc-db-conn-subprotocol conn-struct)
+                  (ejc-db-conn-subname     conn-struct)
+                  (ejc-db-conn-user        conn-struct)
+                  (ejc-db-conn-password    conn-struct))
+  (clomacs-def ejc-db ejc-sql.connect/db)
   (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct))
   (setq ejc-db-owner (ejc-db-conn-owner conn-struct))
   (setq ejc-db-name (ejc-get-db-name (ejc-db-conn-subname conn-struct))))

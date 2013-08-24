@@ -16,9 +16,9 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
-(ns ejc-sql.core)
+(ns ejc-sql.connect)
 
-(in-ns 'ejc-sql.core)
+(in-ns 'ejc-sql.connect)
 
 ;; Load all external namespaces
 (use 'ejc-sql.clojure-offline)
@@ -37,6 +37,13 @@
                   SQLException))
 
 (def db "DataBase connection properties list." nil)
+
+(defn set-db [classname subprotocol subname user password]
+  (def db {:classname   classname
+           :subprotocol subprotocol
+           :subname     subname
+           :user        user
+           :password    password}))
 
 (def sql-log-file-path
   "The sql queries logging filepath."
