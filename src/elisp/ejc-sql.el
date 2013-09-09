@@ -166,11 +166,8 @@
                           'ejc-connection-name-history)))
   (let ((db (eval (intern arg))))
     (message "Connection started...")
-    (if (ejc-ensure-nrepl-runnig)
-        (progn
-          (ejc-load-clojure-side)
-          (ejc-connect-to-db db)
-          (message "Connected.")))))
+    (ejc-connect-to-db db)
+    (message "Connected.")))
 
 (defun ejc-get-word-at-point (pos)
   "Return SQL word around the point."
