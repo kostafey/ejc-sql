@@ -48,7 +48,7 @@ If not, launch it, return nil. Return t otherwise."
 Prepare SQL string, evaluate SQL script and write them to log file"
   (if sql
       (let* ((prepared-sql (ejc-get-sql-from-string sql))
-             (result (ejc--eval-sql-and-log prepared-sql)))
+             (result (clomacs-print (ejc--eval-sql-and-log prepared-sql))))
         result)
     ""))
 
