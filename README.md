@@ -67,7 +67,7 @@ buffer, or not.
 
 ## License
 
-Copyright © 2012 kostafey <kostafey@gmail.com>
+Copyright © 2012-2013 kostafey <kostafey@gmail.com>
 
 Distributed under the General Public License 2.0+
 
