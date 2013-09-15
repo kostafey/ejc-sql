@@ -52,19 +52,21 @@ Prepare SQL string, evaluate SQL script and write them to log file"
         result)
     ""))
 
-(defun ejc--eval-get-column (sql)
-  (ejc-get-nrepl-stdout
-   (concat "(eval-sql-internal-get-column "
-           (ejc-add-quotes sql) " )")))
+(clomacs-defun ejc--eval-sql-get-column
+               ejc-sql.connect/eval-sql-internal-get-column
+               :lib-name "ejc-sql"
+               :return-type :list
+               :namespace ejc-sql.connect
+               :doc "Get `sql', return list.")
 
-(defun ejc--eval-get-list (sql)
-  (let ((sql-result-string (ejc--eval-get-column sql)))
-    (split-string
-     (substring sql-result-string
-                1 (- (length sql-result-string) 1)))))
+(defalias 'ejc--eval-get-list 'ejc--eval-sql-get-column)
+
+(clomacs-defun ejc--get-table-meta
+               ejc-sql.connect/get-table-meta
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect)
 
 (defun ejc-get-table-meta (table-name)
-  (ejc-get-nrepl-stdout
-   (concat "(get-table-meta " (ejc-add-quotes table-name) ")")))
+  (clomacs-print (ejc--get-table-meta table-name)))
 
 (provide 'ejc-interaction)
