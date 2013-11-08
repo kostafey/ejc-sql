@@ -33,10 +33,9 @@
 (defun ejc-get-db-name (subname)
   (let* ((separator (if (equal (first (split-string subname "/")) subname)
                         ":" "/"))
-         (raw-db-name (first (last (split-string subname separator)))))
-    (if (ejc-string-endswith-p raw-db-name "?")
-        (substring raw-db-name 0 (1- (length raw-db-name)))
-      raw-db-name)))
+         (raw-db-name (first (last (split-string subname separator))))
+         (raw-db-name (first (split-string raw-db-name "?"))))
+    raw-db-name))
 
 (defstruct ejc-db-conn
   "DB connection information structure"
