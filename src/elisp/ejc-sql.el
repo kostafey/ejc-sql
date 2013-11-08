@@ -66,7 +66,6 @@
 
 (require 'cl)
 (require 'sql)
-(require 'nrepl)
 (require 'popwin)
 (require 'ejc-lib)
 (require 'ejc-format)
