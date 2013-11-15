@@ -17,6 +17,7 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (require 'cua-base)
+(require 'clomacs)
 
 (defvar ejc-sql-separator "/"
   "The char with purpose to separate the SQL statement both other.")
@@ -68,7 +69,7 @@ buffer."
 (defun ejc-get-sql-at-point ()
   "Return SQL around the point."
   (ejc--in-sql-boundaries beg end
-   (let ((sql (buffer-substring beg end)))
+   (let ((sql (clomacs-strip-text-properties (buffer-substring beg end))))
      sql)))
 
 (defmacro ejc-ensure-sql-mode (&rest body)

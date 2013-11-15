@@ -148,6 +148,10 @@ The every element of the list is a map {:column-name value}"
   [sql]
   (eval-sql sql (get-sql-log-file-path)))
 
+(defn eval-sql-and-log-print
+  [sql]
+  (print (eval-sql sql (get-sql-log-file-path))))
+
 (defn eval-sql-internal [sql]
   (eval-sql-core :sql sql
                  :rs-handler rs-to-list

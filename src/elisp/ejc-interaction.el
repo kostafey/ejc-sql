@@ -43,12 +43,19 @@ If not, launch it, return nil. Return t otherwise."
                :namespace ejc-sql.connect
                :doc "Evaluate user's SQL scripts and write them to log file.")
 
+(clomacs-defun ejc--eval-sql-and-log-print
+               ejc-sql.connect/eval-sql-and-log-print
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect
+               :return-type :string
+               :return-value :stdout)
+
 (defun ejc-eval-sql-and-log (sql)
   "Core function to evaluate SQL queries.
 Prepare SQL string, evaluate SQL script and write them to log file"
   (if sql
       (let* ((prepared-sql (ejc-get-sql-from-string sql))
-             (result (clomacs-print (ejc--eval-sql-and-log prepared-sql))))
+             (result (ejc--eval-sql-and-log-print prepared-sql)))
         result)
     ""))
 
