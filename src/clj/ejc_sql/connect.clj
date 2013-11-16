@@ -17,26 +17,17 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.connect
-  (:use [clojure.java.jdbc :only [with-connection
-                                  with-query-results
-                                  connection]]))
-
-(in-ns 'ejc-sql.connect)
-
-;; Load all external namespaces
-(use 'ejc-sql.clojure-offline)
-(add-to-cp (get-jar-location '[org.clojure/clojure-contrib "1.2.0"]))
-
-(use 'clojure.java.io)
-(require 'clojure.contrib.java-utils)
-(use 'ejc-sql.lib)
-(use 'ejc-sql.output)
-
-(import (java.sql Connection
-                  DriverManager
-                  PreparedStatement
-                  ResultSet
-                  SQLException))
+  (:use [clojure.java.io]
+        [ejc-sql.lib]
+        [ejc-sql.output])
+  (:require [clojure.java.jdbc :as j]
+            [clojure.java.jdbc.sql :as s]
+            [clojure.contrib.java-utils])
+  (:import [java.sql Connection
+                     DriverManager
+                     PreparedStatement
+                     ResultSet
+                     SQLException]))
 
 (def db "DataBase connection properties list." nil)
 
@@ -65,110 +56,47 @@
   (ejc-sql.lib/in? (map #(.equals err-msg %) select-on-manipulation-errors) true))
 
 (defn eval-sql-core
-  "The core SQL evaluation function.
-Params list:
-* sql          -- SQL script to send to JDBC.
-* rs-handler   -- function with 1 arg, the returned ResultSet.
-* exec-handler -- function with 1 arg, the returned by JDBC text in case of
-                  SQL, which is not results in ResultSet or error text.
-* err-handler  -- function with 1 arg, the returned by JDBC text in case of
-                  SQL, which results in error text.
-* log-handler  -- function with 1 arg, the cleaned up SQL script."
-  [& {:keys [sql log-handler rs-handler exec-handler err-handler]
-      :or {log-handler (fn [sql])
-           rs-handler (fn [rs])
-           exec-handler (fn [str])
-           err-handler (fn [str])}}]
+  "The core SQL evaluation function."
+  [& {:keys [db sql]
+      :or {db ejc-sql.connect/db}}]
+  (try
+    (list :result-set
+          (j/query db (list sql) :as-arrays? true))
+    (catch SQLException e
+      (list :message
+            (if (is-manipulation-error (.getMessage e))
+              (try
+                (str "Records affected: "
+                     (first (j/execute! db (list sql))))
+                (catch SQLException e
+                  (str "Error: "(.getMessage e))))
+              (str "Error: " (.getMessage e)))))))
+
+(defn eval-user-sql [sql & {:keys [sql-log-file-path]
+                            :or {sql-log-file-path (get-sql-log-file-path)}}]
   (let [clear-sql (.trim sql)]
-    (log-handler clear-sql)
-    (try
-      (with-connection db
-        (with-query-results rs [clear-sql]
-          (rs-handler rs)))
-      (catch SQLException e
-        (if (is-manipulation-error (.getMessage e))
-          (let [[message result]
-                (try
-                  (list
-                   (str "Records affected:"
-                        (with-connection db
-                          (clojure.java.jdbc/do-commands clear-sql)))
-                   true)
-                  (catch SQLException e
-                    (list
-                     (str "Error: "(.getMessage e))
-                     false)))]
-            (if result
-              (exec-handler message)
-              (err-handler message)))
-          (err-handler (str "Error: " (.getMessage e))))))))
-
-;;----------------------------------------------------------------------
-;; handlers
-;; TODO: unused
-(defn write-to-temp-file "Write string to temp file
-- the file, showing in the results buffer."
-  [str output-file-path]
-  (with-open
-      [wrtr (writer output-file-path)]
-    (.write wrtr str)))
-
-(defn rs-to-list "Feach ResultSet to plain list.
-The every element of the list is a map {:column-name value}"
-  [rs]
-  (loop [currRs rs
-         acc (list)]
-    (if (= currRs (list))
-      acc
-      (recur (rest currRs)
-             (conj acc (first currRs))))))
-
-(defn column-to-list "Feach first column of the ResultSet to plain list."
-  [rs]
-  (loop [currRs rs
-         acc (list)]
-    (if (= currRs (list))
-      acc
-      (recur (rest currRs)
-             (conj acc (last (first (first currRs))))))))
-;;
-;;----------------------------------------------------------------------
-
-(defn eval-sql "Evaluate users SQL scripts - common functtion."
-  [sql, sql-log-file-path]
-  (eval-sql-core :sql sql
-                 :rs-handler (fn [rs] (ejc-sql.output/format-output rs))
-                 :log-handler (fn [clear-sql] (ejc-sql.output/log-sql
-                                               (str clear-sql "\n")
-                                               sql-log-file-path))
-                 :exec-handler identity
-                 :err-handler identity))
-
-(defn eval-sql-and-log "Evaluate user's SQL scripts and write them to log file."
-  [sql]
-  (eval-sql sql (get-sql-log-file-path)))
+    (ejc-sql.output/log-sql (str clear-sql "\n") sql-log-file-path)
+    (let [[result-type result] (eval-sql-core :sql clear-sql)]
+      (if (= result-type :result-set)
+        (ejc-sql.output/format-array-output result)
+        result))))
 
 (defn eval-sql-and-log-print
+  "Write SQL to log file, evaluate it and print result."
   [sql]
-  (print (eval-sql sql (get-sql-log-file-path))))
-
-(defn eval-sql-internal [sql]
-  (eval-sql-core :sql sql
-                 :rs-handler rs-to-list
-                 :exec-handler identity
-                 :err-handler identity))
+  (print (eval-user-sql sql :sql-log-file-path (get-sql-log-file-path))))
 
 (defn eval-sql-internal-get-column [sql]
-  (eval-sql-core :sql sql
-                 :rs-handler column-to-list
-                 :exec-handler identity
-                 :err-handler identity))
+  (let [[result-type result] (eval-sql-core :sql sql)]
+    (if (= result-type :result-set)
+      (-> result rest flatten)
+      result)))
 
 (defn table-meta
   [table-name]
-  (with-connection db
+  (j/with-connection db
     (let
-        [connect (connection)
+        [connect (j/connection)
          statement (.createStatement connect)
          execResult (try
                       (list
@@ -207,4 +135,3 @@ The every element of the list is a map {:column-name value}"
            (ejc-sql.lib/simple-join head-length "-") "\n"
            (ejc-sql.output/format-output result-data))
       result-data)))
-

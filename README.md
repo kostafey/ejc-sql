@@ -11,15 +11,15 @@ The configuration of ejs-sql might looks like this:
 ```lisp
 ; Append ejs-sql to `load-path':
 (defvar site-lisp-path "~/.emacs.d/")
-(add-to-list 
- 'load-path 
+(add-to-list
+ 'load-path
  (expand-file-name "ejc-sql/src/ejc_sql/" site-lisp-path))
 
 (require 'ejc-sql)
 
 ; Create your database connection configuration:
 (setq my-db-connection (make-ejc-db-conn
-                        :classpath (concat 
+                        :classpath (concat
                                     "/home/user/lib/"
                                     "mysql-connector-java-3.1.13-bin.jar")
                         :classname "com.mysql.jdbc.Driver"
@@ -60,16 +60,13 @@ buffer, or not.
 
 * [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 24.
 * [Leiningen](http://leiningen.org) 2.x
-* [nrepl.el](https://github.com/kingtim/nrepl.el)
 * [clomacs](https://github.com/kostafey/clomacs)
+* [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.3.0
 * [popwin-el](https://github.com/m2ym/popwin-el)
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 
 ## License
 
-Copyright © 2012-2013 kostafey <kostafey@gmail.com>
+Copyright © 2012-2013 Kostafey <kostafey@gmail.com>
 
 Distributed under the General Public License 2.0+
-
-The included clojure.java.jdbc is distributed under the 
-Eclipse Public License 1.0
