@@ -83,7 +83,14 @@ The owners list probably should not be changed very often.")
         (if table
             (concat " SELECT * FROM all_constraints    \n"
                     " WHERE owner = "owner"            \n"
-                    "       AND table_name = '"table"' \n"))))))))
+                    "       AND table_name = '"table"' \n")))
+       ((eq :procedures meta-type)
+        (concat " SELECT object_name, procedure_name \n"
+                " FROM all_procedures                \n"
+                " WHERE owner = "owner"              \n"))
+       ((eq :objects meta-type)
+        (concat "SELECT * FROM all_objects WHERE object_type IN "
+                "('FUNCTION','PROCEDURE','PACKAGE')")))))))
 
 (defun ejc-get-owners-list ()
   (ejc--eval-get-list (ejc--select-db-meta-script :owners)))
@@ -93,6 +100,9 @@ The owners list probably should not be changed very often.")
 
 (defun ejc-get-columns-list (owner table)
   (ejc--eval-get-list (ejc--select-db-meta-script :columns owner table)))
+
+(defun ejc-get-procedures-list (&optional owner)
+  (ejc--eval-get-list (ejc--select-db-meta-script :procedures)))
 
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
