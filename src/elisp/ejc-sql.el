@@ -133,6 +133,10 @@
     '("Show tables list" . ejc-show-tables-list))
   (define-key
     ejc-sql-mode-keymap
+    [menu-bar ejc-menu cl]
+    '("Show constraints list" . ejc-show-constraints-list))
+  (define-key
+    ejc-sql-mode-keymap
     [menu-bar ejc-menu pl]
     '("Show procedures list" . ejc-show-procedures-list))
   (define-key
@@ -243,6 +247,11 @@ boundaries."
   "Output tables list."
   (interactive)
   (ejc-eval-user-sql (ejc--select-db-meta-script :tables owner)))
+
+(defun ejc-show-constraints-list (&optional owner table)
+  "Output constraints list."
+  (interactive)
+  (ejc-eval-user-sql (ejc--select-db-meta-script :constraints owner table)))
 
 (defun ejc-show-procedures-list (&optional owner)
   "Output procedures list."

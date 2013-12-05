@@ -83,7 +83,8 @@ The owners list probably should not be changed very often.")
         (if table
             (concat " SELECT * FROM all_constraints    \n"
                     " WHERE owner = "owner"            \n"
-                    "       AND table_name = '"table"' \n")))
+                    "       AND table_name = '"table"' \n")
+          "SELECT * FROM user_constraints"))
        ((eq :procedures meta-type)
         (concat " SELECT object_name, procedure_name \n"
                 " FROM all_procedures                \n"
