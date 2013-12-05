@@ -257,6 +257,8 @@ boundaries."
   (setq ejc-results-buffer (current-buffer))
   (setq view-read-only t)
   (rst-mode)
+  (ejc-sql-mode)
+  (ejc-sql-mode t)
   ejc-results-buffer)
 
 (defun ejc-get-buffer-or-create (buffer-or-name create-buffer-fn)
