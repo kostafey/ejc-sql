@@ -84,8 +84,11 @@ buffer."
      (mapc (lambda (from-to)
              (ejc-apply-in-sql-boundaries
               (lambda (beg end)
-                (replace-string (car from-to) (cadr from-to) nil beg end))))
-           '((","            ",\n    ")
+                (replace-regexp (car from-to) (cadr from-to) nil beg end))))
+           '(("\n"           " ")
+             (","            ", ")
+             (" +"           " ")
+             (","            ",\n    ")
              ("select"       "select \n    ")
              (" from "       "\nfrom \n     ")
              (" where "      "\nwhere \n     ")
