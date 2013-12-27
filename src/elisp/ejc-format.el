@@ -81,37 +81,21 @@ buffer."
   (interactive "r")
   (ejc-ensure-sql-mode
    (save-excursion
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string "," ",\n    " nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string "select" "select \n    " nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string " from " "\nfrom \n     " nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string " where " "\nwhere \n     " nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string " and " "\n and " nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string " or " "\n  or " nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string " order by " "\norder by \n" nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string " inner join " "\ninner join " nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string " left join " "\nleft join " nil beg end)))
-     (ejc-apply-in-sql-boundaries
-      '(lambda (beg end)
-         (replace-string " on " "\n  on " nil beg end)))
-     )))
+     (mapc (lambda (from-to)
+             (ejc-apply-in-sql-boundaries
+              (lambda (beg end)
+                (replace-string (car from-to) (cadr from-to) nil beg end))))
+           '((","            ",\n    ")
+             ("select"       "select \n    ")
+             (" from "       "\nfrom \n     ")
+             (" where "      "\nwhere \n     ")
+             (" and "        "\n and ")
+             (" or "         "\n  or ")
+             (" order by "   "\norder by \n")
+             (" inner join " "\ninner join ")
+             (" left join "  "\nleft join ")
+             (" on "         "\n  on ")
+             (" group by "   "\ngroup by "))))))
 
 (defun ejc-format-sql-at-point ()
   (interactive)
