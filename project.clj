@@ -7,5 +7,7 @@
   :source-paths ["src/clj"]
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
-                 [org.clojure/java.jdbc "0.3.0-beta1"]])
-
+                 [org.clojure/java.jdbc "0.3.0-beta1"]
+                 [org.apache.openjpa/openjpa-all "2.2.2"]
+                 [com.cemerick/pomegranate "0.2.0"]
+                 ])
