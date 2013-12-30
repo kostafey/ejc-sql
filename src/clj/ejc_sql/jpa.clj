@@ -9,16 +9,25 @@
 
 (def em)
 
-(defn jpa-connect [{:keys [connection-name
-                           persistent-xml-url
-                           domain-objects-url
-                           jdbc-driver-url]}]
+(defn connect-plain [connection-name
+                     persistent-xml-url
+                     domain-objects-url
+                     jdbc-driver-url]
+  (connect
+   {:connection-name    connection-name
+    :persistent-xml-url persistent-xml-url
+    :domain-objects-url domain-objects-url
+    :jdbc-driver-url    jdbc-driver-url}))
+
+(defn connect [{:keys [connection-name
+                       persistent-xml-url
+                       domain-objects-url
+                       jdbc-driver-url]}]
   (pom/add-classpath persistent-xml-url)
   (pom/add-classpath domain-objects-url)
   (pom/add-classpath jdbc-driver-url)
   (def em (-> (Persistence/createEntityManagerFactory connection-name)
               (.createEntityManager))))
 
-(defn execute-jpql [jpql]
+(defn eval-jpql [jpql]
   (-> em (.createQuery jpql) (.getResultList)))
-

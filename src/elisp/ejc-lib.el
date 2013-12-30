@@ -16,6 +16,10 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
+(eval-when-compile (require 'cl))
+
+(defvar ejc-connection-struct nil)
+
 (defvar ejc-db-type nil
   "The type of RDBMS.")
 
@@ -36,6 +40,13 @@
          (raw-db-name (first (last (split-string subname separator))))
          (raw-db-name (first (split-string raw-db-name "?"))))
     raw-db-name))
+
+(defun ejc-get-connection-type (conn-struct)
+  "JDBC/SQL, JPA/JPQL or Hibernate/HQL connection type."
+  (cond
+   ((ejc-db-conn-p conn-struct) :sql)
+   ((ejc-jpa-p conn-struct) :jpa)
+   (t nil)))
 
 (defstruct ejc-db-conn
   "DB connection information structure"
@@ -59,6 +70,14 @@
             ))
   (user "<user-name>")
   (password "<password>"))
+
+(defstruct ejc-jpa
+  "DB connection information structure for JPA"
+  (type :jpa)
+  (connection-name    "<persistence-unit name=")
+  (persistent-xml-url "path to META-INF/persistence.xml")
+  (domain-objects-url "path to classes/")
+  (jdbc-driver-url    "<path>/<filename>.jar"))
 
 (defun ejc-add-quotes (str)
   (concat "\"" str "\""))
