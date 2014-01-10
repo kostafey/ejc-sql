@@ -1,6 +1,6 @@
 (ns ejc-sql.jpa
+  (:require [cemerick.pomegranate :as pom])
   (:use [clojure.java.io]
-        [cemerick.pomegranate :as pom]
         [ejc-sql.lib]
         [ejc-sql.output])
   (:import [javax.persistence Persistence
@@ -8,16 +8,6 @@
                               TypedQuery]))
 
 (def em)
-
-(defn connect-plain [connection-name
-                     persistent-xml-url
-                     domain-objects-url
-                     jdbc-driver-url]
-  (connect
-   {:connection-name    connection-name
-    :persistent-xml-url persistent-xml-url
-    :domain-objects-url domain-objects-url
-    :jdbc-driver-url    jdbc-driver-url}))
 
 (defn connect [{:keys [connection-name
                        persistent-xml-url
@@ -28,6 +18,16 @@
   (pom/add-classpath jdbc-driver-url)
   (def em (-> (Persistence/createEntityManagerFactory connection-name)
               (.createEntityManager))))
+
+(defn connect-plain [connection-name
+                     persistent-xml-url
+                     domain-objects-url
+                     jdbc-driver-url]
+  (connect
+   {:connection-name    connection-name
+    :persistent-xml-url persistent-xml-url
+    :domain-objects-url domain-objects-url
+    :jdbc-driver-url    jdbc-driver-url}))
 
 (defn eval-jpql [jpql]
   (-> em (.createQuery jpql) (.getResultList)))
