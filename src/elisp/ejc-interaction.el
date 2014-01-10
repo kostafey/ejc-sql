@@ -46,8 +46,8 @@ If not, launch it, return nil. Return t otherwise."
      (ejc-jpa-connect (ejc-jpa-connection-name    conn-struct)
                       (ejc-jpa-persistent-xml-url conn-struct)
                       (ejc-jpa-domain-objects-url conn-struct)
-                      (ejc-jpa-jdbc-driver-url    conn-struct)))
-    (setq-local ejc-connection-struct conn-struct)))
+                      (ejc-jpa-jdbc-driver-url    conn-struct))))
+  (setq-local ejc-connection-struct conn-struct))
 
 (defun ejc-get-sql-from-string (sql)
   (let* ((sql (replace-regexp-in-string ejc-clear-sql-regexp "" sql))
@@ -68,7 +68,7 @@ If not, launch it, return nil. Return t otherwise."
                :return-value :stdout)
 
 (clomacs-defun ejc--eval-jpql
-               ejc-sql.jpa/eval-jpql
+               ejc-sql.jpa/eval-jpql-print
                :lib-name "ejc-sql"
                :namespace ejc-sql.jpa
                :return-type :string

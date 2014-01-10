@@ -31,3 +31,11 @@
 
 (defn eval-jpql [jpql]
   (-> em (.createQuery jpql) (.getResultList)))
+
+(defn row-to-str [row]
+  (if (or (instance? Object[] %) (seq? row))
+    (map str row)
+    (str row)))
+
+(defn eval-jpql-print [jpql]
+  (print (map row-to-str (eval-jpql jpql))))
