@@ -146,7 +146,11 @@
   (define-key
     ejc-sql-mode-keymap
     [menu-bar ejc-menu ds]
-    '("Dress SQL" . ejc-dress-sql-at-point)))
+    '("Dress SQL" . ejc-dress-sql-at-point))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu sl]
+    '("Show log" . ejc-open-log)))
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
@@ -339,23 +343,10 @@ If the buffer is not exists - create it."
 ;;-----------------------------------------------------------------------------
 ;; log buffer
 ;;
-(defun ejc-create-sql-log-buffer ()
-  (let ((sql-log-buffer (get-buffer-create ejc-sql-log-buffer-name)))
-    (save-excursion
-      (set-buffer sql-log-buffer)
-      (set-visited-file-name ejc-sql-log-file-path t t)
-      (setq view-read-only t)
-      (sql-ansi-mode)
-      (auto-complete-mode t)
-      (auto-fill-mode t))
-    sql-log-buffer))
-
-(defun ejc-switch-to-sql-log-buffer ()
+(defun ejc-open-log ()
   (interactive)
-  (switch-to-buffer
-   (ejc-get-buffer-or-create
-    ejc-sql-log-buffer-name
-    'ejc-create-sql-log-buffer)))
+  (find-file-read-only (ejc-get-log-file-path))
+  (end-of-buffer))
 ;;
 ;;-----------------------------------------------------------------------------
 

@@ -46,6 +46,8 @@
 (defn get-sql-log-file-path []
   (ejc-sql.lib/get-absolute-file-path sql-log-file-path))
 
+(defn print-sql-log-file-path [] (get-sql-log-file-path))
+
 (def select-on-manipulation-errors
   (list
    "Method only for queries" ; informix
