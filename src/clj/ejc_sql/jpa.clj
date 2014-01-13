@@ -30,12 +30,17 @@
     :jdbc-driver-url    jdbc-driver-url}))
 
 (defn eval-jpql [jpql]
-  (-> em (.createQuery jpql) (.getResultList)))
+  (-> em (.createQuery jpql) (.getResultList) (.toArray)))
 
 (defn row-to-str [row]
-  (if (or (instance? Object[] %) (seq? row))
+  (if (and (instance? Object[] row)
+           (not (instance? String row))
+           (not (instance? Number row))
+           (not (instance? java.util.Date row)))
     (map str row)
-    (str row)))
+    (list (str row))))
 
 (defn eval-jpql-print [jpql]
-  (print (map row-to-str (eval-jpql jpql))))
+  (print
+   (format-output (map row-to-str (eval-jpql jpql))
+                  :as-arrays? true, :add-headers? false)))

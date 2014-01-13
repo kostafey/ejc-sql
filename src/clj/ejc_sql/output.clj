@@ -49,14 +49,19 @@
   (let [column-string (str column-symbol)]
     (.substring (str column-symbol) 1 (count column-string))))
 
-(defn format-output [rs & {:keys [as-arrays?]
-                           :or {as-arrays? false}}]
+(count '(1 2 3))
+(range 3)
+
+(defn format-output [rs & {:keys [as-arrays? add-headers?]
+                           :or {as-arrays? false
+                                add-headers? true}}]
   (let [records-data (if as-arrays?
-                       (rest rs)
+                       (if add-headers? (rest rs) rs)
                        (filter-data (get-rs-data rs)))
-        headers-data (if as-arrays?
-                       (map get-column-name (first rs))
-                       (get-rs-headers rs))
+        headers-data (if add-headers? (if as-arrays?
+                                        (map get-column-name (first rs))
+                                        (get-rs-headers rs))
+                         (range (count rs)))
         longest-list (find-longest-list
                       (get-rs-lengths (cons headers-data records-data)))
         col-step 2
