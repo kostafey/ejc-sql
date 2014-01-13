@@ -150,7 +150,11 @@
   (define-key
     ejc-sql-mode-keymap
     [menu-bar ejc-menu ol]
-    '("Open log" . ejc-open-log)))
+    '("Open log" . ejc-open-log))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu sl]
+    '("Show last result" . ejc-show-last-result)))
 
 (defvar ejc-results-buffer nil
   "The results buffer.")

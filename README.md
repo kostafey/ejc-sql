@@ -58,11 +58,21 @@ New keybindings added to `sql-mode-map`:
  <kbd>`C-c C-c`</kbd> | `ejc-eval-user-sql-at-point`       | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
  <kbd>C-x t</kbd>     | `ejc-toggle-popup-results-buffer`  | Swithes between auto hidding results buffer, or not.
  <kbd>C-h t</kbd>     | `ejc-describe-table`               | Describe SQL table.
+ <kbd>C-c s</kbd>     | `ejc-strinp-sql-at-point`          | Strip SQL
+ <kbd>C-c S</kbd>     | `ejc-dress-sql-at-point`           | Dress SQL
 
-Some handy interactive functions:
+List of other interactive functions
 
-* `ejc-show-last-result`
-* `ejc-switch-to-sql-editor-buffer`
+ Command                            | Description
+------------------------------------|------------------------------------------
+ `ejc-format-sql-at-point`          | Format SQL
+ `ejc-mark-this-sql`                | Mark SQL script bounded by the `ejc-sql-separator` or/and buffer boundaries
+ `ejc-show-tables-list`             | Show tables list
+ `ejc-show-constraints-list`        | Show constraints list
+ `ejc-show-procedures-list`         | Show procedures list
+ `ejc-open-log`                     | Open log
+ `ejc-show-last-result`             | Show last result
+ `ejc-switch-to-sql-editor-buffer`  | Create buffer with `ejc-sql-mode`
 
 ## Requirements:
 
