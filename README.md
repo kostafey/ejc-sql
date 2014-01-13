@@ -2,7 +2,12 @@
 
 The project is still in deep alpha...
 
-The idea is to use clojure jdbc lib to eval sql scripts from emacs.
+**ejc-sql** provides a simple way to interact with database via java/clojure
+  libs to run SQL/JPQL scripts from emacs:
+
+* SQL support by clojure jdbc lib.
+* JPQL support by OpenJPA (experimental).
+* HQL is planning...
 
 ## Installation
 
@@ -17,7 +22,7 @@ The configuration of ejs-sql might looks like this:
 
 (require 'ejc-sql)
 
-; Create your database connection configuration:
+; Create your jdbc database connection configuration:
 (setq my-db-connection (make-ejc-db-conn
                         :classpath (concat
                                     "/home/user/lib/"
@@ -27,46 +32,50 @@ The configuration of ejs-sql might looks like this:
                         :subname "//localhost:3306/my_db_name"
                         :user "a_user"
                         :password "secret"))
-```
 
-## Configuration
-
-```lisp
-; Some keybindings - modify this on your taste:
-(global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
-(global-set-key (kbd "C-x C-s") 'ejc-switch-to-sql-editor-buffer)
+; Create your JPA configuration:
+(setq my-jpa-connection
+  (make-ejc-jpa
+       ; persistence-unit tag, name attrubute
+       :connection-name    "connectionName"
+       ; path to META-INF/persistence.xml file
+       :persistent-xml-url "/home/user/workspace/project/src/java/"
+       ; path to domain classes
+       :domain-objects-url "/home/user/workspace/project/classes/"
+       :jdbc-driver-url    (concat "/home/user/lib/"
+                                   "mysql-connector-java-3.1.13-bin.jar")))
 ```
 
 ## Usage
 
+First of all, run to connect `(ejc-connect "my-db-connection")` or `M-x
+ejc-connect <RET> my-db-connection <RET>`
+
 New keybindings added to `sql-mode-map`:
 
-* <kbd>C-c C-c</kbd> `ejc-eval-user-sql-at-point`
-* <kbd>C-x t</kbd> `ejc-toggle-popup-results-buffer`
-* <kbd>C-h t</kbd> `ejc-describe-table`
+ Key                  | Command                            | Description
+----------------------|------------------------------------|------------------------------------------------------
+ <kbd>`C-c C-c`</kbd> | `ejc-eval-user-sql-at-point`       | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
+ <kbd>C-x t</kbd>     | `ejc-toggle-popup-results-buffer`  | Swithes between auto hidding results buffer, or not.
+ <kbd>C-h t</kbd>     | `ejc-describe-table`               | Describe SQL table.
 
-Some usage remarks:
+Some handy interactive functions:
 
-* Using ejc-sql reqires nrepl process is running, so execution
-`ejc-ensure-nrepl-runnig` ensures this.
-* Run to connect `(ejc-connect "my-db-connection")`
-or `M-x ejc-connect <RET> my-db-connection <RET>`
-* `ejc-toggle-popup-results-buffer` -- Swithes between auto hidding results
-buffer, or not.
-* `ejc-eval-user-sql-at-point` -- Evaluate SQL bounded by the
-`ejc-sql-separator` or/and buffer boundaries.
+* `ejc-show-last-result`
+* `ejc-switch-to-sql-editor-buffer`
 
 ## Requirements:
 
 * [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 24.
 * [Leiningen](http://leiningen.org) 2.x
-* [clomacs](https://github.com/kostafey/clomacs)
+* [clomacs](https://github.com/clojure-emacs/clomacs)
 * [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.3.0
+* [OpenJPA](http://openjpa.apache.org/) 2.2.2
 * [popwin-el](https://github.com/m2ym/popwin-el)
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 
 ## License
 
-Copyright © 2012-2013 Kostafey <kostafey@gmail.com>
+Copyright © 2012-2014 Kostafey <kostafey@gmail.com>
 
 Distributed under the General Public License 2.0+
