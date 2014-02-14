@@ -49,9 +49,6 @@
   (let [column-string (str column-symbol)]
     (.substring (str column-symbol) 1 (count column-string))))
 
-(count '(1 2 3))
-(range 3)
-
 (defn format-output [rs & {:keys [as-arrays? add-headers?]
                            :or {as-arrays? false
                                 add-headers? true}}]

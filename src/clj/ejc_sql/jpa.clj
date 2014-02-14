@@ -5,7 +5,10 @@
         [ejc-sql.output])
   (:import [javax.persistence Persistence
                               EntityManager
-                              TypedQuery]))
+                              TypedQuery]
+           [org.apache.commons.lang3.builder
+              ReflectionToStringBuilder
+              ToStringStyle]))
 
 (def em)
 
@@ -33,14 +36,13 @@
   (-> em (.createQuery jpql) (.getResultList) (.toArray)))
 
 (defn row-to-str [row]
-  (if (and (instance? Object[] row)
-           (not (instance? String row))
-           (not (instance? Number row))
-           (not (instance? java.util.Date row)))
-    (map str row)
+  (if (not (array? row))
+    (ReflectionToStringBuilder/toString
+     row ToStringStyle/SHORT_PREFIX_STYLE)
     (list (str row))))
 
 (defn eval-jpql-print [jpql]
   (print
    (format-output (map row-to-str (eval-jpql jpql))
                   :as-arrays? true, :add-headers? false)))
+

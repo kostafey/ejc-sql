@@ -26,6 +26,9 @@
   [seq elm]
   (some #(= elm %) seq))
 
+(defn array? [x]
+  (-> x .getClass .isArray))
+
 (defn trim [s]
   (if (instance? java.lang.String s)
     (.trim s)

@@ -75,6 +75,7 @@
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
+(define-key ejc-sql-mode-keymap (kbd "C-x <up>") 'ejc-show-last-result)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
 (define-key ejc-sql-mode-keymap (kbd "C-c s") 'ejc-strinp-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-c S") 'ejc-dress-sql-at-point)
