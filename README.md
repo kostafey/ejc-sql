@@ -81,7 +81,7 @@ List of other interactive functions
 * [clomacs](https://github.com/clojure-emacs/clomacs)
 * [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.3.0
 * [OpenJPA](http://openjpa.apache.org/) 2.2.2
-* [popwin-el](https://github.com/m2ym/popwin-el)
+<!-- * [popwin-el](https://github.com/m2ym/popwin-el) -->
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 
 ## License

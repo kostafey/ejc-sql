@@ -66,7 +66,7 @@
 
 (require 'cl)
 (require 'sql)
-(require 'popwin)
+;; (require 'popwin)
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'ejc-interaction)
@@ -313,9 +313,10 @@ If this buffer is not exists or it was killed - create buffer via
       (insert result))
     (toggle-read-only 1)
     (beginning-of-buffer)
-    (if ejc-popup-results-buffer
-        (popwin:popup-buffer output-buffer)
-      (popwin:display-buffer output-buffer))))
+    ;; (if ejc-popup-results-buffer
+    ;;     (popwin:popup-buffer output-buffer)
+    ;;   (popwin:display-buffer output-buffer))
+    (display-buffer output-buffer)))
 ;;
 ;;-----------------------------------------------------------------------------
 
