@@ -62,18 +62,20 @@
   "The core SQL evaluation function."
   [& {:keys [db sql]
       :or {db ejc-sql.connect/db}}]
-  (try
-    (list :result-set
-          (j/query db (list sql) :as-arrays? true))
-    (catch SQLException e
-      (list :message
-            (if (is-manipulation-error (.getMessage e))
-              (try
-                (str "Records affected: "
-                     (first (j/execute! db (list sql))))
-                (catch SQLException e
-                  (str "Error: "(.getMessage e))))
-              (str "Error: " (.getMessage e)))))))
+  (last
+   (for [sql-part (seq (.split sql ";"))]
+     (try
+       (list :result-set
+             (j/query db (list sql-part) :as-arrays? true))
+       (catch SQLException e
+         (list :message
+               (if (is-manipulation-error (.getMessage e))
+                 (try
+                   (str "Records affected: "
+                        (first (j/execute! db (list sql-part))))
+                   (catch SQLException e
+                     (str "Error: "(.getMessage e))))
+                 (str "Error: " (.getMessage e)))))))))
 
 (defn eval-user-sql [sql & {:keys [sql-log-file-path]
                             :or {sql-log-file-path (get-sql-log-file-path)}}]
