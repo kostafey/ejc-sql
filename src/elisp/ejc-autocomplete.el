@@ -1,6 +1,6 @@
 ;;; ejc-autocomplete.el -- SQL completitions at point (the part of ejc-sql).
 
-;;; Copyright © 2013 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2014 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -91,7 +91,15 @@ The owners list probably should not be changed very often.")
                 " WHERE owner = "owner"              \n"))
        ((eq :objects meta-type)
         (concat "SELECT * FROM all_objects WHERE object_type IN "
-                "('FUNCTION','PROCEDURE','PACKAGE')")))))))
+                "('FUNCTION','PROCEDURE','PACKAGE')"))))
+     ;;--------
+     ;; h2
+     ;;--------
+     ((string-match "h2" ejc-db-type)
+      ((eq :tables meta-type)
+       (concat "SELECT TABLE_NAME              \n"
+               "FROM INFORMATION_SCHEMA.TABLES \n"
+               "WHERE TABLE_SCHEMA='PUBLIC'"))))))
 
 (defun ejc-get-owners-list ()
   (ejc--eval-get-list (ejc--select-db-meta-script :owners)))
