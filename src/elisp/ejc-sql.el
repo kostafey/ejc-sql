@@ -305,7 +305,8 @@ If this buffer is not exists or it was killed - create buffer via
 (defun ejc-show-last-result (&optional result)
   "Popup buffer with last SQL execution result output."
   (interactive)
-  (let ((output-buffer (ejc-get-output-buffer)))
+  (let ((output-buffer (ejc-get-output-buffer))
+        (old-split split-width-threshold))
     (set-buffer output-buffer)
     (when result
       (toggle-read-only -1)
@@ -316,7 +317,10 @@ If this buffer is not exists or it was killed - create buffer via
     ;; (if ejc-popup-results-buffer
     ;;     (popwin:popup-buffer output-buffer)
     ;;   (popwin:display-buffer output-buffer))
-    (display-buffer output-buffer)))
+    (setq split-width-threshold nil)
+    (display-buffer output-buffer)
+    (setq split-width-threshold old-split)))
+
 ;;
 ;;-----------------------------------------------------------------------------
 
