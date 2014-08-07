@@ -1,6 +1,6 @@
 ;;; ejc-sql.el -- Uses clojure jdbc lib to eval sql scripts from emacs.
 
-;;; Copyright © 2012, 2013 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2014 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -52,9 +52,6 @@
 ;; * (kbd "C-x t")   'ejc-toggle-popup-results-buffer
 ;; * (kbd "C-h t")   'ejc-describe-table
 ;;
-;; * Using ejc-sql reqires nrepl process is running, so execution
-;; `ejc-ensure-nrepl-runnig' ensures this.
-;;
 ;; * Run to connect (ejc-connect "my-db-connection")
 ;; or M-x ejc-connect <RET> my-db-connection <RET>
 ;;
@@ -74,6 +71,7 @@
 
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
+(define-key ejc-sql-mode-keymap (kbd "C-x S") 'ejc-eval-user-sql-region)
 (define-key ejc-sql-mode-keymap (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
 (define-key ejc-sql-mode-keymap (kbd "C-x <up>") 'ejc-show-last-result)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
@@ -172,6 +170,8 @@
 
 (defvar ejc-popup-results-buffer t
   "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
+
+(defvar ejc-connection-name-history nil)
 
 (defun ejc-connect (arg)
   "Connect to selected db."

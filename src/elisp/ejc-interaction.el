@@ -1,17 +1,11 @@
 ;;; ejc-interaction.el -- ejc-sql interact with clojure.
 
-;;; Copyright © 2013 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2014 - Kostafey <kostafey@gmail.com>
 
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'clomacs)
 (require 'clomacs-lib)
-
-(defun ejc-ensure-nrepl-runnig ()
-  "Ensures nrepl is runnig.
-If not, launch it, return nil. Return t otherwise."
-  (interactive)
-  (clomacs-ensure-nrepl-runnig))
 
 (clomacs-defun ejc-sql-set-db 
                ejc-sql.connect/set-db
@@ -25,12 +19,17 @@ If not, launch it, return nil. Return t otherwise."
                :namespace ejc-sql.jpa
                :doc "Define ejc-sql.jpa/em var.")
 
+(clomacs-defun ejc-add-classpath
+               add-classpath
+               :lib-name "ejc-sql"
+               :namespace cemerick.pomegranate)
+
 (defun ejc-connect-to-db (conn-struct)
   (case (ejc-get-connection-type conn-struct)
     ;;----------------------------------------------------------------------
     ;; is JDBC/SQL
     (:sql
-     (clomacs-add-to-cp (ejc-db-conn-classpath conn-struct))
+     (ejc-add-classpath (ejc-db-conn-classpath conn-struct))
      (clomacs-import (read (ejc-db-conn-classname conn-struct)))
      (ejc-sql-set-db (ejc-db-conn-classname   conn-struct)
                      (ejc-db-conn-subprotocol conn-struct)
