@@ -49,14 +49,11 @@
 ;;
 ;; New keybindings added to `sql-mode-map':
 ;; * (kbd "C-c C-c") 'ejc-eval-user-sql-at-point
-;; * (kbd "C-x t")   'ejc-toggle-popup-results-buffer
 ;; * (kbd "C-h t")   'ejc-describe-table
 ;;
 ;; * Run to connect (ejc-connect "my-db-connection")
 ;; or M-x ejc-connect <RET> my-db-connection <RET>
 ;;
-;; * `ejc-toggle-popup-results-buffer' -- Swithes between auto hidding results
-;; buffer, or not.
 ;;
 ;; * `ejc-eval-user-sql-at-point' -- Evaluate SQL bounded by the
 ;; `ejc-sql-separator' or/and buffer boundaries.
@@ -71,7 +68,6 @@
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-x S") 'ejc-eval-user-sql-region)
-(define-key ejc-sql-mode-keymap (kbd "C-x t") 'ejc-toggle-popup-results-buffer)
 (define-key ejc-sql-mode-keymap (kbd "C-x <up>") 'ejc-show-last-result)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
 (define-key ejc-sql-mode-keymap (kbd "C-c s") 'ejc-strinp-sql-at-point)
@@ -113,10 +109,6 @@
     ejc-sql-mode-keymap
     [menu-bar ejc-menu ev]
     '("Eval SQL" . ejc-eval-user-sql-at-point))
-  (define-key
-    ejc-sql-mode-keymap
-    [menu-bar ejc-menu tg]
-    '("Toggle popup results" . ejc-toggle-popup-results-buffer))
   (define-key
     ejc-sql-mode-keymap
     [menu-bar ejc-menu fs]
@@ -166,9 +158,6 @@
   "SQL scripts logs filepath.")
 (defvar ejc-sql-log-buffer-name "sql_log.txt"
   "The buffer for view SQL scripts logs.")
-
-(defvar ejc-popup-results-buffer t
-  "Swithes between `popwin:popup-buffer' and `popwin:display-buffer'.")
 
 (defvar ejc-connection-name-history nil)
 
@@ -291,13 +280,6 @@ If this buffer is not exists or it was killed - create buffer via
       ejc-results-buffer
     (ejc-create-output-buffer)))
 
-(defun ejc-toggle-popup-results-buffer ()
-  (interactive)
-  (setq ejc-popup-results-buffer (not ejc-popup-results-buffer))
-  (if ejc-popup-results-buffer
-      (message "Popup window.")
-    (message "Normal window.")))
-
 (defun ejc-show-last-result (&optional result)
   "Popup buffer with last SQL execution result output."
   (interactive)
@@ -310,9 +292,6 @@ If this buffer is not exists or it was killed - create buffer via
       (insert result))
     (toggle-read-only 1)
     (beginning-of-buffer)
-    ;; (if ejc-popup-results-buffer
-    ;;     (popwin:popup-buffer output-buffer)
-    ;;   (popwin:display-buffer output-buffer))
     (setq split-width-threshold nil)
     (display-buffer output-buffer)
     (setq split-width-threshold old-split)))

@@ -40,7 +40,6 @@ New keybindings added to `sql-mode-map`:
  Key_____              | Command_______________             | Description
 -----------------------|------------------------------------|------------------------------------------------------
  <kbd>C-c C-c</kbd>    | `ejc-eval-user-sql-at-point`       | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
- <kbd>C-x t</kbd>      | `ejc-toggle-popup-results-buffer`  | Swithes between auto hidding results buffer, or not.
  <kbd>C-h t</kbd>      | `ejc-describe-table`               | Describe SQL table.
  <kbd>C-h up</kbd>     | `ejc-show-last-result`             | Show last result.
  <kbd>C-c s</kbd>      | `ejc-strinp-sql-at-point`          | Strip SQL (trim java string tokens).
