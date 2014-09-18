@@ -63,7 +63,6 @@
 
 (require 'cl)
 (require 'sql)
-;; (require 'popwin)
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'ejc-interaction)
@@ -230,9 +229,6 @@ point)."
       "\n"
       (ejc-eval-sql-and-log (ejc--select-db-meta-script
                              :constraints owner table))))))
-
-;; (ejc-connect-to-db my-db-connection)
-;; (ejc-eval-user-sql "select * from users")
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."

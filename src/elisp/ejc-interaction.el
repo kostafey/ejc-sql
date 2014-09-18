@@ -7,7 +7,7 @@
 (require 'clomacs)
 (require 'clomacs-lib)
 
-(clomacs-defun ejc-sql-set-db 
+(clomacs-defun ejc-sql-set-db
                ejc-sql.connect/set-db
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect
@@ -24,7 +24,12 @@
                :lib-name "ejc-sql"
                :namespace cemerick.pomegranate)
 
+(clomacs-defun ejc-require
+               clojure.core/require
+               :lib-name "ejc-sql")
+
 (defun ejc-connect-to-db (conn-struct)
+  (ejc-require `'cemerick.pomegranate)
   (case (ejc-get-connection-type conn-struct)
     ;;----------------------------------------------------------------------
     ;; is JDBC/SQL

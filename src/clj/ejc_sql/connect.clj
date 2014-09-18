@@ -1,6 +1,6 @@
 ;;; connect.clj -- Core clojure functions for ejc-sql emacs extension.
 
-;;; Copyright © 2013 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2014 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
         [ejc-sql.lib]
         [ejc-sql.output])
   (:require [clojure.java.jdbc :as j]
-            [clojure.java.jdbc.sql :as s]
+            [clojure.java.jdbc.deprecated :as jd]
             [clojure.contrib.java-utils])
   (:import [java.sql Connection
                      DriverManager
@@ -99,9 +99,9 @@
 
 (defn table-meta
   [table-name]
-  (j/with-connection db
+  (jd/with-connection db
     (let
-        [connect (j/connection)
+        [connect (jd/connection)
          statement (.createStatement connect)
          execResult (try
                       (list
