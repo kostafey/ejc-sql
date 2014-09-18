@@ -3,11 +3,7 @@
 The project is still in deep alpha...
 
 **ejc-sql** provides a simple way to interact with database via java/clojure
-  libs to run SQL/JPQL scripts from emacs:
-
-* SQL support by clojure jdbc lib.
-* JPQL support by OpenJPA (experimental).
-* HQL is planning...
+  libs to run SQL scripts from emacs.
 
 ## Installation
 
@@ -32,18 +28,6 @@ The configuration of ejs-sql might looks like this:
                         :subname "//localhost:3306/my_db_name"
                         :user "a_user"
                         :password "secret"))
-
-; Create your JPA configuration:
-(setq my-jpa-connection
-  (make-ejc-jpa
-       ; persistence-unit tag, name attrubute
-       :connection-name    "connectionName"
-       ; path to META-INF/persistence.xml file
-       :persistent-xml-url "/home/user/workspace/project/src/java/"
-       ; path to domain classes
-       :domain-objects-url "/home/user/workspace/project/classes/"
-       :jdbc-driver-url    (concat "/home/user/lib/"
-                                   "mysql-connector-java-3.1.13-bin.jar")))
 ```
 
 ## Usage
@@ -79,7 +63,7 @@ List of other interactive functions
 * [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 24.
 * [Leiningen](http://leiningen.org) 2.x
 * [clomacs](https://github.com/clojure-emacs/clomacs)
-* [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.3.0
+* [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.3.5
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 
 ## License

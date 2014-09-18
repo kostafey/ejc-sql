@@ -67,31 +67,33 @@ The owners list probably should not be changed very often.")
      ;; oracle
      ;;--------
      ((string-match "oracle" ejc-db-type)
-      (cond
-       ((eq :owners meta-type)
-        (concat "select DISTINCT(owner) "
-                " from ALL_OBJECTS"))
-       ((eq :tables meta-type)
-        (concat " SELECT table_name, owner \n"
-                " FROM all_tables          \n"
-                " WHERE owner = " owner))
-       ((eq :columns meta-type)
-        (concat " SELECT column_name             \n"
-                " FROM ALL_TAB_COLUMNS           \n"
-                " WHERE table_name = '" table "' \n"))
-       ((eq :constraints meta-type)
-        (if table
-            (concat " SELECT * FROM all_constraints    \n"
-                    " WHERE owner = "owner"            \n"
-                    "       AND table_name = '"table"' \n")
-          "SELECT * FROM user_constraints"))
-       ((eq :procedures meta-type)
-        (concat " SELECT object_name, procedure_name \n"
-                " FROM all_procedures                \n"
-                " WHERE owner = "owner"              \n"))
-       ((eq :objects meta-type)
-        (concat "SELECT * FROM all_objects WHERE object_type IN "
-                "('FUNCTION','PROCEDURE','PACKAGE')"))))
+      (let ((owner (upcase owner)))
+        (cond
+         ((eq :owners meta-type)
+          (concat "select DISTINCT(owner) "
+                  " from ALL_OBJECTS"))
+         ((eq :tables meta-type)
+          (concat " SELECT table_name, owner \n"
+                  " FROM all_tables          \n"
+                  (if owner
+                      (concat " WHERE owner = " owner) "")))
+         ((eq :columns meta-type)
+          (concat " SELECT column_name             \n"
+                  " FROM ALL_TAB_COLUMNS           \n"
+                  " WHERE table_name = '" table "' \n"))
+         ((eq :constraints meta-type)
+          (if table
+              (concat " SELECT * FROM all_constraints    \n"
+                      " WHERE owner = "owner"            \n"
+                      "       AND table_name = '"table"' \n")
+            "SELECT * FROM user_constraints"))
+         ((eq :procedures meta-type)
+          (concat " SELECT object_name, procedure_name \n"
+                  " FROM all_procedures                \n"
+                  " WHERE owner = "owner"              \n"))
+         ((eq :objects meta-type)
+          (concat "SELECT * FROM all_objects WHERE object_type IN "
+                  "('FUNCTION','PROCEDURE','PACKAGE')")))))
      ;;--------
      ;; h2
      ;;--------
@@ -116,7 +118,7 @@ The owners list probably should not be changed very often.")
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
   (save-excursion
-    (let ((dot (search-backward "." nil t))
+    (let ((dot (save-excursion (search-backward "." nil t)))
           (space (re-search-backward "[ \n\t\r.]+" nil t)))
       (if (and dot
                space
@@ -125,30 +127,39 @@ The owners list probably should not be changed very often.")
         nil))))
 
 (defun ejc-get-completitions-list ()
-  (if (and (ejc--select-db-meta-script :owners)
-           (not ejc-owners-list))
-      (setq ejc-owners-list (ejc-get-owners-list)))
-  (let* ((prefix-1 (ejc-get-prefix-word))
-         (prefix-2 (save-excursion
-                     (search-backward "." nil t)
-                     (ejc-get-prefix-word)))
-         (owner (if (and prefix-1
-                         (not prefix-2))
-                    (if (member prefix-1 ejc-owners-list)
-                        prefix-1)
-                  (if (and prefix-2 (member prefix-2 ejc-owners-list))
-                      prefix-2)))
-         (tables-list (ejc-get-tables-list owner))
-         (table (if (and prefix-1
-                         (not (equal prefix-1 owner))
-                         (member prefix-1 tables-list))
-                    prefix-1)))
-    (if (and (not table)
-             (not owner))
-        (append ejc-owners-list tables-list)
-      (if (not table)
-          tables-list
-        (ejc-get-columns-list owner table)))))
+  "Possible completions list according to already typed prefixes."
+  (message "Reciving database srtucture...")
+  (let ((need-owners? (ejc--select-db-meta-script :owners)))
+    (if (and need-owners? (not ejc-owners-list))
+        (setq ejc-owners-list (ejc-get-owners-list)))
+    (let* ((prefix-1 (ejc-get-prefix-word))
+           (prefix-2 (save-excursion
+                       (search-backward "." nil t)
+                       (ejc-get-prefix-word)))
+           (owner
+            (cond ((and prefix-1
+                        (not prefix-2)
+                        (member prefix-1 ejc-owners-list)) prefix-1)
+                  ((and prefix-2
+                        (member prefix-2 ejc-owners-list)) prefix-2)
+                  (t ejc-db-owner)))
+           (tables-list (ejc-get-tables-list owner))
+           (table (if (and prefix-1
+                           (not (equal prefix-1 owner))
+                           (member prefix-1 tables-list))
+                      prefix-1)))
+      (message "")
+      (cond
+       ;; owner.table._<colomns-list>
+       (prefix-2 (ejc-get-columns-list owner table))
+       ;; [owner|table]._<tables-list|colomns-list>
+       (prefix-1 (if (and need-owners?
+                          (member prefix-1 ejc-owners-list))
+                     tables-list
+                   (if (member prefix-1 tables-list)
+                       (ejc-get-columns-list owner table))))
+       ;; _<owners-list&tables-list>
+       (t (append ejc-owners-list tables-list))))))
 
 ;;;###autoload
 (defun ejc-candidates ()

@@ -42,7 +42,7 @@
                      (ejc-db-conn-user        conn-struct)
                      (ejc-db-conn-password    conn-struct))
      (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct))
-     (setq ejc-db-owner (ejc-db-conn-owner conn-struct))
+     (setq ejc-db-owner (ejc-db-conn-user conn-struct))
      (setq ejc-db-name (ejc-get-db-name (ejc-db-conn-subname conn-struct))))
     ;;----------------------------------------------------------------------
     ;; is JPA/JPQL

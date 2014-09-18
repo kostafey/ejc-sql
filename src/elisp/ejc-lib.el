@@ -1,6 +1,6 @@
 ;;; ejc-lib.el -- ejc-sql shared objects (the part of ejc-sql).
 
-;;; Copyright © 2013 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2014 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
   "The type of RDBMS.")
 
 (defvar ejc-db-owner nil
-  "The db owner for oracle.")
+  "The db owner/schema.")
 
 (defvar ejc-db-name nil
   "Database name.")
@@ -60,7 +60,6 @@
   (subprotocol "<sql-kind>")
                                         ; db connection path
                                         ; locale, like ru_RU.1251
-  (owner "<owner-or-scheme-name>")
   (subname (concat
             "://<db-host>:<db-port>:"
             "<db-server>=<server-name>;"
