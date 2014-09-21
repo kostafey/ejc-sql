@@ -96,4 +96,8 @@
         (error (concat "Can't find file " search-file-name))
       result)))
 
+(defun ejc-strip-text-properties (txt)
+  (set-text-properties 0 (length txt) nil txt)
+      txt)
+
 (provide 'ejc-lib)

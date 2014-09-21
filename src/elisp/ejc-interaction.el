@@ -5,7 +5,6 @@
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'clomacs)
-(require 'clomacs-lib)
 
 (clomacs-defun ejc-sql-set-db
                ejc-sql.connect/set-db
