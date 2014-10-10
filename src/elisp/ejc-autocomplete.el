@@ -19,13 +19,17 @@
 (require 'auto-complete)
 (require 'ejc-lib)
 
-(defvar ejc-owners-list nil
+(defvar ejc-owners-cache nil
   "Owners list cache.
 The owners list probably should not be changed very often.")
 
-(defun ejc-clear-owners-list ()
+(defvar ejc-tables-cache nil
+  "Tables list cache.")
+
+(defun ejc-invalidate-cache ()
   (interactive)
-  (setq ejc-owners-list nil))
+  (setq ejc-owners-cache nil)
+  (setq ejc-tables-cache nil))
 
 ;;;###autoload
 (defun ejc--select-db-meta-script (meta-type &optional owner table)
@@ -130,8 +134,8 @@ The owners list probably should not be changed very often.")
   "Possible completions list according to already typed prefixes."
   (message "Reciving database srtucture...")
   (let ((need-owners? (ejc--select-db-meta-script :owners)))
-    (if (and need-owners? (not ejc-owners-list))
-        (setq ejc-owners-list (ejc-get-owners-list)))
+    (if (and need-owners? (not ejc-owners-cache))
+        (setq ejc-owners-cache (ejc-get-owners-list)))
     (let* ((prefix-1 (ejc-get-prefix-word))
            (prefix-2 (save-excursion
                        (search-backward "." nil t)
@@ -139,11 +143,18 @@ The owners list probably should not be changed very often.")
            (owner
             (cond ((and prefix-1
                         (not prefix-2)
-                        (member prefix-1 ejc-owners-list)) prefix-1)
+                        (member prefix-1 ejc-owners-cache)) prefix-1)
                   ((and prefix-2
-                        (member prefix-2 ejc-owners-list)) prefix-2)
+                        (member prefix-2 ejc-owners-cache)) prefix-2)
                   (t ejc-db-owner)))
-           (tables-list (ejc-get-tables-list owner))
+           (tables-list (let ((cache (lax-plist-get ejc-tables-cache owner)))
+                          (if cache
+                              cache
+                            (let ((new-cach (ejc-get-tables-list owner)))
+                              (setq ejc-tables-cache
+                                    (lax-plist-put
+                                     ejc-tables-cache owner new-cach))
+                              new-cach))))
            (table (if (and prefix-1
                            (not (equal prefix-1 owner))
                            (member prefix-1 tables-list))
@@ -154,12 +165,12 @@ The owners list probably should not be changed very often.")
        (prefix-2 (ejc-get-columns-list owner table))
        ;; [owner|table]._<tables-list|colomns-list>
        (prefix-1 (if (and need-owners?
-                          (member prefix-1 ejc-owners-list))
+                          (member prefix-1 ejc-owners-cache))
                      tables-list
                    (if (member prefix-1 tables-list)
                        (ejc-get-columns-list owner table))))
        ;; _<owners-list&tables-list>
-       (t (append ejc-owners-list tables-list))))))
+       (t (append ejc-owners-cache tables-list))))))
 
 ;;;###autoload
 (defun ejc-candidates ()
