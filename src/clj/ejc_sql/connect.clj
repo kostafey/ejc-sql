@@ -49,14 +49,24 @@
 (defn print-sql-log-file-path []
   (print (get-sql-log-file-path)))
 
-(def select-on-manipulation-errors
-  (list
-   "Method only for queries" ; informix
-   "Can not issue data manipulation statements with executeQuery()." ; mySQL
-   ))
+(def dml-set
+  #{"SELECT"
+    "INSERT"
+    "UPDATE"
+    "DELETE"})
 
-(defn is-manipulation-error [err-msg]
-  (ejc-sql.lib/in? (map #(.equals err-msg %) select-on-manipulation-errors) true))
+(def ignore-set #{"(" "["})
+
+(defn determine-dml [sql]
+  "Determine if current SQL is Data Manipulation Language (DML) case."
+  (let [sql (.trim sql)
+        pos (loop [rest-sql sql
+                   pos 0]
+              (let [symb (subs rest-sql 0 1)]
+                (if (ignore-set symb)
+                  (recur (subs rest-sql 1) (inc pos))
+                  pos)))]
+    (dml-set (.toUpperCase (subs sql pos 6)))))
 
 (defn eval-sql-core
   "The core SQL evaluation function."
@@ -65,17 +75,15 @@
   (last
    (for [sql-part (seq (.split sql ";"))]
      (try
-       (list :result-set
-             (j/query db (list sql-part) :as-arrays? true))
+       (if (determine-dml sql-part)
+         (list :result-set
+               (j/query db (list sql-part) :as-arrays? true))
+         (list :message
+               (str "Records affected: "
+                    (first (j/execute! db (list sql-part))))))
        (catch SQLException e
          (list :message
-               (if (is-manipulation-error (.getMessage e))
-                 (try
-                   (str "Records affected: "
-                        (first (j/execute! db (list sql-part))))
-                   (catch SQLException e
-                     (str "Error: "(.getMessage e))))
-                 (str "Error: " (.getMessage e)))))))))
+               (str "Error: "(.getMessage e))))))))
 
 (defn eval-user-sql [sql & {:keys [sql-log-file-path]
                             :or {sql-log-file-path (get-sql-log-file-path)}}]
