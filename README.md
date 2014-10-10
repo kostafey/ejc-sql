@@ -1,6 +1,6 @@
 # ejc-sql
 
-The project is still in deep alpha...
+The project is going to become beta...
 
 **ejc-sql** provides a simple way to interact with database via java/clojure
   libs to run SQL scripts from emacs.
@@ -37,13 +37,13 @@ ejc-connect <RET> my-db-connection <RET>`
 
 New keybindings added to `sql-mode-map`:
 
- Key_____              | Command_______________             | Description
------------------------|------------------------------------|------------------------------------------------------
- <kbd>C-c C-c</kbd>    | `ejc-eval-user-sql-at-point`       | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
- <kbd>C-h t</kbd>      | `ejc-describe-table`               | Describe SQL table.
- <kbd>C-h up</kbd>     | `ejc-show-last-result`             | Show last result.
- <kbd>C-c s</kbd>      | `ejc-strinp-sql-at-point`          | Strip SQL (trim java string tokens).
- <kbd>C-c S</kbd>      | `ejc-dress-sql-at-point`           | Dress SQL (to copy-paste it to java code).
+ Keyboard shortcut  | Command                       | Description
+--------------------|-------------------------------|------------------------------------------------------
+ <kbd>C-c C-c</kbd> | `ejc-eval-user-sql-at-point`  | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
+ <kbd>C-h t</kbd>   | `ejc-describe-table`          | Describe SQL table.
+ <kbd>C-h up</kbd>  | `ejc-show-last-result`        | Show last result.
+ <kbd>C-c s</kbd>   | `ejc-strinp-sql-at-point`     | Strip SQL (trim java string tokens).
+ <kbd>C-c S</kbd>   | `ejc-dress-sql-at-point`      | Dress SQL (to copy-paste it to java code).
 
 List of other interactive functions
 
@@ -63,6 +63,7 @@ List of other interactive functions
 * [Leiningen](http://leiningen.org) 2.x
 * [clomacs](https://github.com/clojure-emacs/clomacs)
 * [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.3.5
+* [dash](https://github.com/magnars/dash.el)
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 
 ## License

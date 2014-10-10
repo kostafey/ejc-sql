@@ -16,6 +16,7 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
+(require 'dash)
 (require 'auto-complete)
 (require 'ejc-lib)
 
@@ -108,25 +109,28 @@ The owners list probably should not be changed very often.")
                "WHERE TABLE_SCHEMA='PUBLIC'"))))))
 
 (defun ejc-get-owners-list ()
-  (ejc--eval-get-list (ejc--select-db-meta-script :owners)))
+  (-distinct (ejc--eval-get-list (ejc--select-db-meta-script :owners))))
 
 (defun ejc-get-tables-list (&optional owner)
-  (ejc--eval-get-list (ejc--select-db-meta-script :tables owner)))
+  (-distinct (ejc--eval-get-list (ejc--select-db-meta-script :tables owner))))
 
 (defun ejc-get-columns-list (owner table)
   (ejc--eval-get-list (ejc--select-db-meta-script :columns owner table)))
 
 (defun ejc-get-procedures-list (&optional owner)
-  (ejc--eval-get-list (ejc--select-db-meta-script :procedures)))
+  (-distinct (ejc--eval-get-list (ejc--select-db-meta-script :procedures))))
 
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
   (save-excursion
-    (let ((dot (save-excursion (search-backward "." nil t)))
+    (let ((space-dist (save-excursion
+                        (re-search-backward "[ \n\t\r]+" nil t)))
+          (dot (search-backward "." nil t))
           (space (re-search-backward "[ \n\t\r.]+" nil t)))
       (if (and dot
                space
-               (> dot space)) ; is a dot completition
+               (> dot space)
+               (<= space-dist space)) ; is a dot completition
           (buffer-substring (1+ space) dot)
         nil))))
 
@@ -150,11 +154,11 @@ The owners list probably should not be changed very often.")
            (tables-list (let ((cache (lax-plist-get ejc-tables-cache owner)))
                           (if cache
                               cache
-                            (let ((new-cach (ejc-get-tables-list owner)))
+                            (let ((new-cache (ejc-get-tables-list owner)))
                               (setq ejc-tables-cache
                                     (lax-plist-put
-                                     ejc-tables-cache owner new-cach))
-                              new-cach))))
+                                     ejc-tables-cache owner new-cache))
+                              new-cache))))
            (table (if (and prefix-1
                            (not (equal prefix-1 owner))
                            (member prefix-1 tables-list))
@@ -170,7 +174,7 @@ The owners list probably should not be changed very often.")
                    (if (member prefix-1 tables-list)
                        (ejc-get-columns-list owner table))))
        ;; _<owners-list&tables-list>
-       (t (append ejc-owners-cache tables-list))))))
+       (t (-distinct (append ejc-owners-cache tables-list)))))))
 
 ;;;###autoload
 (defun ejc-candidates ()
