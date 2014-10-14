@@ -169,6 +169,7 @@
                           (car ejc-connection-name-history) nil nil
                           'ejc-connection-name-history)))
   (let ((db (eval (intern arg))))
+    (ejc-invalidate-cache)
     (message "Connection started...")
     (ejc-connect-to-db db)
     (message "Connected.")))

@@ -134,7 +134,16 @@ The owners list probably should not be changed very often.")
           (buffer-substring (1+ space) dot)
         nil))))
 
-(defun ejc-get-completitions-list ()
+(defvar ejc-ansi-sql-words
+  '("select" "where" "and" "or" "from" "insert" "update" "delete" "join"
+    "order" "by" "distinct" "create" "alter" "drop"))
+
+(defun ejc-get-ansi-sql-words ()
+  (append ejc-ansi-sql-words
+          (mapcar 'upcase ejc-ansi-sql-words)))
+
+;;;###autoload
+(defun ejc-candidates ()
   "Possible completions list according to already typed prefixes."
   (message "Reciving database srtucture...")
   (let ((need-owners? (ejc--select-db-meta-script :owners)))
@@ -174,15 +183,29 @@ The owners list probably should not be changed very often.")
                    (if (member prefix-1 tables-list)
                        (ejc-get-columns-list owner table))))
        ;; _<owners-list&tables-list>
-       (t (-distinct (append ejc-owners-cache tables-list)))))))
+       (t (-distinct (append ejc-owners-cache tables-list
+                             (ejc-get-ansi-sql-words))))))))
 
-;;;###autoload
-(defun ejc-candidates ()
-  (append '("select" "where" "from" "insert" "update" "delete" "drop")
-           (ejc-get-completitions-list)))
+(defun ejc-return-point ()
+  (let ((curr-char (buffer-substring
+                    (save-excursion
+                      (left-char 1)
+                      (point))
+                    (point))))
+    (if (equal curr-char ".")
+        (point)
+      nil)))
 
 (defvar ac-source-ejc-sql
-  '((candidates . ejc-candidates)))
+  '((candidates . ejc-candidates)
+    (requires . 1)
+    (cache . t)))
+
+(defvar ac-source-ejc-sql-point
+  '((candidates . ejc-candidates)
+    (prefix . ejc-return-point)
+    (requires . 0)
+    (cache . t)))
 
 ;;;###autoload
 (defun ejc-ac-setup ()
@@ -190,7 +213,6 @@ The owners list probably should not be changed very often.")
 This affects only the current buffer."
   (interactive)
   (add-to-list 'ac-sources 'ac-source-ejc-sql)
-  ;(setq ac-auto-start 0)
-  )
+  (add-to-list 'ac-sources 'ac-source-ejc-sql-point ))
 
 (provide 'ejc-autocomplete)
