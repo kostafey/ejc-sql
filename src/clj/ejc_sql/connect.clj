@@ -75,12 +75,13 @@
   (last
    (for [sql-part (seq (.split sql ";"))]
      (try
-       (if (determine-dml sql-part)
-         (list :result-set
-               (j/query db (list sql-part) :as-arrays? true))
-         (list :message
-               (str "Records affected: "
-                    (first (j/execute! db (list sql-part))))))
+       (let [sql-query-word (determine-dml sql-part)]
+         (if (and sql-query-word (.equals sql-query-word "SELECT"))
+           (list :result-set
+                 (j/query db (list sql-part) :as-arrays? true))
+           (list :message
+                 (str "Records affected: "
+                      (first (j/execute! db (list sql-part)))))))
        (catch SQLException e
          (list :message
                (str "Error: "(.getMessage e))))))))
