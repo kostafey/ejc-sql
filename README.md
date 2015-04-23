@@ -42,6 +42,7 @@ New keybindings added to `sql-mode-map`:
  <kbd>C-c C-c</kbd> | `ejc-eval-user-sql-at-point`  | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
  <kbd>C-h t</kbd>   | `ejc-describe-table`          | Describe SQL table.
  <kbd>C-h up</kbd>  | `ejc-show-last-result`        | Show last result.
+ <kbd>C-c t</kbd>   | `ejc-show-tables-list`        | Show tables list.
  <kbd>C-c s</kbd>   | `ejc-strinp-sql-at-point`     | Strip SQL (trim java string tokens).
  <kbd>C-c S</kbd>   | `ejc-dress-sql-at-point`      | Dress SQL (to copy-paste it to java code).
 
@@ -68,6 +69,6 @@ List of other interactive functions
 
 ## License
 
-Copyright © 2012-2014 Kostafey <kostafey@gmail.com>
+Copyright © 2012-2015 Kostafey <kostafey@gmail.com>
 
 Distributed under the General Public License 2.0+

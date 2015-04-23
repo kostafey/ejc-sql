@@ -1,6 +1,6 @@
 ;;; ejc-sql.el -- Uses clojure jdbc lib to eval sql scripts from emacs.
 
-;;; Copyright © 2012-2014 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2015 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@
 (define-key ejc-sql-mode-keymap (kbd "C-x S") 'ejc-eval-user-sql-region)
 (define-key ejc-sql-mode-keymap (kbd "C-x <up>") 'ejc-show-last-result)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
+(define-key ejc-sql-mode-keymap (kbd "C-c t") 'ejc-show-tables-list)
 (define-key ejc-sql-mode-keymap (kbd "C-c s") 'ejc-strinp-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-c S") 'ejc-dress-sql-at-point)
 
