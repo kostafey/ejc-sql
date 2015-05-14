@@ -1,6 +1,6 @@
 ;;; ejc-interaction.el -- ejc-sql interact with clojure.
 
-;;; Copyright © 2013-2014 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2015 - Kostafey <kostafey@gmail.com>
 
 (require 'ejc-lib)
 (require 'ejc-format)
@@ -27,6 +27,10 @@
                clojure.core/require
                :lib-name "ejc-sql")
 
+(clomacs-defun ejc-import
+               clojure.core/import
+               :lib-name "ejc-sql")
+
 (defun ejc-connect-to-db (conn-struct)
   (ejc-require `'cemerick.pomegranate)
   (case (ejc-get-connection-type conn-struct)
@@ -34,7 +38,7 @@
     ;; is JDBC/SQL
     (:sql
      (ejc-add-classpath (ejc-db-conn-classpath conn-struct))
-     (clomacs-import (read (ejc-db-conn-classname conn-struct)))
+     (ejc-import (read (ejc-db-conn-classname conn-struct)))
      (ejc-sql-set-db (ejc-db-conn-classname   conn-struct)
                      (ejc-db-conn-subprotocol conn-struct)
                      (ejc-db-conn-subname     conn-struct)
@@ -102,8 +106,14 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect)
 
+(clomacs-defun ejc-print
+               clojure.core/print
+               :lib-name "ejc-sql"
+               :return-type :string
+               :return-value :stdout)
+
 (defun ejc-get-table-meta (table-name)
-  (clomacs-print (ejc--get-table-meta table-name)))
+  (ejc-print (ejc--get-table-meta table-name)))
 
 (clomacs-defun ejc-get-log-file-path
                ejc-sql.connect/print-sql-log-file-path
