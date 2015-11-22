@@ -176,4 +176,17 @@ buffer."
            (insert-string "\\n\" +"))
          (setq curr-line (1+ curr-line)))))))
 
+(defun ejc-flash-region (start end &optional timeout)
+  "Temporarily highlight region from START to END."
+  (let ((overlay (make-overlay start end)))
+    (overlay-put overlay 'face 'secondary-selection)
+    (run-with-timer (or timeout 0.2) nil 'delete-overlay overlay)))
+
+(defun ejc-flash-this-sql ()
+  "Select (mark) SQL around the point."
+  (interactive)
+  (ejc--in-sql-boundaries
+   beg end
+   (ejc-flash-region beg end)))
+
 (provide 'ejc-format)
