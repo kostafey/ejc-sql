@@ -1,6 +1,6 @@
 ;;; connect.clj -- Core clojure functions for ejc-sql emacs extension.
 
-;;; Copyright © 2013-2014 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2016 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -31,12 +31,13 @@
 
 (def db "DataBase connection properties list." nil)
 
-(defn set-db [classname subprotocol subname user password]
+(defn set-db [classname subprotocol subname user password database]
   (def db {:classname   classname
            :subprotocol subprotocol
            :subname     subname
            :user        user
-           :password    password}))
+           :password    password
+           :database    database}))
 
 (def sql-log-file-path
   "The sql queries logging filepath."
@@ -78,7 +79,7 @@
        (let [sql-query-word (determine-dml sql-part)]
          (if (and sql-query-word (.equals sql-query-word "SELECT"))
            (list :result-set
-                 (j/query db (list sql-part) :as-arrays? true))
+                 (j/query db (list sql-part) {:as-arrays? true}))
            (list :message
                  (str "Records affected: "
                       (first (j/execute! db (list sql-part)))))))

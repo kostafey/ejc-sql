@@ -1,6 +1,6 @@
 ;;; ejc-interaction.el -- ejc-sql interact with clojure.
 
-;;; Copyright © 2013-2015 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2016 - Kostafey <kostafey@gmail.com>
 
 (require 'ejc-lib)
 (require 'ejc-format)
@@ -43,7 +43,8 @@
                      (ejc-db-conn-subprotocol conn-struct)
                      (ejc-db-conn-subname     conn-struct)
                      (ejc-db-conn-user        conn-struct)
-                     (ejc-db-conn-password    conn-struct))
+                     (ejc-db-conn-password    conn-struct)
+                     (ejc-db-conn-database    conn-struct))
      (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct))
      (setq ejc-db-owner (ejc-db-conn-user conn-struct))
      (setq ejc-db-name (ejc-get-db-name (ejc-db-conn-subname conn-struct))))

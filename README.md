@@ -28,6 +28,17 @@ The configuration of ejs-sql might looks like this:
                         :subname "//localhost:3306/my_db_name"
                         :user "a_user"
                         :password "secret"))
+
+(setq ms-sql-db-connection (make-ejc-db-conn
+                            :classpath (concat
+                                        "~/.m2/repository/com/microsoft"
+                                        "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
+                            :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+                            :subprotocol "sqlserver"
+                            :subname "//localhost:1433"
+                            :user "a_user"
+                            :password "secret"
+                            :database "my_db_name"))
 ```
 
 ## Usage
@@ -63,12 +74,12 @@ List of other interactive functions
 * [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 24.
 * [Leiningen](http://leiningen.org) 2.x
 * [clomacs](https://github.com/clojure-emacs/clomacs)
-* [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.3.5
+* [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.5.8
 * [dash](https://github.com/magnars/dash.el)
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 
 ## License
 
-Copyright © 2012-2015 Kostafey <kostafey@gmail.com>
+Copyright © 2012-2016 Kostafey <kostafey@gmail.com>
 
 Distributed under the General Public License 2.0+
