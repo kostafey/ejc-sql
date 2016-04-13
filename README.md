@@ -10,7 +10,8 @@ The project is going to become beta...
 The configuration of ejs-sql might looks like this:
 
 ```lisp
-; Append ejs-sql to `load-path':
+;; Append ejs-sql to `load-path':
+
 (defvar site-lisp-path "~/.emacs.d/")
 (add-to-list
  'load-path
@@ -18,33 +19,50 @@ The configuration of ejs-sql might looks like this:
 
 (require 'ejc-sql)
 
-; Create your jdbc database connection configuration:
-(setq my-db-connection (make-ejc-db-conn
-                        :classpath (concat
-                                    "/home/user/lib/"
-                                    "mysql-connector-java-3.1.13-bin.jar")
-                        :classname "com.mysql.jdbc.Driver"
-                        :subprotocol "mysql"
-                        :subname "//localhost:3306/my_db_name"
-                        :user "a_user"
-                        :password "secret"))
+;; Create your jdbc database connections configuration:
 
-(setq ms-sql-db-connection (make-ejc-db-conn
-                            :classpath (concat
-                                        "~/.m2/repository/com/microsoft"
-                                        "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
-                            :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-                            :subprotocol "sqlserver"
-                            :subname "//localhost:1433"
-                            :user "a_user"
-                            :password "secret"
-                            :database "my_db_name"))
+(ejc-create-connection
+ "my-db-connection"
+ :classpath (concat
+             "/home/user/lib/"
+             "mysql-connector-java-3.1.13-bin.jar")
+ :classname "com.mysql.jdbc.Driver"
+ :subprotocol "mysql"
+ :subname "//localhost:3306/my_db_name"
+ :user "a_user"
+ :password "secret")
+
+(ejc-create-connection
+ "ms-sql-db-connection"
+ :classpath (concat
+             "~/.m2/repository/com/microsoft"
+             "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
+ :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+ :subprotocol "sqlserver"
+ :subname "//localhost:1433"
+ :user "a_user"
+ :password "secret"
+ :database "my_db_name")
 ```
 
 ## Usage
 
-First of all, run to connect `(ejc-connect "my-db-connection")` or `M-x
-ejc-connect <RET> my-db-connection <RET>`
+First of all, open your SQL buffer file (or any temporary buffer) and connect
+to database `M-x ejc-connect <RET> my-db-connection <RET>`.
+Since connection information is buffer-local you should use `ejc-connect`
+for any new buffer. There is handy function to create temporary buffer for
+playing with SQL: `ejc-switch-to-sql-editor-buffer`.
+
+Then type
+
+```SQL
+select <something> from <mytable>
+```
+and press `C-c C-c` to run it. Use '\' char to separate expressions to eval.
+It's possible to run multiple statements, you can use ';' to separate it.
+Have a much fun!
+
+## List of keybindings & functions
 
 New keybindings added to `sql-mode-map`:
 
@@ -68,6 +86,16 @@ List of other interactive functions
  `ejc-show-procedures-list`         | Show procedures list
  `ejc-open-log`                     | Open log
  `ejc-switch-to-sql-editor-buffer`  | Create buffer with `ejc-sql-mode`
+
+## Autocomplete
+
+Autocompletion is available for the following databases:
+
+* Informix
+* MySQL
+* Oracle
+* H2
+* MS SQL Server
 
 ## Requirements:
 

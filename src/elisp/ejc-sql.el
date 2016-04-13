@@ -33,15 +33,16 @@
 ;; (require 'ejc-sql)
 ;;
 ;; ; Create your database connection configuration:
-;; (setq my-db-connection (make-ejc-db-conn
-;;                         :classpath (concat
-;;                                     "/home/user/lib/"
-;;                                     "mysql-connector-java-3.1.13-bin.jar")
-;;                         :classname "com.mysql.jdbc.Driver"
-;;                         :subprotocol "mysql"
-;;                         :subname "//localhost:3306/my_db_name"
-;;                         :user "a_user"
-;;                         :password "secret"))
+;; (ejc-create-connection
+;;  "my-db-connection"
+;;  :classpath (concat
+;;              "/home/user/lib/"
+;;              "mysql-connector-java-3.1.13-bin.jar")
+;;  :classname "com.mysql.jdbc.Driver"
+;;  :subprotocol "mysql"
+;;  :subname "//localhost:3306/my_db_name"
+;;  :user "a_user"
+;;  :password "secret")
 ;;
 ;; ; Some keybindings - modify this on your taste:
 ;; (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
@@ -160,16 +161,49 @@
 (defvar ejc-sql-log-buffer-name "sql_log.txt"
   "The buffer for view SQL scripts logs.")
 
-(defvar ejc-connection-name-history nil)
+(defvar ejc-connections nil
+  "List of existing configured jdbc connections")
 
-(defun ejc-connect (arg)
+(cl-defun ejc-create-connection (connection-name
+                                 &optional &key
+                                 classpath
+                                 classname
+                                 subprotocol
+                                 subname
+                                 user
+                                 password
+                                 database)
+  "Add new connection configuration named CONNECTION-NAME
+to `ejc-connections' list."
+  (cl-remove connection-name
+             ejc-connections
+             :test (lambda (x y) (equal x (car y))))
+  (setq ejc-connections (cons (cons
+                               connection-name
+                               (make-ejc-db-conn
+                                :classpath classpath
+                                :classname classname
+                                :subprotocol subprotocol
+                                :subname subname
+                                :user user
+                                :password password
+                                :database database))
+                              ejc-connections)))
+
+(defun ejc-find-connection (connection-name)
+  "Return pair with name CONNECTION-NAME and db connection structure from
+`ejc-connections'."
+  (cl-find connection-name
+           ejc-connections
+           :test (lambda (x y) (equal x (car y)))))
+
+(defun ejc-connect (connection-name)
   "Connect to selected db."
   (interactive
    (list
-    (read-from-minibuffer "DataBase connection name: "
-                          (car ejc-connection-name-history) nil nil
-                          'ejc-connection-name-history)))
-  (let ((db (eval (intern arg))))
+    (ido-completing-read "DataBase connection name: "
+                         (mapcar 'car ejc-connections))))
+  (let ((db (cdr (ejc-find-connection connection-name))))
     (ejc-invalidate-cache)
     (message "Connection started...")
     (ejc-connect-to-db db)
