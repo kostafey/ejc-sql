@@ -62,7 +62,7 @@ The configuration of ejs-sql might looks like this:
 First of all, open your SQL buffer file (or any temporary buffer) and connect
 to database
 
-`M-x ejc-connect <RET> my-db-connection <RET>`.
+`M-x ejc-connect <RET> MySQL-db-connection <RET>`.
 
 and wait until "Connected." message appears.
 Since connection information is buffer-local you should use `ejc-connect`
@@ -74,8 +74,9 @@ Then type
 ```SQL
 select <something> from <mytable>
 ```
-and press `C-c C-c` to run it. Use '\' char to separate expressions to eval.
-It's possible to run multiple statements, you can use ';' to separate it.
+and press <kbd>C-c C-c</kbd> to run it. Use `\` char to separate expressions to
+eval. It's possible to run multiple statements, you can use `;` to separate it.
+
 Have a much fun!
 
 ## List of keybindings & functions
