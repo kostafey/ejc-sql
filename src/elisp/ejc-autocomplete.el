@@ -67,7 +67,11 @@ The owners list probably should not be changed very often.")
        ((eq :tables meta-type)
         (concat
          " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
-         " WHERE table_schema = '" ejc-db-name "'"))))
+         " WHERE table_schema = '" ejc-db-name "'"))
+       ((eq :columns meta-type)
+        (concat "SELECT column_name              \n"
+                "FROM INFORMATION_SCHEMA.COLUMNS \n"
+                "WHERE table_name = '" table "'  \n"))))
      ;;--------
      ;; oracle
      ;;--------
@@ -105,9 +109,13 @@ The owners list probably should not be changed very often.")
      ((string-match "h2" ejc-db-type)
       (cond
        ((eq :tables meta-type)
-        (concat "SELECT TABLE_NAME              \n"
+        (concat "SELECT table_name              \n"
                 "FROM INFORMATION_SCHEMA.TABLES \n"
-                "WHERE TABLE_SCHEMA='PUBLIC'"))))
+                "WHERE TABLE_SCHEMA='PUBLIC'"))
+       ((eq :columns meta-type)
+        (concat "SELECT column_name              \n"
+                "FROM INFORMATION_SCHEMA.COLUMNS \n"
+                "WHERE table_name = '" table "'  \n"))))
      ;;-------
      ;; ms sql server
      ;;-------

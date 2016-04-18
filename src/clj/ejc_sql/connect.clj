@@ -67,7 +67,9 @@
                 (if (ignore-set symb)
                   (recur (subs rest-sql 1) (inc pos))
                   pos)))]
-    (dml-set (.toUpperCase (subs sql pos 6)))))
+    (or
+     (dml-set (.toUpperCase (subs sql pos 6)))
+     (#{"SHOW"} (.toUpperCase (subs sql pos 4))))))
 
 (defn eval-sql-core
   "The core SQL evaluation function."
@@ -77,7 +79,8 @@
    (for [sql-part (seq (.split sql ";"))]
      (try
        (let [sql-query-word (determine-dml sql-part)]
-         (if (and sql-query-word (.equals sql-query-word "SELECT"))
+         (if (and sql-query-word (or (.equals sql-query-word "SELECT")
+                                     (.equals sql-query-word "SHOW")))
            (list :result-set
                  (j/query db (list sql-part) {:as-arrays? true}))
            (list :message

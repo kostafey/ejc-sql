@@ -21,19 +21,21 @@ The configuration of ejs-sql might looks like this:
 
 ;; Create your jdbc database connections configuration:
 
+;; MySQL example
 (ejc-create-connection
- "my-db-connection"
+ "MySQL-db-connection"
  :classpath (concat
-             "/home/user/lib/"
-             "mysql-connector-java-3.1.13-bin.jar")
+             "~/.m2/repository/mysql/mysql-connector-java/5.1.6/"
+             "mysql-connector-java-5.1.6.jar")
  :classname "com.mysql.jdbc.Driver"
  :subprotocol "mysql"
  :subname "//localhost:3306/my_db_name"
  :user "a_user"
  :password "secret")
 
+;; MS SQL Server example
 (ejc-create-connection
- "ms-sql-db-connection"
+ "MS-SQL-db-connection"
  :classpath (concat
              "~/.m2/repository/com/microsoft"
              "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
@@ -43,12 +45,26 @@ The configuration of ejs-sql might looks like this:
  :user "a_user"
  :password "secret"
  :database "my_db_name")
+
+;; H2 example
+(ejc-create-connection
+ "H2-db-connection"
+ :classpath "~/.m2/repository/com/h2database/h2/1.4.191/h2-1.4.191.jar"
+ :classname "org.h2.Driver"
+ :subprotocol "h2"
+ :subname "file://~/projects/my_proj/db/database;AUTO_SERVER=TRUE"
+ :user "a_user"
+ :password "secret")
 ```
 
 ## Usage
 
 First of all, open your SQL buffer file (or any temporary buffer) and connect
-to database `M-x ejc-connect <RET> my-db-connection <RET>`.
+to database
+
+`M-x ejc-connect <RET> my-db-connection <RET>`.
+
+and wait until "Connected." message appears.
 Since connection information is buffer-local you should use `ejc-connect`
 for any new buffer. There is handy function to create temporary buffer for
 playing with SQL: `ejc-switch-to-sql-editor-buffer`.
