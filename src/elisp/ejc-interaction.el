@@ -39,15 +39,12 @@
     (:sql
      (ejc-add-classpath (ejc-db-conn-classpath conn-struct))
      (ejc-import (read (ejc-db-conn-classname conn-struct)))
-     (ejc-sql-set-db (ejc-db-conn-classname   conn-struct)
-                     (ejc-db-conn-subprotocol conn-struct)
-                     (ejc-db-conn-subname     conn-struct)
-                     (ejc-db-conn-user        conn-struct)
-                     (ejc-db-conn-password    conn-struct)
-                     (ejc-db-conn-database    conn-struct))
+     (ejc-sql-set-db (ejc-connection-struct-to-plist conn-struct))
      (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct))
      (setq ejc-db-owner (ejc-db-conn-user conn-struct))
-     (setq ejc-db-name (ejc-get-db-name (ejc-db-conn-subname conn-struct))))
+     (setq ejc-db-name (or (ejc-db-conn-database conn-struct)
+                           (ejc-get-db-name
+                            (ejc-db-conn-subname conn-struct)))))
     ;;----------------------------------------------------------------------
     ;; is JPA/JPQL
     (:jpa
@@ -82,13 +79,15 @@
                :return-type :string
                :return-value :stdout)
 
-(defun ejc-eval-sql-and-log (sql)
+(defun ejc-eval-sql-and-log (db sql)
   "Core function to evaluate SQL queries.
 Prepare SQL string, evaluate SQL script and write them to log file"
   (if sql
       (let* ((prepared-sql (ejc-get-sql-from-string sql))
              (result (case (ejc-get-connection-type ejc-connection-struct)
-                       (:sql (ejc--eval-sql-and-log-print prepared-sql))
+                       (:sql (ejc--eval-sql-and-log-print
+                              db
+                              prepared-sql))
                        (:jpa (ejc--eval-jpql prepared-sql))
                        (nil "No database connection."))))
         result)))
@@ -113,8 +112,8 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :return-type :string
                :return-value :stdout)
 
-(defun ejc-get-table-meta (table-name)
-  (ejc-print (ejc--get-table-meta table-name)))
+(defun ejc-get-table-meta (db table-name)
+  (ejc-print (ejc--get-table-meta db table-name)))
 
 (clomacs-defun ejc-get-log-file-path
                ejc-sql.connect/print-sql-log-file-path

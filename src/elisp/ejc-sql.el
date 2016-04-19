@@ -61,6 +61,7 @@
 
 (require 'cl)
 (require 'sql)
+(require 'dash)
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'ejc-interaction)
@@ -161,6 +162,9 @@
 (defvar ejc-sql-log-buffer-name "sql_log.txt"
   "The buffer for view SQL scripts logs.")
 
+(defvar ejc-db nil
+  "JDBC connection for current SQL buffer.")
+
 (defvar ejc-connections nil
   "List of existing configured jdbc connections")
 
@@ -170,14 +174,14 @@
                                  classname
                                  subprotocol
                                  subname
+                                 subname
                                  user
                                  password
                                  database)
   "Add new connection configuration named CONNECTION-NAME
-to `ejc-connections' list."
-  (cl-remove connection-name
-             ejc-connections
-             :test (lambda (x y) (equal x (car y))))
+to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
+  (-remove (lambda (x) (equal (car x) connection-name))
+           ejc-connections)
   (setq ejc-connections (cons (cons
                                connection-name
                                (make-ejc-db-conn
@@ -193,9 +197,15 @@ to `ejc-connections' list."
 (defun ejc-find-connection (connection-name)
   "Return pair with name CONNECTION-NAME and db connection structure from
 `ejc-connections'."
-  (cl-find connection-name
-           ejc-connections
-           :test (lambda (x y) (equal x (car y)))))
+  (-find (lambda (x) (equal (car x) connection-name))
+         ejc-connections))
+
+(defun ejc-configure-sql-buffer ()
+  (sql-ansi-mode)
+  (auto-complete-mode t)
+  (auto-fill-mode t)
+  (ejc-sql-mode)
+  (ejc-sql-mode t))
 
 (defun ejc-connect (connection-name)
   "Connect to selected db."
@@ -204,6 +214,14 @@ to `ejc-connections' list."
     (ido-completing-read "DataBase connection name: "
                          (mapcar 'car ejc-connections))))
   (let ((db (cdr (ejc-find-connection connection-name))))
+    (ejc-configure-sql-buffer)
+    (make-local-variable 'ejc-db)
+    (make-local-variable 'ejc-db-type)
+    (make-local-variable 'ejc-db-owner)
+    (make-local-variable 'ejc-db-name)
+    (make-local-variable 'ejc-owners-cache)
+    (make-local-variable 'ejc-tables-cache)
+    (setq-local ejc-db (ejc-connection-struct-to-plist db))
     (ejc-invalidate-cache)
     (message "Connection started...")
     (ejc-connect-to-db db)
@@ -250,15 +268,16 @@ point)."
       (setq owner nil))
     (ejc-show-last-result
      (concat
-      (ejc-get-table-meta table-name)
+      (ejc-get-table-meta ejc-db table-name)
       "\n"
-      (ejc-eval-sql-and-log (ejc--select-db-meta-script
+      (ejc-eval-sql-and-log ejc-db
+                            (ejc--select-db-meta-script
                              :constraints owner table))))))
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
     (message "Processing SQL query...")
-    (ejc-show-last-result (ejc-eval-sql-and-log sql))
+    (ejc-show-last-result (ejc-eval-sql-and-log ejc-db sql))
     (message "Done SQL query."))
 
 (defun ejc-eval-user-sql-region (beg end)
@@ -344,11 +363,7 @@ If this buffer is not exists or it was killed - create buffer via
   (let ((sql-editor-buffer (get-buffer-create ejc-sql-editor-buffer-name)))
     (save-excursion
       (set-buffer sql-editor-buffer)
-      (sql-ansi-mode)
-      (auto-complete-mode t)
-      (auto-fill-mode t)
-      (ejc-sql-mode)
-      (ejc-sql-mode t))
+      (ejc-configure-sql-buffer))
     sql-editor-buffer))
 
 (defun ejc-switch-to-sql-editor-buffer ()

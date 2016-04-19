@@ -16,6 +16,8 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
+(require 'dash)
+
 (eval-when-compile (require 'cl))
 
 (defvar ejc-connection-struct nil)
@@ -38,7 +40,8 @@
   (let* ((separator (if (equal (first (split-string subname "/")) subname)
                         ":" "/"))
          (raw-db-name (first (last (split-string subname separator))))
-         (raw-db-name (first (split-string raw-db-name "?"))))
+         (raw-db-name (first (split-string raw-db-name "?")))
+         (raw-db-name (first (split-string raw-db-name ";"))))
     raw-db-name))
 
 (defun ejc-get-connection-type (conn-struct)
@@ -78,6 +81,17 @@
   (persistent-xml-url "path to META-INF/persistence.xml")
   (domain-objects-url "path to classes/")
   (jdbc-driver-url    "<path>/<filename>.jar"))
+
+(defun ejc-connection-struct-to-plist (conn-struct)
+  (-filter
+   (lambda (x) (cdr x))
+   (list
+    `(:classname   . ,(ejc-db-conn-classname   conn-struct))
+    `(:subprotocol . ,(ejc-db-conn-subprotocol conn-struct))
+    `(:subname     . ,(ejc-db-conn-subname     conn-struct))
+    `(:user        . ,(ejc-db-conn-user        conn-struct))
+    `(:password    . ,(ejc-db-conn-password    conn-struct))
+    `(:database    . ,(ejc-db-conn-database    conn-struct)))))
 
 (defun ejc-add-quotes (str)
   (concat "\"" str "\""))

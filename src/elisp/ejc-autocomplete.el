@@ -29,8 +29,8 @@ The owners list probably should not be changed very often.")
 
 (defun ejc-invalidate-cache ()
   (interactive)
-  (setq ejc-owners-cache nil)
-  (setq ejc-tables-cache nil))
+  (setq-local ejc-owners-cache nil)
+  (setq-local ejc-tables-cache nil))
 
 ;;;###autoload
 (defun ejc--select-db-meta-script (meta-type &optional owner table)
@@ -129,16 +129,24 @@ The owners list probably should not be changed very often.")
                 "WHERE TABLE_NAME='" table "'      ")))))))
 
 (defun ejc-get-owners-list ()
-  (-distinct (ejc--eval-get-list (ejc--select-db-meta-script :owners))))
+  (-distinct (ejc--eval-get-list
+              ejc-db
+              (ejc--select-db-meta-script :owners))))
 
 (defun ejc-get-tables-list (&optional owner)
-  (-distinct (ejc--eval-get-list (ejc--select-db-meta-script :tables owner))))
+  (-distinct (ejc--eval-get-list
+              ejc-db
+              (ejc--select-db-meta-script :tables owner))))
 
 (defun ejc-get-columns-list (owner table)
-  (ejc--eval-get-list (ejc--select-db-meta-script :columns owner table)))
+  (ejc--eval-get-list
+   ejc-db
+   (ejc--select-db-meta-script :columns owner table)))
 
 (defun ejc-get-procedures-list (&optional owner)
-  (-distinct (ejc--eval-get-list (ejc--select-db-meta-script :procedures))))
+  (-distinct (ejc--eval-get-list
+              ejc-db
+              (ejc--select-db-meta-script :procedures))))
 
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
@@ -168,7 +176,7 @@ The owners list probably should not be changed very often.")
   (message "Reciving database srtucture...")
   (let ((need-owners? (ejc--select-db-meta-script :owners)))
     (if (and need-owners? (not ejc-owners-cache))
-        (setq ejc-owners-cache (ejc-get-owners-list)))
+        (setq-local ejc-owners-cache (ejc-get-owners-list)))
     (let* ((prefix-1 (ejc-get-prefix-word))
            (prefix-2 (save-excursion
                        (search-backward "." nil t)
@@ -184,9 +192,9 @@ The owners list probably should not be changed very often.")
                           (if cache
                               cache
                             (let ((new-cache (ejc-get-tables-list owner)))
-                              (setq ejc-tables-cache
-                                    (lax-plist-put
-                                     ejc-tables-cache owner new-cache))
+                              (setq-local ejc-tables-cache
+                                          (lax-plist-put
+                                           ejc-tables-cache owner new-cache))
                               new-cache))))
            (table (if (and prefix-1
                            (not (equal prefix-1 owner))

@@ -29,15 +29,13 @@
                      ResultSet
                      SQLException]))
 
-(def db "DataBase connection properties list." nil)
+(def db
+  "DataBase connection properties list from the last transaction.
+For debug purpose."
+  (atom nil))
 
-(defn set-db [classname subprotocol subname user password database]
-  (def db {:classname   classname
-           :subprotocol subprotocol
-           :subname     subname
-           :user        user
-           :password    password
-           :database    database}))
+(defn set-db [ejc-db]
+  (reset! db ejc-db))
 
 (def sql-log-file-path
   "The sql queries logging filepath."
@@ -74,7 +72,8 @@
 (defn eval-sql-core
   "The core SQL evaluation function."
   [& {:keys [db sql]
-      :or {db ejc-sql.connect/db}}]
+      :or {db @ejc-sql.connect/db}}]
+  (set-db db)
   (last
    (for [sql-part (seq (.split sql ";"))]
      (try
@@ -90,28 +89,32 @@
          (list :message
                (str "Error: "(.getMessage e))))))))
 
-(defn eval-user-sql [sql & {:keys [sql-log-file-path]
-                            :or {sql-log-file-path (get-sql-log-file-path)}}]
+(defn eval-user-sql [db sql & {:keys [sql-log-file-path]
+                               :or {sql-log-file-path (get-sql-log-file-path)}}]
   (let [clear-sql (.trim sql)]
     (ejc-sql.output/log-sql (str clear-sql "\n") sql-log-file-path)
-    (let [[result-type result] (eval-sql-core :sql clear-sql)]
+    (let [[result-type result] (eval-sql-core
+                                :db  db
+                                :sql clear-sql)]
       (if (= result-type :result-set)
         (ejc-sql.output/format-array-output result)
         result))))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
-  [sql]
-  (print (eval-user-sql sql :sql-log-file-path (get-sql-log-file-path))))
+  [db sql]
+  (print (eval-user-sql db sql :sql-log-file-path (get-sql-log-file-path))))
 
-(defn eval-sql-internal-get-column [sql]
-  (let [[result-type result] (eval-sql-core :sql sql)]
+(defn eval-sql-internal-get-column [db sql]
+  (let [[result-type result] (eval-sql-core :db db
+                                            :sql sql)]
     (if (= result-type :result-set)
       (-> result rest flatten)
       result)))
 
 (defn table-meta
-  [table-name]
+  [db table-name]
+  (set-db db)
   (jd/with-connection db
     (let
         [connect (jd/connection)
@@ -142,8 +145,8 @@
 
 (defn get-table-meta
   "Discribe table."
-  [table-name]
-  (let [result-map (table-meta table-name)
+  [db table-name]
+  (let [result-map (table-meta db table-name)
         success (:success result-map)
         result-data (:result result-map)
         head (str "Table ``" table-name "`` description:\n")
