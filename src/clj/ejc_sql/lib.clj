@@ -19,7 +19,9 @@
 (ns ejc-sql.lib
   (:import (java.io File)))
 
-;; (in-ns 'ejc-sql.lib)
+(def windows?
+  "The value is true if it runs under the os Windows."
+  (>= 0 (.indexOf (System/getProperty "os.name") "Windows")))
 
 (defn in?
   "true if seq contains elm"

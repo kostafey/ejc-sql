@@ -116,9 +116,9 @@ Prepare SQL string, evaluate SQL script and write them to log file"
   (ejc-print (ejc--get-table-meta db table-name)))
 
 (clomacs-defun ejc-get-log-file-path
-               ejc-sql.connect/print-sql-log-file-path
+               print-log-file-path
                :lib-name "ejc-sql"
-               :namespace ejc-sql.connect
+               :namespace ejc-sql.output
                :return-value :stdout)
 
 (provide 'ejc-interaction)

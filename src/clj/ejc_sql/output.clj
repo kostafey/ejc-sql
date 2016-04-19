@@ -25,15 +25,28 @@
            (java.util.Date)
            (java.text.SimpleDateFormat)))
 
-(defn log-sql [sql sql-log-file-path]
-  (let [is-new-file (if (not (. (clojure.contrib.java-utils/file
-                                 sql-log-file-path) exists))
-                      true false)]
-    (if is-new-file
-      (let [file (File. sql-log-file-path)]
-        (.mkdirs (File. (.getParent file)))
-        (.createNewFile file)))
-    (with-open [wrtr (clojure.java.io/writer sql-log-file-path :append true)]
+(defn get-log-dir []
+  (file (if windows?
+          (System/getenv "AppData")
+          "/var/log/")
+        "ejc-sql"))
+
+(defn get-log-file []
+  (file (get-log-dir)
+        (str (.format (new java.text.SimpleDateFormat
+                           "yyyy-MM-dd")
+                      (new java.util.Date)) ".log")))
+
+(defn print-log-file-path []
+  (print (.getPath (get-log-file))))
+
+(defn log-sql [sql]
+  (let [log-file (get-log-file)
+        is-new-file (not (.exists log-file))]
+    (when is-new-file
+      (.mkdirs (File. (.getParent log-file)))
+      (.createNewFile log-file))
+    (with-open [wrtr (clojure.java.io/writer log-file :append true)]
       (if is-new-file
         (.write wrtr (str "-- -*- mode: sql; -*-\n"
                           "-- Local Variables:\n"

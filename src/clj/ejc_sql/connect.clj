@@ -37,17 +37,6 @@ For debug purpose."
 (defn set-db [ejc-db]
   (reset! db ejc-db))
 
-(def sql-log-file-path
-  "The sql queries logging filepath."
-  (str (System/getProperty  "user.home")
-       "/.ejc-sql/sql_log.txt"))
-
-(defn get-sql-log-file-path []
-  (ejc-sql.lib/get-absolute-file-path sql-log-file-path))
-
-(defn print-sql-log-file-path []
-  (print (get-sql-log-file-path)))
-
 (def dml-set
   #{"SELECT"
     "INSERT"
@@ -89,10 +78,9 @@ For debug purpose."
          (list :message
                (str "Error: "(.getMessage e))))))))
 
-(defn eval-user-sql [db sql & {:keys [sql-log-file-path]
-                               :or {sql-log-file-path (get-sql-log-file-path)}}]
+(defn eval-user-sql [db sql]
   (let [clear-sql (.trim sql)]
-    (ejc-sql.output/log-sql (str clear-sql "\n") sql-log-file-path)
+    (ejc-sql.output/log-sql (str clear-sql "\n"))
     (let [[result-type result] (eval-sql-core
                                 :db  db
                                 :sql clear-sql)]
@@ -103,7 +91,7 @@ For debug purpose."
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
   [db sql]
-  (print (eval-user-sql db sql :sql-log-file-path (get-sql-log-file-path))))
+  (print (eval-user-sql db sql)))
 
 (defn eval-sql-internal-get-column [db sql]
   (let [[result-type result] (eval-sql-core :db db
