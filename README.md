@@ -96,6 +96,8 @@ List of other interactive functions
 
  Command                            | Description
 ------------------------------------|------------------------------------------
+ `ejc-connect`                      | Connect to database for current buffer
+ `ejc-quit-connection`              | Close all database connections, quit Clojure REPL.
  `ejc-format-sql-at-point`          | Format SQL
  `ejc-mark-this-sql`                | Mark SQL script bounded by the `ejc-sql-separator` or/and buffer boundaries
  `ejc-show-tables-list`             | Show tables list

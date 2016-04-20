@@ -18,12 +18,7 @@
 
 (require 'dash)
 
-(eval-when-compile (require 'cl))
-
 (defvar ejc-connection-struct nil)
-
-(defvar ejc-db-type nil
-  "The type of RDBMS.")
 
 (defvar ejc-db-owner nil
   "The db owner/schema.")

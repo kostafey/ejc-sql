@@ -40,7 +40,6 @@
      (ejc-add-classpath (ejc-db-conn-classpath conn-struct))
      (ejc-import (read (ejc-db-conn-classname conn-struct)))
      (ejc-sql-set-db (ejc-connection-struct-to-plist conn-struct))
-     (setq ejc-db-type (ejc-db-conn-subprotocol conn-struct))
      (setq ejc-db-owner (ejc-db-conn-user conn-struct))
      (setq ejc-db-name (or (ejc-db-conn-database conn-struct)
                            (ejc-get-db-name
@@ -120,5 +119,12 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :lib-name "ejc-sql"
                :namespace ejc-sql.output
                :return-value :stdout)
+
+(defun ejc-quit-connection ()
+  (interactive)
+  (when (y-or-n-p  "Are you sure you want to close all jdbc connections?")
+    (cider--quit-connection (clomacs-get-connection "ejc-sql")))
+  (unless (cider-connected-p)
+    (cider-close-ancillary-buffers)))
 
 (provide 'ejc-interaction)

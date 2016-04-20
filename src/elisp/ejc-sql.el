@@ -59,9 +59,9 @@
 ;; * `ejc-eval-user-sql-at-point' -- Evaluate SQL bounded by the
 ;; `ejc-sql-separator' or/and buffer boundaries.
 
-(require 'cl)
 (require 'sql)
 (require 'dash)
+(require 'cl-lib)
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'ejc-interaction)
@@ -147,7 +147,11 @@
   (define-key
     ejc-sql-mode-keymap
     [menu-bar ejc-menu sl]
-    '("Show last result" . ejc-show-last-result)))
+    '("Show last result" . ejc-show-last-result))
+  (define-key
+    ejc-sql-mode-keymap
+    [menu-bar ejc-menu qc]
+    '("Quit connection" . ejc-quit-connection)))
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
@@ -216,7 +220,6 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   (let ((db (cdr (ejc-find-connection connection-name))))
     (ejc-configure-sql-buffer)
     (make-local-variable 'ejc-db)
-    (make-local-variable 'ejc-db-type)
     (make-local-variable 'ejc-db-owner)
     (make-local-variable 'ejc-db-name)
     (make-local-variable 'ejc-owners-cache)
@@ -387,6 +390,6 @@ If the buffer is not exists - create it."
 ;;
 ;;-----------------------------------------------------------------------------
 
-;; (shell-command "lein repl :headless")
-
 (provide 'ejc-sql)
+
+;;; ejc-sql.el ends here

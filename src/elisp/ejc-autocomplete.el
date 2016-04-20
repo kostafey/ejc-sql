@@ -36,12 +36,13 @@ The owners list probably should not be changed very often.")
 (defun ejc--select-db-meta-script (meta-type &optional owner table)
   (let ((owner (if owner
                    (ejc-add-squotes owner)
-                 (ejc-add-squotes ejc-db-owner))))
+                 (ejc-add-squotes ejc-db-owner)))
+        (db-type (ejc-db-conn-subprotocol ejc-connection-struct)))
     (cond
      ;;----------
      ;; informix
      ;;----------
-     ((string-match "informix" ejc-db-type)
+     ((string-match "informix" db-type)
       (cond
        ((eq :owners meta-type) nil)
        ((eq :tables meta-type)
@@ -61,7 +62,7 @@ The owners list probably should not be changed very often.")
      ;;-------
      ;; mysql
      ;;-------
-     ((string-match "mysql" ejc-db-type)
+     ((string-match "mysql" db-type)
       (cond
        ((eq :owners meta-type) nil)
        ((eq :tables meta-type)
@@ -75,7 +76,7 @@ The owners list probably should not be changed very often.")
      ;;--------
      ;; oracle
      ;;--------
-     ((string-match "oracle" ejc-db-type)
+     ((string-match "oracle" db-type)
       (let ((owner (upcase owner)))
         (cond
          ((eq :owners meta-type)
@@ -106,7 +107,7 @@ The owners list probably should not be changed very often.")
      ;;--------
      ;; h2
      ;;--------
-     ((string-match "h2" ejc-db-type)
+     ((string-match "h2" db-type)
       (cond
        ((eq :tables meta-type)
         (concat "SELECT table_name              \n"
@@ -119,7 +120,7 @@ The owners list probably should not be changed very often.")
      ;;-------
      ;; ms sql server
      ;;-------
-     ((string-match "sqlserver" ejc-db-type)
+     ((string-match "sqlserver" db-type)
       (cond
        ((eq :tables meta-type)
         "SELECT * FROM information_schema.tables")
