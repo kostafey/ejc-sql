@@ -180,8 +180,8 @@
                                  database)
   "Add new connection configuration named CONNECTION-NAME
 to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
-  (-remove (lambda (x) (equal (car x) connection-name))
-           ejc-connections)
+  (setq ejc-connections (-remove (lambda (x) (equal (car x) connection-name))
+                                 ejc-connections))
   (setq ejc-connections (cons (cons
                                connection-name
                                (make-ejc-db-conn
