@@ -105,6 +105,7 @@ List of other interactive functions
  `ejc-show-procedures-list`         | Show procedures list
  `ejc-open-log`                     | Open log
  `ejc-switch-to-sql-editor-buffer`  | Create buffer with `ejc-sql-mode`
+ `ejc-invalidate-cache`             | Clean your current connection cache (database owners and tables list)
 
 ## Autocomplete
 

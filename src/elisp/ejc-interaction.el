@@ -7,7 +7,7 @@
 (require 'clomacs)
 
 (clomacs-defun ejc-sql-set-db
-               ejc-sql.connect/set-db
+               set-db
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect
                :doc "Define ejc-sql.connect/db var.")
@@ -39,11 +39,7 @@
     (:sql
      (ejc-add-classpath (ejc-db-conn-classpath conn-struct))
      (ejc-import (read (ejc-db-conn-classname conn-struct)))
-     (ejc-sql-set-db (ejc-connection-struct-to-plist conn-struct))
-     (setq ejc-db-owner (ejc-db-conn-user conn-struct))
-     (setq ejc-db-name (or (ejc-db-conn-database conn-struct)
-                           (ejc-get-db-name
-                            (ejc-db-conn-subname conn-struct)))))
+     (ejc-sql-set-db (ejc-connection-struct-to-plist conn-struct)))
     ;;----------------------------------------------------------------------
     ;; is JPA/JPQL
     (:jpa

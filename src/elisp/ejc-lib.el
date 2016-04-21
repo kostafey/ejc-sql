@@ -18,13 +18,11 @@
 
 (require 'dash)
 
-(defvar ejc-connection-struct nil)
+(defvar-local ejc-connection-name nil
+  "Buffer-local connection name created with `ejc-create-connection'.")
 
-(defvar ejc-db-owner nil
-  "The db owner/schema.")
-
-(defvar ejc-db-name nil
-  "Database name.")
+(defvar-local ejc-connection-struct nil
+  "Buffer-local connection structure.")
 
 (defun ejc-string-endswith-p (s ending)
   "return non-nil if string S ends with ENDING."

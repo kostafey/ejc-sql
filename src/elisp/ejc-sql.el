@@ -67,6 +67,21 @@
 (require 'ejc-interaction)
 (require 'ejc-autocomplete)
 
+(defvar-local ejc-db nil
+  "JDBC connection info for current SQL buffer.")
+
+(defvar ejc-connections nil
+  "List of existing configured jdbc connections")
+
+(defvar ejc-results-buffer nil
+  "The results buffer.")
+
+(defvar ejc-results-buffer-name "*ejc-sql-output*"
+  "The results buffer name.")
+
+(defvar ejc-sql-editor-buffer-name "*ejc-sql-editor*"
+  "The buffer for conveniently edit ad-hoc SQL scripts.")
+
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-x S") 'ejc-eval-user-sql-region)
@@ -153,25 +168,6 @@
     [menu-bar ejc-menu qc]
     '("Quit connection" . ejc-quit-connection)))
 
-(defvar ejc-results-buffer nil
-  "The results buffer.")
-(defvar ejc-results-buffer-name "*ejc-sql-output*"
-  "The results buffer name.")
-
-(defvar ejc-sql-editor-buffer-name "*ejc-sql-editor*"
-  "The buffer for conveniently edit ad-hoc SQL scripts.")
-
-(defvar ejc-sql-log-file-path nil
-  "SQL scripts logs filepath.")
-(defvar ejc-sql-log-buffer-name "sql_log.txt"
-  "The buffer for view SQL scripts logs.")
-
-(defvar ejc-db nil
-  "JDBC connection for current SQL buffer.")
-
-(defvar ejc-connections nil
-  "List of existing configured jdbc connections")
-
 (cl-defun ejc-create-connection (connection-name
                                  &optional &key
                                  classpath
@@ -219,13 +215,8 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
                          (mapcar 'car ejc-connections))))
   (let ((db (cdr (ejc-find-connection connection-name))))
     (ejc-configure-sql-buffer)
-    (make-local-variable 'ejc-db)
-    (make-local-variable 'ejc-db-owner)
-    (make-local-variable 'ejc-db-name)
-    (make-local-variable 'ejc-owners-cache)
-    (make-local-variable 'ejc-tables-cache)
+    (setq-local ejc-connection-name connection-name)
     (setq-local ejc-db (ejc-connection-struct-to-plist db))
-    (ejc-invalidate-cache)
     (message "Connection started...")
     (ejc-connect-to-db db)
     (message "Connected.")))

@@ -20,24 +20,68 @@
 (require 'auto-complete)
 (require 'ejc-lib)
 
-(defvar ejc-owners-cache nil
-  "Owners list cache.
-The owners list probably should not be changed very often.")
+(defvar ejc-connections-cache (make-hash-table :test #'equal)
+  "Tables and owners cache shared for all buffers of the same connection.
+It has the following example structure:
+  ('h2-payments' (:owners ('root')
+                  :tables ('root' ('users' 'payments')))
+   'mysql-sales' (:owners ('su' 'admin')
+                  :tables ('su' ('product' 'sales')
+                           'admin' ('log'))))")
 
-(defvar ejc-tables-cache nil
-  "Tables list cache.")
+(defun ejc-get-owners-cache ()
+  (let ((connection-cache (gethash ejc-connection-name ejc-connections-cache)))
+    (if connection-cache
+        (gethash :owners connection-cache))))
+
+(defun ejc-set-owners-cache (owners)
+  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
+         (connection-cache (or connection-cache
+                               (let ((cc (make-hash-table :test #'equal)))
+                                 (puthash ejc-connection-name
+                                          cc
+                                          ejc-connections-cache)
+                                 cc))))
+    (puthash :owners owners connection-cache)))
+
+(defun ejc-get-tables-cache (owner)
+  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
+         (owner-tables-cache (if connection-cache
+                                 (gethash :tables connection-cache))))
+    (if owner-tables-cache
+        (gethash owner owner-tables-cache))))
+
+(defun ejc-set-tables-cache (owner tables)
+  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
+         (connection-cache (or connection-cache
+                               (let ((cc (make-hash-table :test #'equal)))
+                                 (puthash ejc-connection-name
+                                          cc
+                                          ejc-connections-cache)
+                                 cc)))
+         (owner-tables-cache (gethash :tables connection-cache))
+         (owner-tables-cache (or owner-tables-cache
+                                 (let ((cc (make-hash-table :test #'equal)))
+                                   (puthash :tables
+                                            cc
+                                            connection-cache)
+                                   cc))))
+    (puthash owner tables owner-tables-cache)))
 
 (defun ejc-invalidate-cache ()
+  "Clean your current connection cache (database owners and tables list)."
   (interactive)
-  (setq-local ejc-owners-cache nil)
-  (setq-local ejc-tables-cache nil))
+  (remhash ejc-connection-name ejc-connections-cache))
 
 ;;;###autoload
 (defun ejc--select-db-meta-script (meta-type &optional owner table)
   (let ((owner (if owner
                    (ejc-add-squotes owner)
-                 (ejc-add-squotes ejc-db-owner)))
-        (db-type (ejc-db-conn-subprotocol ejc-connection-struct)))
+                 (ejc-add-squotes (ejc-db-conn-user ejc-connection-struct))))
+        (db-type (ejc-db-conn-subprotocol ejc-connection-struct))
+        (db-name (or (ejc-db-conn-database ejc-connection-struct)
+                     (ejc-get-db-name
+                      (ejc-db-conn-subname ejc-connection-struct)))))
     (cond
      ;;----------
      ;; informix
@@ -68,7 +112,7 @@ The owners list probably should not be changed very often.")
        ((eq :tables meta-type)
         (concat
          " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
-         " WHERE table_schema = '" ejc-db-name "'"))
+         " WHERE table_schema = '" db-name "'"))
        ((eq :columns meta-type)
         (concat "SELECT column_name              \n"
                 "FROM INFORMATION_SCHEMA.COLUMNS \n"
@@ -176,27 +220,28 @@ The owners list probably should not be changed very often.")
   "Possible completions list according to already typed prefixes."
   (message "Reciving database srtucture...")
   (let ((need-owners? (ejc--select-db-meta-script :owners)))
-    (if (and need-owners? (not ejc-owners-cache))
-        (setq-local ejc-owners-cache (ejc-get-owners-list)))
-    (let* ((prefix-1 (ejc-get-prefix-word))
+    (if (and need-owners? (not (ejc-get-owners-cache)))
+        (ejc-set-owners-cache (ejc-get-owners-list)))
+    (let* ((owners-cache (ejc-get-owners-cache))
+           (prefix-1 (ejc-get-prefix-word))
            (prefix-2 (save-excursion
                        (search-backward "." nil t)
                        (ejc-get-prefix-word)))
            (owner
             (cond ((and prefix-1
                         (not prefix-2)
-                        (member prefix-1 ejc-owners-cache)) prefix-1)
+                        (member prefix-1 owners-cache)) prefix-1)
                   ((and prefix-2
-                        (member prefix-2 ejc-owners-cache)) prefix-2)
-                  (t ejc-db-owner)))
-           (tables-list (let ((cache (lax-plist-get ejc-tables-cache owner)))
-                          (if cache
-                              cache
-                            (let ((new-cache (ejc-get-tables-list owner)))
-                              (setq-local ejc-tables-cache
-                                          (lax-plist-put
-                                           ejc-tables-cache owner new-cache))
-                              new-cache))))
+                        (member prefix-2 owners-cache)) prefix-2)
+                  ;; current db owner - user
+                  (t (ejc-db-conn-user ejc-connection-struct))))
+           (tables-list (let ((tables-cache (ejc-get-tables-cache owner)))
+                          (if tables-cache
+                              tables-cache
+                            (let ((new-tables-cache
+                                   (ejc-get-tables-list owner)))
+                              (ejc-set-tables-cache owner new-tables-cache)
+                              new-tables-cache))))
            (table (if (and prefix-1
                            (not (equal prefix-1 owner))
                            (member prefix-1 tables-list))
@@ -207,12 +252,12 @@ The owners list probably should not be changed very often.")
        (prefix-2 (ejc-get-columns-list owner table))
        ;; [owner|table]._<tables-list|colomns-list>
        (prefix-1 (if (and need-owners?
-                          (member prefix-1 ejc-owners-cache))
+                          (member prefix-1 owners-cache))
                      tables-list
                    (if (member prefix-1 tables-list)
                        (ejc-get-columns-list owner table))))
        ;; _<owners-list&tables-list>
-       (t (-distinct (append ejc-owners-cache tables-list
+       (t (-distinct (append owners-cache tables-list
                              (ejc-get-ansi-sql-words))))))))
 
 (defun ejc-return-point ()
