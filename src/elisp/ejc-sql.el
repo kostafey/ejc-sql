@@ -48,7 +48,7 @@
 ;; (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
 ;; (global-set-key (kbd "C-x C-s") 'ejc-switch-to-sql-editor-buffer)
 ;;
-;; New keybindings added to `sql-mode-map':
+;; New keybindings defined in `ejc-sql-mode' minor mode:
 ;; * (kbd "C-c C-c") 'ejc-eval-user-sql-at-point
 ;; * (kbd "C-h t")   'ejc-describe-table
 ;;
