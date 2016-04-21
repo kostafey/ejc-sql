@@ -1,6 +1,14 @@
 ;;; ejc-sql.el -- Uses clojure jdbc lib to eval sql scripts from emacs.
 
-;;; Copyright © 2012-2015 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2016 - Kostafey <kostafey@gmail.com>
+
+;; Author: Kostafey <kostafey@gmail.com>
+;; URL: https://github.com/clojure-emacs/clomacs
+;; Keywords: SQL, JDBC
+;; Version: 0.0.1
+;; Package-Requires: ((clomacs "0.0.2") (dash "2.12.1") (auto-complete "1.5.1"))
+
+;; This file is not part of GNU Emacs.
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
