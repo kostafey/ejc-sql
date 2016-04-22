@@ -30,11 +30,11 @@
     (string= (substring s (- 0 elength)) ending)))
 
 (defun ejc-get-db-name (subname)
-  (let* ((separator (if (equal (first (split-string subname "/")) subname)
+  (let* ((separator (if (equal (cl-first (split-string subname "/")) subname)
                         ":" "/"))
-         (raw-db-name (first (last (split-string subname separator))))
-         (raw-db-name (first (split-string raw-db-name "?")))
-         (raw-db-name (first (split-string raw-db-name ";"))))
+         (raw-db-name (cl-first (last (split-string subname separator))))
+         (raw-db-name (cl-first (split-string raw-db-name "?")))
+         (raw-db-name (cl-first (split-string raw-db-name ";"))))
     raw-db-name))
 
 (defun ejc-get-connection-type (conn-struct)
@@ -44,7 +44,7 @@
    ((ejc-jpa-p conn-struct) :jpa)
    (t nil)))
 
-(defstruct ejc-db-conn
+(cl-defstruct ejc-db-conn
   "DB connection information structure"
                                         ; path to jdbc jar file
   (classpath "<path>/<filename>.jar")
@@ -67,7 +67,7 @@
   (user "<user-name>")
   (password "<password>"))
 
-(defstruct ejc-jpa
+(cl-defstruct ejc-jpa
   "DB connection information structure for JPA"
   (type :jpa)
   (connection-name    "<persistence-unit name=")
