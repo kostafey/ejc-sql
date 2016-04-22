@@ -94,15 +94,15 @@ It has the following example structure:
                 " FROM systables AS t   "
                 " WHERE t.tabtype = 'T' "
                 "   AND t.tabid >= 100  "
-                " ORDER BY t.tabname;   ")))
-      ((eq :columns meta-type)
-       (concat " SELECT TRIM(c.colname) AS column_name \n"
-               "  FROM systables AS t, syscolumns AS c \n"
-               " WHERE t.tabid = c.tabid               \n"
-               "   AND t.tabtype = 'T'                 \n"
-               "   AND t.tabid >= 100                  \n"
-               "   AND TRIM(t.tabname) = '" table "'   \n"
-               " ORDER BY c.colno;                     \n")))
+                " ORDER BY t.tabname;   "))
+       ((eq :columns meta-type)
+        (concat " SELECT TRIM(c.colname) AS column_name \n"
+                "  FROM systables AS t, syscolumns AS c \n"
+                " WHERE t.tabid = c.tabid               \n"
+                "   AND t.tabtype = 'T'                 \n"
+                "   AND t.tabid >= 100                  \n"
+                "   AND TRIM(t.tabname) = '" table "'   \n"
+                " ORDER BY c.colno;                     \n"))))
      ;;-------
      ;; mysql
      ;;-------
