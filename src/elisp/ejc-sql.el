@@ -1,4 +1,4 @@
-;;; ejc-sql.el -- Uses clojure jdbc lib to eval sql scripts from emacs.
+;;; ejc-sql.el --- Uses clojure jdbc lib to eval sql scripts from emacs.
 
 ;;; Copyright © 2012-2016 - Kostafey <kostafey@gmail.com>
 
