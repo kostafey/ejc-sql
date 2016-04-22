@@ -95,7 +95,7 @@ Have a much fun!
 
 ## List of keybindings & functions
 
-New keybindings defined in `ejc-sql-mode' minor mode:
+New keybindings defined in `ejc-sql-mode` minor mode:
 
  Keyboard shortcut  | Command                       | Description
 --------------------|-------------------------------|------------------------------------------------------
