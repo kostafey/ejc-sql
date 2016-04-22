@@ -1,6 +1,14 @@
-;;; ejc-sql.el -- Uses clojure jdbc lib to eval sql scripts from emacs.
+;;; ejc-sql.el --- Uses clojure jdbc lib to eval sql scripts from emacs.
 
-;;; Copyright © 2012-2015 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2016 - Kostafey <kostafey@gmail.com>
+
+;; Author: Kostafey <kostafey@gmail.com>
+;; URL: https://github.com/clojure-emacs/clomacs
+;; Keywords: SQL, JDBC
+;; Version: 0.0.1
+;; Package-Requires: ((clomacs "0.0.2") (dash "2.12.1") (auto-complete "1.5.1"))
+
+;; This file is not part of GNU Emacs.
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -48,7 +56,7 @@
 ;; (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
 ;; (global-set-key (kbd "C-x C-s") 'ejc-switch-to-sql-editor-buffer)
 ;;
-;; New keybindings added to `sql-mode-map':
+;; New keybindings defined in `ejc-sql-mode' minor mode:
 ;; * (kbd "C-c C-c") 'ejc-eval-user-sql-at-point
 ;; * (kbd "C-h t")   'ejc-describe-table
 ;;
@@ -180,8 +188,8 @@
                                  database)
   "Add new connection configuration named CONNECTION-NAME
 to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
-  (-remove (lambda (x) (equal (car x) connection-name))
-           ejc-connections)
+  (setq ejc-connections (-remove (lambda (x) (equal (car x) connection-name))
+                                 ejc-connections))
   (setq ejc-connections (cons (cons
                                connection-name
                                (make-ejc-db-conn

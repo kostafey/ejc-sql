@@ -1,4 +1,5 @@
 (define-package "ejc-sql" "0.0.1"
-  "Uses clojure jdbc lib to eval sql scripts from emacs."
+  "Emacs SQL client uses Clojure JDBC."
   '((clomacs "0.0.2")
-    (dash "2.9.0")))
+    (dash "2.12.1")
+    (auto-complete "1.5.1")))

@@ -1,13 +1,16 @@
+[![License GPL 2](https://img.shields.io/badge/license-GPL_2-green.svg)](http://www.gnu.org/licenses/gpl-2.0.txt)
+
 # ejc-sql
 
-The project is going to become beta...
+ejc-sql turns Emacs into simple SQL client, it uses JDBC connection to
+databases via [clojure/java.jdbc](https://github.com/clojure/java.jdbc) lib.
 
-**ejc-sql** provides a simple way to interact with database via java/clojure
-  libs to run SQL scripts from emacs.
+You can use multiple connections at the same time. Autocompletion and basic
+SQL scripts formatting are also available.
 
 ## Installation
 
-The configuration of ejs-sql might looks like this:
+To run Clojure install [Leiningen](http://leiningen.org).
 
 ```lisp
 ;; Append ejs-sql to `load-path':
@@ -18,7 +21,18 @@ The configuration of ejs-sql might looks like this:
  (expand-file-name "ejc-sql/src/ejc_sql/" site-lisp-path))
 
 (require 'ejc-sql)
+```
 
+## Configuration
+
+Setup connections with `ejc-create-connection` function in your `.emacs`.
+It's first arg is your custom database connection name, the rest args
+are the same as database connection structure of
+[clojure/java.jdbc](https://github.com/clojure/java.jdbc) lib.
+
+The configuration of ejs-sql might looks like this:
+
+```lisp
 ;; Create your jdbc database connections configuration:
 
 ;; MySQL example
@@ -81,7 +95,7 @@ Have a much fun!
 
 ## List of keybindings & functions
 
-New keybindings added to `sql-mode-map`:
+New keybindings defined in `ejc-sql-mode' minor mode:
 
  Keyboard shortcut  | Command                       | Description
 --------------------|-------------------------------|------------------------------------------------------
