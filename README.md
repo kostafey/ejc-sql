@@ -14,7 +14,7 @@ SQL scripts formatting are also available.
 
 2. Install CIDER middleware [CIDER nREPL](https://github.com/clojure-emacs/cider-nrepl).
 
-   Quick hint to intall [CIDER nREPL](https://github.com/clojure-emacs/cider-nrepl)
+   Quick hint to install [CIDER nREPL](https://github.com/clojure-emacs/cider-nrepl)
    if you are not Clojure developer (yet):
 
    Create `~/.lein/profiles.clj` and add the following contents to it:
