@@ -10,18 +10,20 @@ SQL scripts formatting are also available.
 
 ## Installation
 
-To run Clojure install [Leiningen](http://leiningen.org).
+1. To run Clojure install [Leiningen](http://leiningen.org).
+
+2. Add MELPA (if not yet) to your package-archives list:
 
 ```lisp
-;; Append ejs-sql to `load-path':
-
-(defvar site-lisp-path "~/.emacs.d/")
-(add-to-list
- 'load-path
- (expand-file-name "ejc-sql/src/ejc_sql/" site-lisp-path))
-
-(require 'ejc-sql)
+(require 'package)
+(add-to-list 'package-archives
+             '("melpa" . "http://melpa.milkbox.net/packages/"))
+(package-initialize)
 ```
+
+Then you can install ejc-sql with the following command:
+
+<kbd>M-x package-install [RET] ejc-sql [RET]</kbd>
 
 ## Configuration
 
