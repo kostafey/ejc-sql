@@ -6,7 +6,7 @@
 ;; URL: https://github.com/clojure-emacs/clomacs
 ;; Keywords: sql, jdbc
 ;; Version: 0.0.1
-;; Package-Requires: ((clomacs "0.0.2")(dash "2.12.1")(auto-complete "1.5.1"))
+;; Package-Requires: ((emacs "24.4")(clomacs "0.0.2")(dash "2.12.1")(auto-complete "1.5.1"))
 
 ;; This file is not part of GNU Emacs.
 
