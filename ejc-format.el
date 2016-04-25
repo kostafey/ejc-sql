@@ -20,6 +20,7 @@
 
 (require 'cua-base)
 (require 'ejc-lib)
+(require 'subr-x)
 
 (defvar ejc-sql-separator "/"
   "The char with purpose to separate the SQL statement both other.")
@@ -144,7 +145,7 @@ buffer."
       max-length)))
 
 (defun ejc-is-separator-string (pos)
-  (equal (trim-string (buffer-substring
+  (equal (string-trim (buffer-substring
                        pos
                        (save-excursion
                          (end-of-line)
