@@ -1,12 +1,12 @@
-;;; ejc-sql.el --- Uses clojure jdbc lib to eval sql scripts from emacs.
+;;; ejc-sql.el --- Emacs SQL client uses Clojure JDBC.
 
 ;;; Copyright © 2012-2016 - Kostafey <kostafey@gmail.com>
 
 ;; Author: Kostafey <kostafey@gmail.com>
 ;; URL: https://github.com/clojure-emacs/clomacs
-;; Keywords: SQL, JDBC
+;; Keywords: sql, jdbc
 ;; Version: 0.0.1
-;; Package-Requires: ((clomacs "0.0.2") (dash "2.12.1") (auto-complete "1.5.1"))
+;; Package-Requires: ((clomacs "0.0.2")(dash "2.12.1")(auto-complete "1.5.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -26,46 +26,12 @@
 
 ;;; Commentary:
 
-;; The aim is to make access to SQL databases through emacs easy.
+;; ejc-sql turns Emacs into simple SQL client, it uses JDBC connection to
+;; databases via clojure/java.jdbc lib.
 
-;;; Usage:
+;; See README.md for detailed description.
 
-;; The configuration of ejs-sql might looks like this:
-;;
-;; ; Append ejs-sql to `load-path':
-;; (defvar site-lisp-path "~/.emacs.d/")
-;; (add-to-list
-;;  'load-path
-;;  (expand-file-name "ejc-sql/src/ejc_sql/" site-lisp-path))
-;;
-;; (require 'ejc-sql)
-;;
-;; ; Create your database connection configuration:
-;; (ejc-create-connection
-;;  "my-db-connection"
-;;  :classpath (concat
-;;              "/home/user/lib/"
-;;              "mysql-connector-java-3.1.13-bin.jar")
-;;  :classname "com.mysql.jdbc.Driver"
-;;  :subprotocol "mysql"
-;;  :subname "//localhost:3306/my_db_name"
-;;  :user "a_user"
-;;  :password "secret")
-;;
-;; ; Some keybindings - modify this on your taste:
-;; (global-set-key (kbd "C-x <up>") 'ejc-show-last-result)
-;; (global-set-key (kbd "C-x C-s") 'ejc-switch-to-sql-editor-buffer)
-;;
-;; New keybindings defined in `ejc-sql-mode' minor mode:
-;; * (kbd "C-c C-c") 'ejc-eval-user-sql-at-point
-;; * (kbd "C-h t")   'ejc-describe-table
-;;
-;; * Run to connect (ejc-connect "my-db-connection")
-;; or M-x ejc-connect <RET> my-db-connection <RET>
-;;
-;;
-;; * `ejc-eval-user-sql-at-point' -- Evaluate SQL bounded by the
-;; `ejc-sql-separator' or/and buffer boundaries.
+;;; Code: 
 
 (require 'sql)
 (require 'dash)

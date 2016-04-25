@@ -16,6 +16,8 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
+;;; Code:
+
 (require 'dash)
 (require 'auto-complete)
 (require 'ejc-lib)
@@ -290,3 +292,5 @@ This affects only the current buffer."
   (add-to-list 'ac-sources 'ac-source-ejc-sql-point ))
 
 (provide 'ejc-autocomplete)
+
+;;; ejc-autocomplete.el ends here

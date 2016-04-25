@@ -16,6 +16,8 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
+;;; Code:
+
 (require 'cua-base)
 (require 'ejc-lib)
 
@@ -190,3 +192,5 @@ buffer."
    (ejc-flash-region beg end)))
 
 (provide 'ejc-format)
+
+;;; ejc-format.el ends here

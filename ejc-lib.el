@@ -16,6 +16,8 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
+;;; Code:
+
 (require 'dash)
 
 (defvar-local ejc-connection-name nil
@@ -109,3 +111,5 @@
       txt)
 
 (provide 'ejc-lib)
+
+;;; ejc-lib.el ends here
