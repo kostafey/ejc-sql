@@ -175,7 +175,7 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
          ejc-connections))
 
 (defun ejc-configure-sql-buffer ()
-  (sql-ansi-mode)
+  (sql-mode)
   (auto-complete-mode t)
   (auto-fill-mode t)
   (ejc-sql-mode)
