@@ -56,6 +56,9 @@
 (defvar ejc-sql-editor-buffer-name "*ejc-sql-editor*"
   "The buffer for conveniently edit ad-hoc SQL scripts.")
 
+(defvar ejc-show-results-buffer t
+  "When t show results in separate buffer, use minibuffer otherwise.")
+
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-x S") 'ejc-eval-user-sql-region)
@@ -246,7 +249,8 @@ point)."
   "Evaluate SQL by user: reload and show query results buffer, update log."
     (message "Processing SQL query...")
     (ejc-show-last-result (ejc-eval-sql-and-log ejc-db sql))
-    (message "Done SQL query."))
+    (if ejc-show-results-buffer
+        (message "Done SQL query.")))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
@@ -304,22 +308,36 @@ If this buffer is not exists or it was killed - create buffer via
       ejc-results-buffer
     (ejc-create-output-buffer)))
 
+(defun ejc-toggle-show-results-buffer ()
+  (interactive)
+  (if ejc-show-results-buffer
+      (setq ejc-show-results-buffer nil)
+    (setq ejc-show-results-buffer t)))
+
 (defun ejc-show-last-result (&optional result)
   "Popup buffer with last SQL execution result output."
   (interactive)
-  (let ((output-buffer (ejc-get-output-buffer))
-        (old-split split-width-threshold))
-    (set-buffer output-buffer)
-    (when result
-      (toggle-read-only -1)
-      (erase-buffer)
-      (insert result))
-    (toggle-read-only 1)
-    (beginning-of-buffer)
-    (setq split-width-threshold nil)
-    (display-buffer output-buffer)
-    (setq split-width-threshold old-split)))
-
+  (if ejc-show-results-buffer
+      (let ((output-buffer (ejc-get-output-buffer))
+            (old-split split-width-threshold))
+        (set-buffer output-buffer)
+        (when result
+          (toggle-read-only -1)
+          (erase-buffer)
+          (insert result))
+        (toggle-read-only 1)
+        (beginning-of-buffer)
+        (setq split-width-threshold nil)
+        (display-buffer output-buffer)
+        (setq split-width-threshold old-split))
+    (let ((result-lines (split-string result "\n")))
+      (message "%s"
+               (if (<= (length result-lines) 3)
+                   (apply 'concat (subseq result-lines 0 3))
+                 (concat (apply 'concat (subseq result-lines 0 3))
+                         "... ("
+                         (number-to-string (- (length result-lines) 3))
+                         " more)"))))))
 ;;
 ;;-----------------------------------------------------------------------------
 
