@@ -220,7 +220,7 @@ It has the following example structure:
 ;;;###autoload
 (defun ejc-candidates ()
   "Possible completions list according to already typed prefixes."
-  (message "Reciving database srtucture...")
+  (message "Receiving database structure...")
   (let ((need-owners? (ejc--select-db-meta-script :owners)))
     (if (and need-owners? (not (ejc-get-owners-cache)))
         (ejc-set-owners-cache (ejc-get-owners-list)))
