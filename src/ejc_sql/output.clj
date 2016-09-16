@@ -38,7 +38,7 @@
                       (new java.util.Date)) ".log")))
 
 (defn print-log-file-path []
-  (print (.getPath (get-log-file))))
+  (print (.getAbsolutePath (get-log-file))))
 
 (defn log-sql [sql]
   (let [log-file (get-log-file)
