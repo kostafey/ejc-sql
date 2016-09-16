@@ -74,6 +74,17 @@ The configuration of ejs-sql might looks like this:
  :password "secret"
  :database "my_db_name")
 
+;; Oracle example
+(ejc-create-connection
+ "Oracle-db-connection"
+ :classpath (concat "~/.m2/repository/com/oracle/jdbc"
+                    "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
+ :classname "oracle.jdbc.driver.OracleDriver"
+ :subprotocol "oracle"
+ :subname "thin:@localhost:1521:my_db_name"
+ :user "a_user"
+ :password "secret")
+
 ;; H2 example
 (ejc-create-connection
  "H2-db-connection"
