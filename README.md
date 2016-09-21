@@ -37,6 +37,59 @@ SQL scripts formatting are also available.
 
    <kbd>M-x package-install [RET] ejc-sql [RET]</kbd>
 
+## Install JDBC
+
+If you are familiar with JDBC, please omit this section.
+
+The most common way is to install JDBC drivers to your `~/m2` directory.
+Here is a list of such installation examples. Anyway __it will become outdeted
+soon__, so please consult Google to install your database JDBC driver.
+
+First of all install [maven](https://maven.apache.org/), then you can install
+your JDBC driver with one of the following commands.
+
+**Oracle**
+
+Download JDBC driver manually from
+[oracle.com](http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html)
+
+Fix your actual JDBC version number `-Dversion`, filepath `-Dfile` and run
+command like this:
+```
+mvn install:install-file -Dfile="~/downloads/ojdbc7.jar" -DgroupId=com.oracle.jdbc -DartifactId=ojdbc7 -Dversion=12.1.0.2 -Dpackaging=jar -DgeneratePom=true
+```
+
+**MS SQL Server**
+
+Download JDBC driver manually from
+[microsoft.com](https://social.msdn.microsoft.com/search/en-US?query=sql%20server%20jdbc)
+
+Fix your actual JDBC version number `-Dversion`, filepath `-Dfile` and run
+command like this:
+```
+mvn install:install-file -Dfile="~/downloads/sqljdbc.jar" -DgroupId=com.microsoft.sqlserver  -DartifactId=sqljdbc -Dversion=6.0 -Dpackaging=jar -DgeneratePom=true
+```
+
+**PostgreSQL**
+
+```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgresql:postgresql:9.3-1102.jdbc41 -DrepoUrl=http://clojars.org/repo/```
+
+**MySQL**
+
+```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=mysql:mysql-connector-java:5.1.6```
+
+**MariaDB**
+
+```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=org.mariadb.jdbc:mariadb-java-client:1.1.7```
+
+**H2**
+
+```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=com.h2database:h2:1.4.192```
+
+**SQLite**
+
+```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=org.xerial:sqlite-jdbc:3.8.11.2```
+
 ## Configuration
 
 Setup connections with `ejc-create-connection` function in your `.emacs`.
@@ -167,6 +220,6 @@ Autocompletion is available for the following databases:
 
 ## License
 
-Copyright © 2012-2016 Kostafey <kostafey@gmail.com>
+Copyright Â© 2012-2016 Kostafey <kostafey@gmail.com>
 
 Distributed under the General Public License 2.0+
