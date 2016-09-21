@@ -71,8 +71,9 @@ mvn install:install-file -Dfile="~/downloads/sqljdbc.jar" -DgroupId=com.microsof
 ```
 
 **PostgreSQL**
-
-```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgresql:postgresql:9.3-1102.jdbc41 -DrepoUrl=http://clojars.org/repo/```
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgresql:postgresql:9.3-1102.jdbc41 -DrepoUrl=http://clojars.org/repo/
+```
 
 **MySQL**
 
