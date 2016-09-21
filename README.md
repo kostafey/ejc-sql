@@ -41,8 +41,8 @@ SQL scripts formatting are also available.
 
 If you are familiar with JDBC, please omit this section.
 
-The most common way is to install JDBC drivers to your `~/m2` directory.
-Here is a list of such installation examples. Anyway __it will become outdeted
+The most common way is to install JDBC drivers to your `~/.m2` directory.
+Here is a list of such installation examples. Anyway __it will become outdated
 soon__, so please consult Google to install your database JDBC driver.
 
 First of all install [maven](https://maven.apache.org/), then you can install
