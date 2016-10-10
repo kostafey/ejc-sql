@@ -137,7 +137,8 @@ The configuration of ejs-sql might looks like this:
  :subprotocol "oracle"
  :subname "thin:@localhost:1521:my_db_name"
  :user "a_user"
- :password "secret")
+ :password "secret"
+ :separator "/")
 
 ;; H2 example
 (ejc-create-connection

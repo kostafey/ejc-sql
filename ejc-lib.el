@@ -67,7 +67,8 @@
             "CLIENT_LOCALE=<locale>;"
             ))
   (user "<user-name>")
-  (password "<password>"))
+  (password "<password>")
+  (separator ";"))
 
 (cl-defstruct ejc-jpa
   "DB connection information structure for JPA"
@@ -86,7 +87,8 @@
     `(:subname     . ,(ejc-db-conn-subname     conn-struct))
     `(:user        . ,(ejc-db-conn-user        conn-struct))
     `(:password    . ,(ejc-db-conn-password    conn-struct))
-    `(:database    . ,(ejc-db-conn-database    conn-struct)))))
+    `(:database    . ,(ejc-db-conn-database    conn-struct))
+    `(:separator   . ,(ejc-db-conn-separator   conn-struct)))))
 
 (defun ejc-add-quotes (str)
   (concat "\"" str "\""))

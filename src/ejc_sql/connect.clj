@@ -63,20 +63,21 @@ For debug purpose."
   [& {:keys [db sql]
       :or {db @ejc-sql.connect/db}}]
   (set-db db)
-  (last
-   (for [sql-part (seq (.split sql ";"))]
-     (try
-       (let [sql-query-word (determine-dml sql-part)]
-         (if (and sql-query-word (or (.equals sql-query-word "SELECT")
-                                     (.equals sql-query-word "SHOW")))
-           (list :result-set
-                 (j/query db (list sql-part) {:as-arrays? true}))
+  (let [statement-separator (or (:separator db) ";")]
+    (last
+     (for [sql-part (seq (.split sql statement-separator))]
+       (try
+         (let [sql-query-word (determine-dml sql-part)]
+           (if (and sql-query-word (or (.equals sql-query-word "SELECT")
+                                       (.equals sql-query-word "SHOW")))
+             (list :result-set
+                   (j/query db (list sql-part) {:as-arrays? true}))
+             (list :message
+                   (str "Records affected: "
+                        (first (j/execute! db (list sql-part)))))))
+         (catch SQLException e
            (list :message
-                 (str "Records affected: "
-                      (first (j/execute! db (list sql-part)))))))
-       (catch SQLException e
-         (list :message
-               (str "Error: "(.getMessage e))))))))
+                 (str "Error: "(.getMessage e)))))))))
 
 (defn eval-user-sql [db sql]
   (let [clear-sql (.trim sql)]

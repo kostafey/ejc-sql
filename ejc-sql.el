@@ -154,7 +154,8 @@
                                  subname
                                  user
                                  password
-                                 database)
+                                 database
+                                 separator)
   "Add new connection configuration named CONNECTION-NAME
 to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   (setq ejc-connections (-remove (lambda (x) (equal (car x) connection-name))
@@ -168,7 +169,8 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
                                 :subname subname
                                 :user user
                                 :password password
-                                :database database))
+                                :database database
+                                :separator separator))
                               ejc-connections)))
 
 (defun ejc-find-connection (connection-name)
