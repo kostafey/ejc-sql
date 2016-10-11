@@ -83,6 +83,18 @@
                :return-type :string
                :return-value :stdout)
 
+
+(defvar ejc--eval-sql-and-log-print-async-cb 'message
+  "callback function, set to the required function dynamically. defaults to message function")
+(clomacs-defun ejc--eval-sql-and-log-print-async
+               ejc-sql.connect/eval-sql-and-log-print
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect
+               :call-type :async
+               :callback (lambda (res) (funcall ejc--eval-sql-and-log-print-async-cb res))
+               :return-type :string
+               :return-value :stdout)
+
 (clomacs-defun ejc--eval-jpql
                ejc-sql.jpa/eval-jpql-print
                :lib-name "ejc-sql"
@@ -90,15 +102,22 @@
                :return-type :string
                :return-value :stdout)
 
-(defun ejc-eval-sql-and-log (db sql)
+(defun ejc-eval-sql-and-log (db sql &optional call-type callback)
   "Core function to evaluate SQL queries.
 Prepare SQL string, evaluate SQL script and write them to log file"
   (if sql
       (let* ((prepared-sql (ejc-get-sql-from-string sql))
              (result (case (ejc-get-connection-type ejc-connection-struct)
-                       (:sql (ejc--eval-sql-and-log-print
-                              db
-                              prepared-sql))
+                       (:sql
+                        (progn
+                          (if (and (equal call-type :async)
+                                       callback)
+                                  (progn
+                                    (funcall callback
+                                             (format "Processing Query : %s \nPlease Wait..." prepared-sql))
+                                    (setq ejc--eval-sql-and-log-print-async-cb callback)
+                                    (ejc--eval-sql-and-log-print-async db prepared-sql))
+                                (ejc--eval-sql-and-log-print db prepared-sql))))
                        (:jpa (ejc--eval-jpql prepared-sql))
                        (nil "No database connection."))))
         result)))

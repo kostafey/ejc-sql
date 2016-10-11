@@ -250,7 +250,10 @@ point)."
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
     (message "Processing SQL query...")
-    (ejc-show-last-result (ejc-eval-sql-and-log ejc-db sql))
+    (ejc-eval-sql-and-log  ejc-db sql
+                           :async
+                           (lambda (res) (ejc-show-last-result res)))
+    ;;(ejc-show-last-result (ejc-eval-sql-and-log ejc-db sql))
     (if ejc-show-results-buffer
         (message "Done SQL query.")))
 
