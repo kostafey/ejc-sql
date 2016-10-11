@@ -99,16 +99,20 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                        (:sql
                         (progn
                           (if (and (equal call-type :async) callback)
-                              (let ((eval-sql-and-log-async
-                                     (clomacs-defun _
-                                                    ejc-sql.connect/eval-sql-and-log-print
-                                                    :lib-name "ejc-sql"
-                                                    :namespace ejc-sql.connect
-                                                    :call-type :async
-                                                    :callback (lambda (res)
-                                                                (funcall callback res))
-                                                    :return-type :string
-                                                    :return-value :stdout)))
+                              (let* ((buf (current-buffer))
+                                     (eval-sql-and-log-async
+                                      (clomacs-defun _
+                                                     ejc-sql.connect/eval-sql-and-log-print
+                                                     :lib-name "ejc-sql"
+                                                     :namespace ejc-sql.connect
+                                                     :call-type :async
+                                                     :callback (lambda (res)
+                                                                 (funcall callback res)
+                                                                 (with-current-buffer buf
+                                                                   (spinner-stop)))
+                                                     :return-type :string
+                                                     :return-value :stdout)))
+                                (spinner-start 'rotating-line)
                                 (funcall eval-sql-and-log-async db prepared-sql))
                             (ejc--eval-sql-and-log-print db prepared-sql))))
                        (:jpa (ejc--eval-jpql prepared-sql))
