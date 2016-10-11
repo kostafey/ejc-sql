@@ -6,7 +6,7 @@
 ;; URL: https://github.com/kostafey/ejc-sql
 ;; Keywords: sql, jdbc
 ;; Version: 0.0.1
-;; Package-Requires: ((emacs "24.4")(clomacs "0.0.2")(dash "2.12.1")(auto-complete "1.5.1"))
+;; Package-Requires: ((emacs "24.4")(clomacs "0.0.2")(dash "2.12.1")(auto-complete "1.5.1")(spinner "1.7.1")
 
 ;; This file is not part of GNU Emacs.
 
@@ -249,13 +249,13 @@ point)."
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
-    (message "Processing SQL query...")
-    (ejc-eval-sql-and-log  ejc-db sql
-                           :async
-                           (lambda (res) (ejc-show-last-result res)))
-    ;;(ejc-show-last-result (ejc-eval-sql-and-log ejc-db sql))
-    (if ejc-show-results-buffer
-        (message "Done SQL query.")))
+  (message "Processing SQL query...")
+  (ejc-eval-sql-and-log  ejc-db sql
+                         :async
+                         (lambda (res)
+                           (ejc-show-last-result res)
+                           (if ejc-show-results-buffer
+                               (message "Done SQL query.")))))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."

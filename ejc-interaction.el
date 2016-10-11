@@ -1,4 +1,4 @@
-;;; ejc-interaction.el -- ejc-sql interact with Clojure.
+;;; ejc-interaction.el -- ejc-sql interact with Clojure. -*- lexical-binding: t -*-
 
 ;;; Copyright © 2013-2016 - Kostafey <kostafey@gmail.com>
 
@@ -83,18 +83,6 @@
                :return-type :string
                :return-value :stdout)
 
-
-(defvar ejc--eval-sql-and-log-print-async-cb 'message
-  "callback function, set to the required function dynamically. defaults to message function")
-(clomacs-defun ejc--eval-sql-and-log-print-async
-               ejc-sql.connect/eval-sql-and-log-print
-               :lib-name "ejc-sql"
-               :namespace ejc-sql.connect
-               :call-type :async
-               :callback (lambda (res) (funcall ejc--eval-sql-and-log-print-async-cb res))
-               :return-type :string
-               :return-value :stdout)
-
 (clomacs-defun ejc--eval-jpql
                ejc-sql.jpa/eval-jpql-print
                :lib-name "ejc-sql"
@@ -110,14 +98,19 @@ Prepare SQL string, evaluate SQL script and write them to log file"
              (result (case (ejc-get-connection-type ejc-connection-struct)
                        (:sql
                         (progn
-                          (if (and (equal call-type :async)
-                                       callback)
-                                  (progn
-                                    (funcall callback
-                                             (format "Processing Query : %s \nPlease Wait..." prepared-sql))
-                                    (setq ejc--eval-sql-and-log-print-async-cb callback)
-                                    (ejc--eval-sql-and-log-print-async db prepared-sql))
-                                (ejc--eval-sql-and-log-print db prepared-sql))))
+                          (if (and (equal call-type :async) callback)
+                              (let ((eval-sql-and-log-async
+                                     (clomacs-defun _
+                                                    ejc-sql.connect/eval-sql-and-log-print
+                                                    :lib-name "ejc-sql"
+                                                    :namespace ejc-sql.connect
+                                                    :call-type :async
+                                                    :callback (lambda (res)
+                                                                (funcall callback res))
+                                                    :return-type :string
+                                                    :return-value :stdout)))
+                                (funcall eval-sql-and-log-async db prepared-sql))
+                            (ejc--eval-sql-and-log-print db prepared-sql))))
                        (:jpa (ejc--eval-jpql prepared-sql))
                        (nil "No database connection."))))
         result)))
