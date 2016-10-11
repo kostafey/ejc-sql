@@ -219,9 +219,11 @@ Autocompletion is available for the following databases:
 * [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.5.8
 * [dash](https://github.com/magnars/dash.el)
 * [auto-complete](https://github.com/auto-complete/auto-complete)
+* [spinner.el](https://github.com/Malabarba/spinner.el)
 
 ## License
 
-Copyright Â© 2012-2016 Kostafey <kostafey@gmail.com>
+Copyright © 2012-2016 Kostafey <kostafey@gmail.com> and
+[contributors](https://github.com/kostafey/ejc-sql/contributors)
 
 Distributed under the General Public License 2.0+
