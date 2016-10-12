@@ -211,11 +211,18 @@ It has the following example structure:
 
 (defvar ejc-ansi-sql-words
   '("select" "where" "and" "or" "from" "insert" "update" "delete" "join"
-    "order" "by" "distinct" "create" "alter" "drop"))
+    "order" "by" "distinct" "create" "alter" "drop"
+    "grant" "revoke" "deny" "commit" "rollback" "savepoint"))
+
+(defvar ejc-auxulary-sql-words
+  '("show" "errors" "desc" "count" "type" "table" "function" "procedure"
+    "begin" "end" "for" "return"))
 
 (defun ejc-get-ansi-sql-words ()
   (append ejc-ansi-sql-words
-          (mapcar 'upcase ejc-ansi-sql-words)))
+          ejc-auxulary-sql-words
+          (mapcar 'upcase ejc-ansi-sql-words)
+          (mapcar 'upcase ejc-auxulary-sql-words)))
 
 ;;;###autoload
 (defun ejc-candidates ()
