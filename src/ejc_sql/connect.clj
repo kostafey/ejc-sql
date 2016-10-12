@@ -58,6 +58,19 @@ For debug purpose."
      (dml-set (.toUpperCase (subs sql pos 6)))
      (#{"SHOW"} (.toUpperCase (subs sql pos 4))))))
 
+(defn handle-special-cases [db sql]
+  (case (:subprotocol db)
+    "oracle" (case (clojure.string/upper-case sql)
+               "SHOW ERRORS" (str "SELECT line, position, sequence, text
+                                  FROM all_errors
+                                  WHERE type = 'FUNCTION'
+                                    AND name = 'FILTERDICT'
+                                    AND attribute != 'WARNING'
+                                    AND owner = '" (:user db)  "'
+                                  ORDER BY line, position, sequence")
+               sql)
+    sql))
+
 (defn eval-sql-core
   "The core SQL evaluation function."
   [& {:keys [db sql]
@@ -65,7 +78,8 @@ For debug purpose."
   (set-db db)
   (let [statement-separator (or (:separator db) ";")]
     (last
-     (for [sql-part (seq (.split sql statement-separator))]
+     (for [sql-part (seq (.split (handle-special-cases db sql)
+                                 statement-separator))]
        (try
          (let [sql-query-word (determine-dml sql-part)]
            (if (and sql-query-word (or (.equals sql-query-word "SELECT")
