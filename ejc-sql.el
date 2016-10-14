@@ -267,8 +267,11 @@ point)."
   "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer
 boundaries."
   (interactive)
-  (ejc-flash-this-sql)
-  (ejc-eval-user-sql (ejc-get-sql-at-point)))
+  (if ejc-db
+      (progn
+        (ejc-flash-this-sql)
+        (ejc-eval-user-sql (ejc-get-sql-at-point)))
+    (message "Run M-x ejc-connect first!")))
 
 (defun ejc-show-tables-list (&optional owner)
   "Output tables list."
