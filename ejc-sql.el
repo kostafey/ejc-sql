@@ -347,10 +347,10 @@ If this buffer is not exists or it was killed - create buffer via
             (old-split split-width-threshold))
         (set-buffer output-buffer)
         (when result
-          (toggle-read-only -1)
+          (read-only-mode -1)
           (erase-buffer)
           (insert result))
-        (toggle-read-only 1)
+        (read-only-mode 1)
         (beginning-of-buffer)
         (setq split-width-threshold nil)
         (display-buffer output-buffer)
