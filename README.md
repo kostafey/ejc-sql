@@ -181,7 +181,7 @@ New keybindings defined in `ejc-sql-mode` minor mode:
 --------------------|-------------------------------|------------------------------------------------------
  <kbd>C-c C-c</kbd> | `ejc-eval-user-sql-at-point`  | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
  <kbd>C-h t</kbd>   | `ejc-describe-table`          | Describe SQL table.
- <kbd>C-h T</kbd>   | `ejc-describe-entity`         | Describe SQL entity ENTITY - function, procedure or type.
+ <kbd>C-h T</kbd>   | `ejc-describe-entity`         | Describe SQL entity entity - function, procedure or type.
  <kbd>C-h up</kbd>  | `ejc-show-last-result`        | Show last result.
  <kbd>C-c t</kbd>   | `ejc-show-tables-list`        | Show tables list.
  <kbd>C-c T</kbd>   | `ejc-show-user-types-list`    | Show user types list.
