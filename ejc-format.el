@@ -65,6 +65,26 @@ buffer."
    (cua-set-mark)
    (goto-char end)))
 
+(defun ejc-next-sql (&optional mark)
+  "Goto next SQL statement."
+  (interactive)
+  (ejc--in-sql-boundaries
+   beg end
+   (if (and mark (not mark-active))
+       (cua-set-mark))
+   (goto-char end)
+   (right-char 1)))
+
+(defun ejc-previous-sql (&optional mark)
+  "Goto previous SQL statement."
+  (interactive)
+  (ejc--in-sql-boundaries
+   beg end
+   (if (and mark (not mark-active))
+       (cua-set-mark))
+   (goto-char beg)
+   (left-char 1)))
+
 (defun ejc-apply-in-sql-boundaries (func)
   (ejc--in-sql-boundaries beg end
    (apply func (list beg end))))
