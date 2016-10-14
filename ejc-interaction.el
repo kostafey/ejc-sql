@@ -49,7 +49,7 @@
 
 (defun ejc-connect-to-db (conn-struct)
   (ejc-require `'cemerick.pomegranate)
-  (case (ejc-get-connection-type conn-struct)
+  (cl-case (ejc-get-connection-type conn-struct)
     ;;----------------------------------------------------------------------
     ;; is JDBC/SQL
     (:sql
@@ -95,7 +95,7 @@
 Prepare SQL string, evaluate SQL script and write them to log file"
   (if sql
       (let* ((prepared-sql (ejc-get-sql-from-string sql))
-             (result (case (ejc-get-connection-type ejc-connection-struct)
+             (result (cl-case (ejc-get-connection-type ejc-connection-struct)
                        (:sql
                         (progn
                           (if (and (equal call-type :async) callback)
