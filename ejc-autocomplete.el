@@ -125,6 +125,12 @@ It has the following example structure:
      ((string-match "oracle" db-type)
       (let ((owner (upcase owner)))
         (cond
+         ((eq :entity meta-type)
+          (concat "SELECT text             "
+                  "FROM all_source         "
+                  "WHERE name = '" (upcase table) "'"))
+         ((eq :types meta-type)
+          "SELECT * FROM USER_TYPES")
          ((eq :owners meta-type)
           (concat "select DISTINCT(owner) "
                   " from ALL_OBJECTS"))

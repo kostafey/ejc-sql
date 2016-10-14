@@ -64,7 +64,9 @@
 (define-key ejc-sql-mode-keymap (kbd "C-x S") 'ejc-eval-user-sql-region)
 (define-key ejc-sql-mode-keymap (kbd "C-x <up>") 'ejc-show-last-result)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
+(define-key ejc-sql-mode-keymap (kbd "C-h T") 'ejc-describe-entity)
 (define-key ejc-sql-mode-keymap (kbd "C-c t") 'ejc-show-tables-list)
+(define-key ejc-sql-mode-keymap (kbd "C-c T") 'ejc-show-user-types-list)
 (define-key ejc-sql-mode-keymap (kbd "C-c s") 'ejc-strinp-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-c S") 'ejc-dress-sql-at-point)
 
@@ -209,31 +211,32 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
       (let* ((end (if (member str '(" " ")" "<" ">" "="))
                       (point)
                     (progn
-                      (forward-same-syntax 1)
+                      (forward-sexp 1)
                       (point))))
              (beg (progn
-                    (forward-same-syntax -1)
+                    (forward-sexp -1)
                     (point)))
              (sql-word (buffer-substring beg end)))
         sql-word))))
 
+(defun ejc-get-prompt-symbol-under-point (msg)
+  (let ((sql-symbol (if mark-active
+                        (buffer-substring (mark) (point))
+                      (ejc-get-word-at-point (point))))
+        (enable-recursive-minibuffers t)
+        val)
+    (setq val (completing-read
+               (if sql-symbol
+                   (format "%s (default %s): " msg sql-symbol)
+                 (format "%s: " msg))
+               obarray))
+    (list (if (equal val "")
+              sql-symbol
+            val))))
+
 (defun ejc-describe-table (table-name)
-  "Describe SQL table `table-name' (default table name - word around the
-point)."
-  (interactive
-   (let ((sql-symbol (if mark-active
-                         (buffer-substring (mark) (point))
-                       (ejc-get-word-at-point (point))))
-         (enable-recursive-minibuffers t)
-         val)
-     (setq val (completing-read
-                (if sql-symbol
-        (format "Describe table (default %s): " sql-symbol)
-      "Describe table: ")
-    obarray))
-     (list (if (equal val "")
-               sql-symbol
-             val))))
+  "Describe SQL table TABLE-NAME (default table name - word around the point)."
+  (interactive (ejc-get-prompt-symbol-under-point "Describe table"))
   (let* ((owner (car (split-string table-name "\\.")))
          (table (cadr (split-string table-name "\\."))))
     (when (not table)
@@ -246,6 +249,15 @@ point)."
       (ejc-eval-sql-and-log ejc-db
                             (ejc--select-db-meta-script
                              :constraints owner table))))))
+
+(defun ejc-describe-entity (entity-name)
+  "Describe SQL entity ENTITY-NAME - function, procedure or type
+   (default entity name - word around the point)."
+  (interactive (ejc-get-prompt-symbol-under-point "Describe entity"))
+  (ejc-show-last-result
+   (ejc-eval-sql-and-log ejc-db
+                         (ejc--select-db-meta-script
+                          :entity nil entity-name))))
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
@@ -277,6 +289,11 @@ boundaries."
   "Output tables list."
   (interactive)
   (ejc-eval-user-sql (ejc--select-db-meta-script :tables owner)))
+
+(defun ejc-show-user-types-list (&optional owner)
+  "Output user types list."
+  (interactive)
+  (ejc-eval-user-sql (ejc--select-db-meta-script :types owner)))
 
 (defun ejc-show-constraints-list (&optional owner table)
   "Output constraints list."
