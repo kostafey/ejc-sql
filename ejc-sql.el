@@ -358,8 +358,8 @@ If this buffer is not exists or it was killed - create buffer via
     (let ((result-lines (split-string result "\n")))
       (message "%s"
                (if (<= (length result-lines) 3)
-                   (apply 'concat (subseq result-lines 0 3))
-                 (concat (apply 'concat (subseq result-lines 0 3))
+                   (apply 'concat (cl-subseq result-lines 0 3))
+                 (concat (apply 'concat (cl-subseq result-lines 0 3))
                          "... ("
                          (number-to-string (- (length result-lines) 3))
                          " more)"))))))
