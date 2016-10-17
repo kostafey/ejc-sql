@@ -186,8 +186,9 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   (-find (lambda (x) (equal (car x) connection-name))
          ejc-connections))
 
-(defun ejc-configure-sql-buffer ()
+(defun ejc-configure-sql-buffer (product-name)
   (sql-mode)
+  (sql-set-product product-name)
   (auto-complete-mode t)
   (auto-fill-mode t)
   (ejc-sql-mode)
@@ -200,11 +201,12 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
     (ido-completing-read "DataBase connection name: "
                          (mapcar 'car ejc-connections))))
   (let ((db (cdr (ejc-find-connection connection-name))))
-    (ejc-configure-sql-buffer)
+    (ejc-configure-sql-buffer (ejc-db-conn-subprotocol db))
     (setq-local ejc-connection-name connection-name)
     (setq-local ejc-db (ejc-connection-struct-to-plist db))
     (message "Connection started...")
     (ejc-connect-to-db db)
+    (setq mode-name (format "%s->[%s]" mode-name connection-name))
     (message "Connected.")))
 
 (defun ejc-get-word-at-point (pos)

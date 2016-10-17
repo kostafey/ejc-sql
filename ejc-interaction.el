@@ -157,7 +157,12 @@ Prepare SQL string, evaluate SQL script and write them to log file"
 (defun ejc-quit-connection ()
   (interactive)
   (when (y-or-n-p  "Are you sure you want to close all jdbc connections?")
-    (cider--quit-connection (clomacs-get-connection "ejc-sql")))
+    (cider--quit-connection (clomacs-get-connection "ejc-sql"))
+    (let ((buffers (buffer-list)))
+      (while buffers
+        (with-current-buffer (car buffers)
+          (sql-highlight-product))
+        (setq buffers (cdr buffers)))))
   (unless (cider-connected-p)
     (cider-close-ancillary-buffers)))
 
