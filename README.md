@@ -9,6 +9,14 @@ databases via [clojure/java.jdbc](https://github.com/clojure/java.jdbc) lib.
 You can use multiple connections at the same time. Autocompletion and basic
 SQL scripts formatting are also available.
 
+- [Installation](#installation)
+- [Install JDBC](#install-jdbc)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Autocomplete](#autocomplete)
+- [Requirements](#requirements)
+- [License](#license)
+
 ## Installation
 
 1. To run Clojure install [Leiningen](http://leiningen.org).
