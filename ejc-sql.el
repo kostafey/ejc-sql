@@ -238,9 +238,14 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
               sql-symbol
             val))))
 
+(defun ejc-check-connection ()
+  (unless ejc-db
+    (error "Run M-x ejc-connect first!")))
+
 (defun ejc-describe-table (table-name)
   "Describe SQL table TABLE-NAME (default table name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe table"))
+  (ejc-check-connection)
   (let* ((owner (car (split-string table-name "\\.")))
          (table (cadr (split-string table-name "\\."))))
     (when (not table)
@@ -258,6 +263,7 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   "Describe SQL entity ENTITY-NAME - function, procedure or type
    (default entity name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe entity"))
+  (ejc-check-connection)
   (ejc-show-last-result
    (ejc-eval-sql-and-log ejc-db
                          (ejc--select-db-meta-script
@@ -276,6 +282,7 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
   (interactive "r")
+  (ejc-check-connection)
   (let ((sql (buffer-substring beg end)))
     (ejc-eval-user-sql sql)))
 
@@ -283,25 +290,26 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer
 boundaries."
   (interactive)
-  (if ejc-db
-      (progn
-        (ejc-flash-this-sql)
-        (ejc-eval-user-sql (ejc-get-sql-at-point)))
-    (message "Run M-x ejc-connect first!")))
+  (ejc-check-connection)
+  (ejc-flash-this-sql)
+  (ejc-eval-user-sql (ejc-get-sql-at-point)))
 
 (defun ejc-show-tables-list (&optional owner)
   "Output tables list."
   (interactive)
+  (ejc-check-connection)
   (ejc-eval-user-sql (ejc--select-db-meta-script :tables owner)))
 
 (defun ejc-show-user-types-list (&optional owner)
   "Output user types list."
   (interactive)
+  (ejc-check-connection)
   (ejc-eval-user-sql (ejc--select-db-meta-script :types owner)))
 
 (defun ejc-show-constraints-list (&optional owner table)
   "Output constraints list."
   (interactive)
+  (ejc-check-connection)
   (ejc-eval-user-sql (ejc--select-db-meta-script :constraints owner table)))
 
 (defun ejc-show-procedures-list (&optional owner)
