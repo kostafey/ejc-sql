@@ -148,6 +148,12 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :namespace ejc-sql.output
                :return-value :stdout)
 
+(clomacs-defun ejc-pretty-print
+               pretty-print
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.output
+               :return-value :stdout)
+
 (defun ejc-quit-connection ()
   (interactive)
   (when (y-or-n-p  "Are you sure you want to close all jdbc connections?")

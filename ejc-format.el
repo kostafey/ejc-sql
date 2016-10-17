@@ -125,8 +125,26 @@ buffer."
 
 (defun ejc-format-sql-at-point ()
   (interactive)
-  (ejc--in-sql-boundaries beg end
+  (ejc--in-sql-boundaries
+   beg end
    (ejc-format-sql beg end)))
+
+(defun ejc-pretty-print-sql-at-point ()
+  "Pretty-print SQL bounded by the `ejc-sql-separator' or/and buffer
+boundaries."
+  (interactive)
+  (ejc--in-sql-boundaries
+   beg end
+   (let ((result (ejc-pretty-print (buffer-substring beg end) :hibernate)))
+     (delete-region beg end)
+     (insert result))))
+
+(defun ejc-pretty-print-sql-region (beg end)
+  "Pretty-print SQL bounded by the selection area."
+  (interactive "r")
+  (let ((result (ejc-pretty-print (buffer-substring beg end) :hibernate)))
+    (delete-region beg end)
+    (insert result)))
 
 (defun ejc-insert-file-header ()
   (interactive)

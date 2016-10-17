@@ -69,6 +69,7 @@
 (define-key ejc-sql-mode-keymap (kbd "C-c T") 'ejc-show-user-types-list)
 (define-key ejc-sql-mode-keymap (kbd "C-c s") 'ejc-strinp-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-c S") 'ejc-dress-sql-at-point)
+(define-key ejc-sql-mode-keymap (kbd "C-c p") 'ejc-pretty-print-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-S-s-<up>") '(lambda() (interactive) (ejc-previous-sql t)))
 (define-key ejc-sql-mode-keymap (kbd "C-S-s-<down>") '(lambda() (interactive) (ejc-next-sql t)))
 (define-key ejc-sql-mode-keymap (kbd "C-s-<up>") 'ejc-previous-sql)

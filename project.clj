@@ -7,5 +7,6 @@
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojure/java.jdbc "0.5.8"]
                  [org.apache.openjpa/openjpa-all "2.2.2"]
+                 [org.hibernate/hibernate-core "5.2.3.Final"]
                  [com.cemerick/pomegranate "0.3.0"]
                  [org.apache.commons/commons-lang3 "3.2.1"]])

@@ -1,6 +1,6 @@
 ;;; output.clj -- Output & formatting clojure functions for ejc-sql.
 
-;;; Copyright Â© 2013 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013, 2016 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -23,7 +23,9 @@
   (:import (java.io File)
            (java.lang.reflect Method)
            (java.util.Date)
-           (java.text.SimpleDateFormat)))
+           (java.text.SimpleDateFormat)
+           (org.apache.openjpa.lib.jdbc SQLFormatter)
+           (org.hibernate.engine.jdbc.internal BasicFormatterImpl)))
 
 (defn get-log-dir []
   (file (if windows?
@@ -94,3 +96,8 @@
 (defn format-array-output [result]
   (format-output result :as-arrays? true))
 
+(defn pretty-print [sql formatter]
+  (if (= formatter :jpa)
+    (print (.prettyPrint (SQLFormatter.) sql))
+    ;; :hibernate
+    (print (.format (BasicFormatterImpl.) sql))))
