@@ -155,13 +155,16 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :return-value :stdout)
 
 (defun ejc-quit-connection ()
+  "Stop nREPL process, mark ejc-sql-mode buffers disconnected."
   (interactive)
   (when (y-or-n-p  "Are you sure you want to close all jdbc connections?")
     (cider--quit-connection (clomacs-get-connection "ejc-sql"))
+    ;; Update modeline of ejc-sql-mode buffers - mark as disconnected.
     (let ((buffers (buffer-list)))
       (while buffers
         (with-current-buffer (car buffers)
-          (sql-highlight-product))
+          (when (equal major-mode ejc-sql-mode)
+            (sql-highlight-product)))
         (setq buffers (cdr buffers)))))
   (unless (cider-connected-p)
     (cider-close-ancillary-buffers)))
