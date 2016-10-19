@@ -389,7 +389,7 @@ If this buffer is not exists or it was killed - create buffer via
   (let ((sql-editor-buffer (get-buffer-create ejc-sql-editor-buffer-name)))
     (save-excursion
       (set-buffer sql-editor-buffer)
-      (ejc-configure-sql-buffer))
+      (ejc-configure-sql-buffer "ansi"))
     sql-editor-buffer))
 
 (defun ejc-switch-to-sql-editor-buffer ()
