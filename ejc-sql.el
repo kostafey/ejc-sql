@@ -186,9 +186,14 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   (-find (lambda (x) (equal (car x) connection-name))
          ejc-connections))
 
+(defvar ejc-product-assoc
+  '((sqlserver . ms)))
+
 (defun ejc-configure-sql-buffer (product-name)
   (sql-mode)
-  (sql-set-product product-name)
+  (sql-set-product (or (cdr (assoc product-name ejc-product-assoc))
+                       (car (assoc product-name sql-product-alist))
+                       "ansi"))
   (auto-complete-mode t)
   (auto-fill-mode t)
   (ejc-sql-mode)
