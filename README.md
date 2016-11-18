@@ -14,6 +14,7 @@ SQL scripts formatting are also available.
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Autocomplete](#autocomplete)
+- [Troubleshooting](#troubleshooting)
 - [Requirements](#requirements)
 - [License](#license)
 
@@ -226,6 +227,18 @@ Autocompletion is available for the following databases:
 * Oracle
 * H2
 * MS SQL Server
+
+## Troubleshooting
+
+```
+Error running timer ‘ac-update-greedy’: (error "Sync nREPL request timed out (op eval session...
+```
+
+Increase `nrepl-sync-request-timeout`, e.g.:
+
+```lisp
+(setq nrepl-sync-request-timeout 60)
+```
 
 ## Requirements:
 
