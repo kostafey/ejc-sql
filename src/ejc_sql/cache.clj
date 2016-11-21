@@ -17,7 +17,9 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.cache
-  (:require [ejc-sql.connect :as c]))
+  (:require
+   [clojure.java.jdbc :as j]
+   [ejc-sql.connect :as c]))
 
 (def structure (atom {}))
 
@@ -27,17 +29,19 @@
    :oracle
    ;;--------
    {:entity (fn [entity-name]
-              (str "SELECT text             \n"
-                   "FROM all_source         \n"
-                   "WHERE name = '"entity-name"'"))
+              (str " SELECT text             \n"
+                   " FROM all_source         \n"
+                   " WHERE name = '"entity-name"'"))
     :types (fn [] "SELECT * FROM USER_TYPES")
-    :owners (fn [] (str "select DISTINCT(owner)  \n"
-                        " from ALL_OBJECTS       \n"))
+    :owners (fn [] (str " SELECT DISTINCT(owner) \n"
+                        " FROM ALL_OBJECTS       \n"
+                        " ORDER BY owner         \n"))
     :tables (fn [& [owner]]
               (str " SELECT table_name, owner \n"
                    " FROM all_tables          \n"
                    (if owner
-                     (str " WHERE owner = "owner) "")))
+                     (str " WHERE owner = '"owner"'"))
+                   " ORDER BY table_name"))
     :columns (fn [table]
                (str " SELECT column_name      \n"
                     " FROM ALL_TAB_COLUMNS    \n"
@@ -75,11 +79,51 @@
                     " ORDER BY c.colno;                     \n"))}
    })
 
+(defn- get-one-row-result [db sql]
+  (if sql
+    (rest
+     (flatten
+      (j/query db (list sql) {:as-arrays? true})))))
+
+(defn- get-first-row-result [db sql]
+  (if sql
+    (rest
+     (map first
+          (j/query db (list sql) {:as-arrays? true})))))
+
 (defn get-owners [db]
   (let [db-type (keyword (:subprotocol db))
-        sql (get-in queries [db-type :owners])]
-    (if sql (c/eval-sql-core :db db
-                             :sql sql))))
+        sql-receiver (get-in queries [db-type :owners])
+        sql (sql-receiver)]
+    (get-one-row-result db sql)))
 
-(defn get-stucture [db]
-  (swap! structure assoc-in [db :owners] (get-owners db)))
+(defn get-tables [db owner]
+  (let [db-type (keyword (:subprotocol db))
+        sql-receiver (get-in queries [db-type :tables])
+        sql (sql-receiver owner)]
+    (get-first-row-result db sql)))
+
+(defn get-stucture [db context]
+  (let [owner (:user db)
+        owners-list (get-in @structure [db :owners])
+        tables-list (get-in @structure [db :tables (keyword owner)])]
+    (if (not owners-list)
+      (swap! structure assoc-in [db :owners]
+             (future (get-owners db))))
+    (if (not tables-list)
+      (swap! structure assoc-in [db :tables (keyword owner)]
+             (future (get-tables db owner))))
+    ;; ----------
+    ;; (if (and owners-list (realized? owners-list))
+    ;;   @owners-list)
+    (if (and tables-list (realized? tables-list))
+      @tables-list)))
+
+(defn invalidate-cache [db]
+  (swap! structure assoc-in [db] nil))
+
+(comment
+  @structure
+  (invalidate-cache @c/db)
+  (get-stucture @c/db nil)
+  )
