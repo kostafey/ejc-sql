@@ -233,47 +233,61 @@ It has the following example structure:
 ;;;###autoload
 (defun ejc-candidates ()
   "Possible completions list according to already typed prefixes."
-  (message "Receiving database structure...")
-  (let ((need-owners? (ejc--select-db-meta-script :owners)))
-    (if (and need-owners? (not (ejc-get-owners-cache)))
-        (ejc-set-owners-cache (ejc-get-owners-list)))
-    (let* ((owners-cache (ejc-get-owners-cache))
-           (prefix-1 (ejc-get-prefix-word))
-           (prefix-2 (save-excursion
-                       (search-backward "." nil t)
-                       (ejc-get-prefix-word)))
-           (owner
-            (cond ((and prefix-1
-                        (not prefix-2)
-                        (member prefix-1 owners-cache)) prefix-1)
-                  ((and prefix-2
-                        (member prefix-2 owners-cache)) prefix-2)
-                  ;; current db owner - user
-                  (t (ejc-db-conn-user ejc-connection-struct))))
-           (tables-list (let ((tables-cache (ejc-get-tables-cache owner)))
-                          (if tables-cache
-                              tables-cache
-                            (let ((new-tables-cache
-                                   (ejc-get-tables-list owner)))
-                              (ejc-set-tables-cache owner new-tables-cache)
-                              new-tables-cache))))
-           (table (if (and prefix-1
-                           (not (equal prefix-1 owner))
-                           (member prefix-1 tables-list))
-                      prefix-1)))
-      (message "")
-      (cond
-       ;; owner.table._<colomns-list>
-       (prefix-2 (ejc-get-columns-list owner table))
-       ;; [owner|table]._<tables-list|colomns-list>
-       (prefix-1 (if (and need-owners?
-                          (member prefix-1 owners-cache))
-                     tables-list
-                   (if (member prefix-1 tables-list)
-                       (ejc-get-columns-list owner table))))
-       ;; _<owners-list&tables-list>
-       (t (-distinct (append owners-cache tables-list
-                             (ejc-get-ansi-sql-words))))))))
+  (let* ((prefix-1 (ejc-get-prefix-word))
+         (prefix-2 (save-excursion
+                     (search-backward "." nil t)
+                     (ejc-get-prefix-word)))
+         (context (if prefix-2
+                      (concat prefix-1 "." prefix-2)
+                    (or prefix-1 "")))
+         (result (ejc-get-stucture ejc-db context)))
+    (if (not result)
+        (message "Receiving database structure...")
+      result))
+
+  ;; (ejc-get-stucture ejc-db "")
+
+  ;; (let ((need-owners? (ejc--select-db-meta-script :owners)))
+  ;;   (if (and need-owners? (not (ejc-get-owners-cache)))
+  ;;       (ejc-set-owners-cache (ejc-get-owners-list)))
+  ;;   (let* ((owners-cache (ejc-get-owners-cache))
+  ;;          (prefix-1 (ejc-get-prefix-word))
+  ;;          (prefix-2 (save-excursion
+  ;;                      (search-backward "." nil t)
+  ;;                      (ejc-get-prefix-word)))
+  ;;          (owner
+  ;;           (cond ((and prefix-1
+  ;;                       (not prefix-2)
+  ;;                       (member prefix-1 owners-cache)) prefix-1)
+  ;;                 ((and prefix-2
+  ;;                       (member prefix-2 owners-cache)) prefix-2)
+  ;;                 ;; current db owner - user
+  ;;                 (t (ejc-db-conn-user ejc-connection-struct))))
+  ;;          (tables-list (let ((tables-cache (ejc-get-tables-cache owner)))
+  ;;                         (if tables-cache
+  ;;                             tables-cache
+  ;;                           (let ((new-tables-cache
+  ;;                                  (ejc-get-tables-list owner)))
+  ;;                             (ejc-set-tables-cache owner new-tables-cache)
+  ;;                             new-tables-cache))))
+  ;;          (table (if (and prefix-1
+  ;;                          (not (equal prefix-1 owner))
+  ;;                          (member prefix-1 tables-list))
+  ;;                     prefix-1)))
+  ;;     (message "")
+  ;;     (cond
+  ;;      ;; owner.table._<colomns-list>
+  ;;      (prefix-2 (ejc-get-columns-list owner table))
+  ;;      ;; [owner|table]._<tables-list|colomns-list>
+  ;;      (prefix-1 (if (and need-owners?
+  ;;                         (member prefix-1 owners-cache))
+  ;;                    tables-list
+  ;;                  (if (member prefix-1 tables-list)
+  ;;                      (ejc-get-columns-list owner table))))
+  ;;      ;; _<owners-list&tables-list>
+  ;;      (t (-distinct (append owners-cache tables-list
+  ;;                            (ejc-get-ansi-sql-words)))))))
+  )
 
 (defun ejc-return-point ()
   (let ((curr-char (buffer-substring
