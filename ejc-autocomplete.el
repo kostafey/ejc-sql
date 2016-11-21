@@ -204,8 +204,9 @@ It has the following example structure:
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
   (save-excursion
-    (let ((space-dist (save-excursion
-                        (re-search-backward "[ \n\t\r]+" nil t)))
+    (let ((space-dist (or (save-excursion
+                            (re-search-backward "[ \n\t\r]+" nil t))
+                          0))
           (dot (search-backward "." nil t))
           (space (re-search-backward "[ \n\t\r.]+" nil t)))
       (if (and dot
@@ -230,6 +231,9 @@ It has the following example structure:
           (mapcar 'upcase ejc-ansi-sql-words)
           (mapcar 'upcase ejc-auxulary-sql-words)))
 
+(defun ejc-string-to-boolean (s)
+  (not (equal s "nil")))
+
 ;;;###autoload
 (defun ejc-candidates ()
   "Possible completions list according to already typed prefixes."
@@ -237,57 +241,14 @@ It has the following example structure:
          (prefix-2 (save-excursion
                      (search-backward "." nil t)
                      (ejc-get-prefix-word)))
-         (context (if prefix-2
-                      (concat prefix-1 "." prefix-2)
-                    (or prefix-1 "")))
-         (result (ejc-get-stucture ejc-db context)))
-    (if (not result)
-        (message "Receiving database structure...")
-      result))
-
-  ;; (ejc-get-stucture ejc-db "")
-
-  ;; (let ((need-owners? (ejc--select-db-meta-script :owners)))
-  ;;   (if (and need-owners? (not (ejc-get-owners-cache)))
-  ;;       (ejc-set-owners-cache (ejc-get-owners-list)))
-  ;;   (let* ((owners-cache (ejc-get-owners-cache))
-  ;;          (prefix-1 (ejc-get-prefix-word))
-  ;;          (prefix-2 (save-excursion
-  ;;                      (search-backward "." nil t)
-  ;;                      (ejc-get-prefix-word)))
-  ;;          (owner
-  ;;           (cond ((and prefix-1
-  ;;                       (not prefix-2)
-  ;;                       (member prefix-1 owners-cache)) prefix-1)
-  ;;                 ((and prefix-2
-  ;;                       (member prefix-2 owners-cache)) prefix-2)
-  ;;                 ;; current db owner - user
-  ;;                 (t (ejc-db-conn-user ejc-connection-struct))))
-  ;;          (tables-list (let ((tables-cache (ejc-get-tables-cache owner)))
-  ;;                         (if tables-cache
-  ;;                             tables-cache
-  ;;                           (let ((new-tables-cache
-  ;;                                  (ejc-get-tables-list owner)))
-  ;;                             (ejc-set-tables-cache owner new-tables-cache)
-  ;;                             new-tables-cache))))
-  ;;          (table (if (and prefix-1
-  ;;                          (not (equal prefix-1 owner))
-  ;;                          (member prefix-1 tables-list))
-  ;;                     prefix-1)))
-  ;;     (message "")
-  ;;     (cond
-  ;;      ;; owner.table._<colomns-list>
-  ;;      (prefix-2 (ejc-get-columns-list owner table))
-  ;;      ;; [owner|table]._<tables-list|colomns-list>
-  ;;      (prefix-1 (if (and need-owners?
-  ;;                         (member prefix-1 owners-cache))
-  ;;                    tables-list
-  ;;                  (if (member prefix-1 tables-list)
-  ;;                      (ejc-get-columns-list owner table))))
-  ;;      ;; _<owners-list&tables-list>
-  ;;      (t (-distinct (append owners-cache tables-list
-  ;;                            (ejc-get-ansi-sql-words)))))))
-  )
+         (result (ejc-get-stucture ejc-db prefix-1 prefix-2))
+         (pending (car result))
+         (candidates-cache (cdr result)))
+    (if (ejc-string-to-boolean pending)
+        (message "Receiving database structure... %s" pending))
+    (if (and (not prefix-1) (not prefix-2))
+        (append candidates-cache (ejc-get-ansi-sql-words))
+      candidates-cache)))
 
 (defun ejc-return-point ()
   (let ((curr-char (buffer-substring
@@ -302,13 +263,13 @@ It has the following example structure:
 (defvar ac-source-ejc-sql
   '((candidates . ejc-candidates)
     (requires . 1)
-    (cache . t)))
+    (cache . nil)))
 
 (defvar ac-source-ejc-sql-point
   '((candidates . ejc-candidates)
     (prefix . ejc-return-point)
     (requires . 0)
-    (cache . t)))
+    (cache . nil)))
 
 ;;;###autoload
 (defun ejc-ac-setup ()
