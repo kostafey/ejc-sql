@@ -22,59 +22,6 @@
 (require 'auto-complete)
 (require 'ejc-lib)
 
-(defvar ejc-connections-cache (make-hash-table :test #'equal)
-  "Tables and owners cache shared for all buffers of the same connection.
-It has the following example structure:
-  ('h2-payments' (:owners ('root')
-                  :tables ('root' ('users' 'payments')))
-   'mysql-sales' (:owners ('su' 'admin')
-                  :tables ('su' ('product' 'sales')
-                           'admin' ('log'))))")
-
-(defun ejc-get-owners-cache ()
-  (let ((connection-cache (gethash ejc-connection-name ejc-connections-cache)))
-    (if connection-cache
-        (gethash :owners connection-cache))))
-
-(defun ejc-set-owners-cache (owners)
-  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
-         (connection-cache (or connection-cache
-                               (let ((cc (make-hash-table :test #'equal)))
-                                 (puthash ejc-connection-name
-                                          cc
-                                          ejc-connections-cache)
-                                 cc))))
-    (puthash :owners owners connection-cache)))
-
-(defun ejc-get-tables-cache (owner)
-  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
-         (owner-tables-cache (if connection-cache
-                                 (gethash :tables connection-cache))))
-    (if owner-tables-cache
-        (gethash owner owner-tables-cache))))
-
-(defun ejc-set-tables-cache (owner tables)
-  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
-         (connection-cache (or connection-cache
-                               (let ((cc (make-hash-table :test #'equal)))
-                                 (puthash ejc-connection-name
-                                          cc
-                                          ejc-connections-cache)
-                                 cc)))
-         (owner-tables-cache (gethash :tables connection-cache))
-         (owner-tables-cache (or owner-tables-cache
-                                 (let ((cc (make-hash-table :test #'equal)))
-                                   (puthash :tables
-                                            cc
-                                            connection-cache)
-                                   cc))))
-    (puthash owner tables owner-tables-cache)))
-
-(defun ejc-invalidate-cache ()
-  "Clean your current connection cache (database owners and tables list)."
-  (interactive)
-  (remhash ejc-connection-name ejc-connections-cache))
-
 ;;;###autoload
 (defun ejc--select-db-meta-script (meta-type &optional owner table)
   (let ((owner (if owner
@@ -186,11 +133,6 @@ It has the following example structure:
               ejc-db
               (ejc--select-db-meta-script :owners))))
 
-(defun ejc-get-tables-list (&optional owner)
-  (-distinct (ejc--eval-get-list
-              ejc-db
-              (ejc--select-db-meta-script :tables owner))))
-
 (defun ejc-get-columns-list (owner table)
   (ejc--eval-get-list
    ejc-db
@@ -245,7 +187,7 @@ It has the following example structure:
          (pending (car result))
          (candidates-cache (cdr result)))
     (if (ejc-string-to-boolean pending)
-        (message "Receiving database structure... %s" pending))
+        (message "Receiving database structure (%s)..." pending))
     (if (and (not prefix-1) (not prefix-2))
         (append candidates-cache (ejc-get-ansi-sql-words))
       candidates-cache)))

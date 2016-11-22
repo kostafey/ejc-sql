@@ -306,7 +306,9 @@ boundaries."
   "Output tables list."
   (interactive)
   (ejc-check-connection)
-  (ejc-eval-user-sql (ejc--select-db-meta-script :tables owner)))
+  (ejc-eval-user-sql
+   (ejc-select-db-meta-script (ejc-get-db-type) :tables
+                              :owner owner)))
 
 (defun ejc-show-user-types-list (&optional owner)
   "Output user types list."

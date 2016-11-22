@@ -90,6 +90,10 @@
     `(:database    . ,(ejc-db-conn-database    conn-struct))
     `(:separator   . ,(ejc-db-conn-separator   conn-struct)))))
 
+(defun ejc-get-db-type ()
+  "Return actual (local) db-type."
+  (ejc-db-conn-subprotocol ejc-connection-struct))
+
 (defun ejc-add-quotes (str)
   (concat "\"" str "\""))
 
