@@ -263,13 +263,13 @@ It has the following example structure:
 (defvar ac-source-ejc-sql
   '((candidates . ejc-candidates)
     (requires . 1)
-    (cache . nil)))
+    (cache . t)))
 
 (defvar ac-source-ejc-sql-point
   '((candidates . ejc-candidates)
     (prefix . ejc-return-point)
     (requires . 0)
-    (cache . nil)))
+    (cache . t)))
 
 ;;;###autoload
 (defun ejc-ac-setup ()
