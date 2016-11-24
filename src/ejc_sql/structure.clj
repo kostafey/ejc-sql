@@ -1,4 +1,4 @@
-;;; cache.clj -- Receive database stucture.
+;;; structure.clj -- Receive database stucture and keep it in cache.
 
 ;;; Copyright © 2016 - Kostafey <kostafey@gmail.com>
 
@@ -16,13 +16,13 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
-(ns ejc-sql.cache
+(ns ejc-sql.structure
   (:use [ejc-sql.lib])
   (:require
    [clojure.java.jdbc :as j]
    [ejc-sql.connect :as c]))
 
-(def structure (atom {}))
+(def cache (atom {}))
 
 (def queries
   {
@@ -158,38 +158,38 @@ check if receiveing process is not running, then start it."
         need-owners? (get-in queries [db-type :owners])]
     (if need-owners?
       (do
-        (if (not (get-in @structure [db :owners]))
-          (swap! structure assoc-in [db :owners]
+        (if (not (get-in @cache [db :owners]))
+          (swap! cache assoc-in [db :owners]
                  (future ((fn [db]
                             (let [sql (select-db-meta-script db :owners)]
                               (get-single-row-result db sql))) db))))
-        (get? (get-in @structure [db :owners]))))))
+        (get? (get-in @cache [db :owners]))))))
 
 (defn get-tables [db & [owner]]
   "Return tables list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [;; default owner
         owner (:user db)]
-    (if (not (get-in @structure [db :tables (keyword owner)]))
-      (swap! structure assoc-in [db :tables (keyword owner)]
+    (if (not (get-in @cache [db :tables (keyword owner)]))
+      (swap! cache assoc-in [db :tables (keyword owner)]
              (future ((fn [db owner]
                         (let [sql (select-db-meta-script db :tables
                                                          :owner owner)]
                           (get-first-row-result db sql)))
                       db owner))))
-    (get? (get-in @structure [db :tables (keyword owner)]))))
+    (get? (get-in @cache [db :tables (keyword owner)]))))
 
 (defn get-colomns [db table force?]
   "Return colomns list for this table from cache if already received from DB,
 check if receiveing process is not running, then start it."
-  (if (not (get-in @structure [db :colomns (keyword table)]))
-    (swap! structure assoc-in [db :colomns (keyword table)]
+  (if (not (get-in @cache [db :colomns (keyword table)]))
+    (swap! cache assoc-in [db :colomns (keyword table)]
            (future ((fn [db table]
                       (let [sql (select-db-meta-script db :columns
                                                        :table table)]
                         (get-single-row-result db sql)))
                     db table))))
-  (get? (get-in @structure [db :colomns (keyword table)]) force?))
+  (get? (get-in @cache [db :colomns (keyword table)]) force?))
 
 (defn get-stucture [db prefix-1 prefix-2]
   (let [db-type (keyword (:subprotocol db))
@@ -251,9 +251,9 @@ check if receiveing process is not running, then start it."
 
 (defn get-cache []
   "Output actual cache."
-  @structure)
+  @cache)
 
 (defn invalidate-cache [db]
   "Clean your current connection cache (database owners and tables list)."
-  (swap! structure assoc-in [db] nil))
+  (swap! cache assoc-in [db] nil))
 
