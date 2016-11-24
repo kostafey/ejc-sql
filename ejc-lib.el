@@ -31,14 +31,6 @@
   (let ((elength (length ending)))
     (string= (substring s (- 0 elength)) ending)))
 
-(defun ejc-get-db-name (subname)
-  (let* ((separator (if (equal (cl-first (split-string subname "/")) subname)
-                        ":" "/"))
-         (raw-db-name (cl-first (last (split-string subname separator))))
-         (raw-db-name (cl-first (split-string raw-db-name "?")))
-         (raw-db-name (cl-first (split-string raw-db-name ";"))))
-    raw-db-name))
-
 (defun ejc-get-connection-type (conn-struct)
   "JDBC/SQL, JPA/JPQL or Hibernate/HQL connection type."
   (cond
@@ -89,16 +81,6 @@
     `(:password    . ,(ejc-db-conn-password    conn-struct))
     `(:database    . ,(ejc-db-conn-database    conn-struct))
     `(:separator   . ,(ejc-db-conn-separator   conn-struct)))))
-
-(defun ejc-get-db-type ()
-  "Return actual (local) db-type."
-  (ejc-db-conn-subprotocol ejc-connection-struct))
-
-(defun ejc-add-quotes (str)
-  (concat "\"" str "\""))
-
-(defun ejc-add-squotes (str)
-  (concat "'" str "'"))
 
 (defun ejc-find-file-in-load-path (search-file-name &optional fail-on-error)
   "Return the full path to `file-name'.

@@ -167,6 +167,11 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :doc (concat "Clean your current connection cache "
                             "(database owners and tables list)."))
 
+(clomacs-defun ejc-get-cache
+               get-cache
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.cache)
+
 (clomacs-defun ejc-select-db-meta-script
                select-db-meta-script
                :lib-name "ejc-sql"

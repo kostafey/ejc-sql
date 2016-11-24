@@ -35,8 +35,8 @@
                         " WHERE name = '"entity-name"'"))
     :types       (fn [& _] "SELECT * FROM USER_TYPES")
     :owners      (fn [& _] (str " SELECT DISTINCT(owner) \n"
-                             " FROM ALL_OBJECTS       \n"
-                             " ORDER BY owner         \n"))
+                                " FROM ALL_OBJECTS       \n"
+                                " ORDER BY owner         \n"))
     :tables      (fn [& {:keys [owner]}]
                    (str " SELECT table_name, owner \n"
                         " FROM all_tables          \n"
@@ -56,7 +56,9 @@
     :procedures  (fn [& {:keys [owner]}]
                    (str " SELECT object_name, procedure_name \n"
                         " FROM all_procedures                \n"
-                        " WHERE owner = "owner"              \n"))
+                        (if owner
+                          (str " WHERE owner = '" owner "'")
+                          "")))
     :objects     (fn [& _]
                    (str "SELECT * FROM all_objects WHERE object_type IN "
                         "('FUNCTION','PROCEDURE','PACKAGE')"))}
@@ -78,19 +80,59 @@
                     "   AND t.tabid >= 100                  \n"
                     "   AND TRIM(t.tabname) = '" table "'   \n"
                     " ORDER BY c.colno;                     \n"))}
-   })
+   ;;-------
+   :mysql
+   ;;-------
+   {:owners nil
+    :tables  (fn [& {:keys [db-name]}]
+               (str " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
+                    " WHERE table_schema = '" db-name "'"))
+    :columns (fn [& {:keys [table]}]
+               (str "SELECT column_name              \n"
+                    "FROM INFORMATION_SCHEMA.COLUMNS \n"
+                    "WHERE table_name = '" table "'  \n"))}
+   ;;--------
+   :h2
+   ;;--------
+   {:tables  (fn [& _] (str "SELECT table_name              \n"
+                            "FROM INFORMATION_SCHEMA.TABLES \n"
+                            "WHERE TABLE_SCHEMA='PUBLIC'"))
+    :columns (fn [& {:keys [table]}]
+               (str "SELECT column_name              \n"
+                    "FROM INFORMATION_SCHEMA.COLUMNS \n"
+                    "WHERE table_name = '" table "'  \n"))}
+   ;;-------
+   :sqlserver ; ms sql server
+   ;;-------
+   {:tables  (fn [& _]
+               "SELECT * FROM information_schema.tables")
+    :columns (fn [& {:keys [table]}]
+               (str "SELECT COLUMN_NAME              \n"
+                    "FROM INFORMATION_SCHEMA.COLUMNS \n"
+                    "WHERE TABLE_NAME='" table "'      "))}})
 
-(defn select-db-meta-script [db-type meta-type &
+(defn get-db-name [subname]
+  (let [separator (if (= (first (.split subname "/")) subname)
+                    ":" "/")
+        raw-db-name (last (.split subname separator))
+        raw-db-name (first (.split raw-db-name "\\?"))
+        raw-db-name (first (.split raw-db-name ";"))]
+    raw-db-name))
+
+(defn select-db-meta-script [db meta-type &
                              {:keys [owner
                                      table
                                      entity-name]}]
   "Return SQL request to obtain some database structure info."
-  (let [db-type (if (keyword? db-type) db-type (keyword db-type))
+  (let [db-type (keyword (:subprotocol db))
         meta-type (if (keyword? meta-type) meta-type (keyword meta-type))
+        need-owners? (get-in queries [db-type :owners])
+        owner (or owner (if need-owners? (:user db)))
         sql-receiver (get-in queries [db-type meta-type])
         sql (sql-receiver :owner owner
                           :table table
-                          :entity-name entity-name)]
+                          :entity-name entity-name
+                          :db-name (get-db-name (:subname db)))]
     sql))
 
 (defn- get-single-row-result [db sql]
@@ -119,8 +161,7 @@ check if receiveing process is not running, then start it."
         (if (not (get-in @structure [db :owners]))
           (swap! structure assoc-in [db :owners]
                  (future ((fn [db]
-                            (let [db-type (keyword (:subprotocol db))
-                                  sql (select-db-meta-script db-type :owners)]
+                            (let [sql (select-db-meta-script db :owners)]
                               (get-single-row-result db sql))) db))))
         (get? (get-in @structure [db :owners]))))))
 
@@ -132,8 +173,7 @@ check if receiveing process is not running, then start it."
     (if (not (get-in @structure [db :tables (keyword owner)]))
       (swap! structure assoc-in [db :tables (keyword owner)]
              (future ((fn [db owner]
-                        (let [db-type (keyword (:subprotocol db))
-                              sql (select-db-meta-script db-type :tables
+                        (let [sql (select-db-meta-script db :tables
                                                          :owner owner)]
                           (get-first-row-result db sql)))
                       db owner))))
@@ -145,8 +185,7 @@ check if receiveing process is not running, then start it."
   (if (not (get-in @structure [db :colomns (keyword table)]))
     (swap! structure assoc-in [db :colomns (keyword table)]
            (future ((fn [db table]
-                      (let [db-type (keyword (:subprotocol db))
-                            sql (select-db-meta-script db-type :columns
+                      (let [sql (select-db-meta-script db :columns
                                                        :table table)]
                         (get-single-row-result db sql)))
                     db table))))
@@ -210,14 +249,11 @@ check if receiveing process is not running, then start it."
                       :else "nil")
                   (distinct (concat owners-list tables-list)))))))
 
+(defn get-cache []
+  "Output actual cache."
+  @structure)
+
 (defn invalidate-cache [db]
+  "Clean your current connection cache (database owners and tables list)."
   (swap! structure assoc-in [db] nil))
 
-(comment
-  (:user @c/db)
-  (get-owners @c/db)
-  @structure
-  (get-tables @c/db)
-  (invalidate-cache @c/db)
-  (get-stucture @c/db nil nil)
-  )

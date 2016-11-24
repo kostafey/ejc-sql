@@ -22,127 +22,6 @@
 (require 'auto-complete)
 (require 'ejc-lib)
 
-;;;###autoload
-(defun ejc--select-db-meta-script (meta-type &optional owner table)
-  (let ((owner (if owner
-                   (ejc-add-squotes owner)
-                 (ejc-add-squotes (ejc-db-conn-user ejc-connection-struct))))
-        (db-type (ejc-db-conn-subprotocol ejc-connection-struct))
-        (db-name (or (ejc-db-conn-database ejc-connection-struct)
-                     (ejc-get-db-name
-                      (ejc-db-conn-subname ejc-connection-struct)))))
-    (cond
-     ;;----------
-     ;; informix
-     ;;----------
-     ((string-match "informix" db-type)
-      (cond
-       ((eq :owners meta-type) nil)
-       ((eq :tables meta-type)
-        (concat " SELECT TRIM(t.tabname) as tablesList "
-                " FROM systables AS t   "
-                " WHERE t.tabtype = 'T' "
-                "   AND t.tabid >= 100  "
-                " ORDER BY t.tabname;   "))
-       ((eq :columns meta-type)
-        (concat " SELECT TRIM(c.colname) AS column_name \n"
-                "  FROM systables AS t, syscolumns AS c \n"
-                " WHERE t.tabid = c.tabid               \n"
-                "   AND t.tabtype = 'T'                 \n"
-                "   AND t.tabid >= 100                  \n"
-                "   AND TRIM(t.tabname) = '" table "'   \n"
-                " ORDER BY c.colno;                     \n"))))
-     ;;-------
-     ;; mysql
-     ;;-------
-     ((string-match "mysql" db-type)
-      (cond
-       ((eq :owners meta-type) nil)
-       ((eq :tables meta-type)
-        (concat
-         " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
-         " WHERE table_schema = '" db-name "'"))
-       ((eq :columns meta-type)
-        (concat "SELECT column_name              \n"
-                "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                "WHERE table_name = '" table "'  \n"))))
-     ;;--------
-     ;; oracle
-     ;;--------
-     ((string-match "oracle" db-type)
-      (let ((owner (upcase owner)))
-        (cond
-         ((eq :entity meta-type)
-          (concat "SELECT text             "
-                  "FROM all_source         "
-                  "WHERE name = '" (upcase table) "'"))
-         ((eq :types meta-type)
-          "SELECT * FROM USER_TYPES")
-         ((eq :owners meta-type)
-          (concat "select DISTINCT(owner) "
-                  " from ALL_OBJECTS"))
-         ((eq :tables meta-type)
-          (concat " SELECT table_name, owner \n"
-                  " FROM all_tables          \n"
-                  (if owner
-                      (concat " WHERE owner = " owner) "")))
-         ((eq :columns meta-type)
-          (concat " SELECT column_name             \n"
-                  " FROM ALL_TAB_COLUMNS           \n"
-                  " WHERE table_name = '" table "' \n"))
-         ((eq :constraints meta-type)
-          (if table
-              (concat " SELECT * FROM all_constraints    \n"
-                      " WHERE owner = "owner"            \n"
-                      "       AND table_name = '"table"' \n")
-            "SELECT * FROM user_constraints"))
-         ((eq :procedures meta-type)
-          (concat " SELECT object_name, procedure_name \n"
-                  " FROM all_procedures                \n"
-                  " WHERE owner = "owner"              \n"))
-         ((eq :objects meta-type)
-          (concat "SELECT * FROM all_objects WHERE object_type IN "
-                  "('FUNCTION','PROCEDURE','PACKAGE')")))))
-     ;;--------
-     ;; h2
-     ;;--------
-     ((string-match "h2" db-type)
-      (cond
-       ((eq :tables meta-type)
-        (concat "SELECT table_name              \n"
-                "FROM INFORMATION_SCHEMA.TABLES \n"
-                "WHERE TABLE_SCHEMA='PUBLIC'"))
-       ((eq :columns meta-type)
-        (concat "SELECT column_name              \n"
-                "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                "WHERE table_name = '" table "'  \n"))))
-     ;;-------
-     ;; ms sql server
-     ;;-------
-     ((string-match "sqlserver" db-type)
-      (cond
-       ((eq :tables meta-type)
-        "SELECT * FROM information_schema.tables")
-       ((eq :columns meta-type)
-        (concat "SELECT COLUMN_NAME              \n"
-                "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                "WHERE TABLE_NAME='" table "'      ")))))))
-
-(defun ejc-get-owners-list ()
-  (-distinct (ejc--eval-get-list
-              ejc-db
-              (ejc--select-db-meta-script :owners))))
-
-(defun ejc-get-columns-list (owner table)
-  (ejc--eval-get-list
-   ejc-db
-   (ejc--select-db-meta-script :columns owner table)))
-
-(defun ejc-get-procedures-list (&optional owner)
-  (-distinct (ejc--eval-get-list
-              ejc-db
-              (ejc--select-db-meta-script :procedures))))
-
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
   (save-excursion
@@ -193,6 +72,7 @@
       candidates-cache)))
 
 (defun ejc-return-point ()
+  "Return point position if point (cursor) is located next to dot char (.#)"
   (let ((curr-char (buffer-substring
                     (save-excursion
                       (left-char 1)
