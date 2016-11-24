@@ -1,0 +1,57 @@
+(let ((current-directory (file-name-directory load-file-name)))
+  (setq ejc-test-path (expand-file-name "." current-directory))
+  (setq ejc-root-path (expand-file-name ".." current-directory)))
+
+(add-to-list 'load-path ejc-root-path)
+(add-to-list 'load-path ejc-test-path)
+
+(package-initialize)
+
+(if (not (package-installed-p 'ejc-sql))
+    (package-install 'ejc-sql))
+
+(require 'ejc-sql)
+
+(defun ejc-test:run-maven-dependency-plugin ()
+  (print "Run maven-dependency-plugin")
+  (print
+   (shell-command-to-string
+    "mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=com.h2database:h2:1.4.192")))
+
+(ert-deftest ejc-test:get-log-file-path ()
+  :tags '(el+cl)
+  (let ((log-file-path (ejc-get-log-file-path)))
+    (should (stringp log-file-path))
+    (print (format "Log file path: %s" log-file-path))))
+
+(ert-deftest ejc-test:get-connection ()
+  :tags '(el)
+  (let ((conn (ejc-create-connection
+               "H2-test-connection"
+               :classpath "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
+               :classname "org.h2.Driver"
+               :subprotocol "h2"
+               :subname (concat "file://" default-directory
+                                "database;AUTO_SERVER=TRUE")
+               :user "a_user"
+               :password "secret")))    
+    (should
+     (equal 
+      `(("H2-test-connection" . [cl-struct-ejc-db-conn
+                                "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
+                                "org.h2.Driver"
+                                "h2"
+                                nil
+                                ,(concat "file://"
+                                         default-directory
+                                         "database;AUTO_SERVER=TRUE")
+                                "a_user"
+                                "secret"
+                                nil]))
+      conn))))
+
+(ejc-test:run-maven-dependency-plugin)
+
+;; (ert-run-tests-batch-and-exit '(tag el))
+;; (ert-run-tests-batch-and-exit '(tag el+cl))
+(ert-run-tests-batch-and-exit t)

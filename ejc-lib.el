@@ -27,7 +27,7 @@
   "Buffer-local connection structure.")
 
 (defun ejc-string-endswith-p (s ending)
-  "return non-nil if string S ends with ENDING."
+  "Return non-nil if string S ends with ENDING."
   (let ((elength (length ending)))
     (string= (substring s (- 0 elength)) ending)))
 
