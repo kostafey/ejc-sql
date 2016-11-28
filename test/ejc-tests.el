@@ -5,11 +5,20 @@
 (add-to-list 'load-path ejc-root-path)
 (add-to-list 'load-path ejc-test-path)
 
+(require 'package)
+
+(add-to-list 'package-archives
+             '("melpa" . "https://melpa.org/packages/") t)
+
+(prefer-coding-system 'utf-8)
 (package-initialize)
+(package-refresh-contents)
 
-(if (not (package-installed-p 'ejc-sql))
-    (package-install 'ejc-sql))
+(mapcar (lambda (p) (when (not (package-installed-p p))
+                 (package-install p)))
+        '(dash s clomacs cider auto-complete))
 
+(require 'cl)
 (require 'ejc-sql)
 
 (defun ejc-test:run-maven-dependency-plugin ()
@@ -34,9 +43,9 @@
                :subname (concat "file://" default-directory
                                 "database;AUTO_SERVER=TRUE")
                :user "a_user"
-               :password "secret")))    
+               :password "secret")))
     (should
-     (equal 
+     (equal
       `(("H2-test-connection" . [cl-struct-ejc-db-conn
                                 "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
                                 "org.h2.Driver"
