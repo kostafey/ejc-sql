@@ -162,6 +162,7 @@
                                  user
                                  password
                                  database
+                                 connection-uri
                                  separator)
   "Add new connection configuration named CONNECTION-NAME
 to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
@@ -177,6 +178,7 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
                                 :user user
                                 :password password
                                 :database database
+                                :connection-uri connection-uri
                                 :separator separator))
                               ejc-connections)))
 
