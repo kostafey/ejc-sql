@@ -60,6 +60,7 @@
             ))
   (user "<user-name>")
   (password "<password>")
+  (connection-uri "jdbc:<povider>://[serverName[\instanceName][:portNumber]][;property=value[;property=value]]")
   (separator ";"))
 
 (cl-defstruct ejc-jpa
@@ -74,13 +75,14 @@
   (-filter
    (lambda (x) (cdr x))
    (list
-    `(:classname   . ,(ejc-db-conn-classname   conn-struct))
-    `(:subprotocol . ,(ejc-db-conn-subprotocol conn-struct))
-    `(:subname     . ,(ejc-db-conn-subname     conn-struct))
-    `(:user        . ,(ejc-db-conn-user        conn-struct))
-    `(:password    . ,(ejc-db-conn-password    conn-struct))
-    `(:database    . ,(ejc-db-conn-database    conn-struct))
-    `(:separator   . ,(ejc-db-conn-separator   conn-struct)))))
+    `(:classname      . ,(ejc-db-conn-classname      conn-struct))
+    `(:subprotocol    . ,(ejc-db-conn-subprotocol    conn-struct))
+    `(:subname        . ,(ejc-db-conn-subname        conn-struct))
+    `(:user           . ,(ejc-db-conn-user           conn-struct))
+    `(:password       . ,(ejc-db-conn-password       conn-struct))
+    `(:database       . ,(ejc-db-conn-database       conn-struct))
+    `(:separator      . ,(ejc-db-conn-separator      conn-struct))
+    `(:connection-uri . ,(ejc-db-conn-connection-uri conn-struct)))))
 
 (defun ejc-find-file-in-load-path (search-file-name &optional fail-on-error)
   "Return the full path to `file-name'.

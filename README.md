@@ -115,9 +115,8 @@ The configuration of ejs-sql might looks like this:
 ;; MySQL example
 (ejc-create-connection
  "MySQL-db-connection"
- :classpath (concat
-             "~/.m2/repository/mysql/mysql-connector-java/5.1.6/"
-             "mysql-connector-java-5.1.6.jar")
+ :classpath (concat "~/.m2/repository/mysql/mysql-connector-java/5.1.6/"
+                    "mysql-connector-java-5.1.6.jar")
  :classname "com.mysql.jdbc.Driver"
  :subprotocol "mysql"
  :subname "//localhost:3306/my_db_name"
@@ -127,15 +126,25 @@ The configuration of ejs-sql might looks like this:
 ;; MS SQL Server example
 (ejc-create-connection
  "MS-SQL-db-connection"
- :classpath (concat
-             "~/.m2/repository/com/microsoft"
-             "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
+ :classpath (concat "~/.m2/repository/com/microsoft"
+                    "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
  :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
  :subprotocol "sqlserver"
  :subname "//localhost:1433"
  :user "a_user"
  :password "secret"
  :database "my_db_name")
+
+;; MS SQL Server via :connection-uri example
+(ejc-create-connection
+ "MS-SQL-db-connection2"
+ :classpath (concat "~/.m2/repository/com/microsoft"
+                    "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
+ :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+ :connection-uri (concat "jdbc:sqlserver://localhost\\\\instance:1433;"
+                         "databaseName=my_db_name;"
+                         "user=a_user;"
+                         "password=secret;"))
 
 ;; Oracle example
 (ejc-create-connection
