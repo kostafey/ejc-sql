@@ -11,6 +11,7 @@ before_install:
   - chmod +x test/run-tests.sh
 
 env:
+  - EMACS=emacs24
   - EMACS=emacs25
   - EMACS=emacs-snapshot
 script:
