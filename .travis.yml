@@ -7,6 +7,8 @@ before_install:
   # Update and install the Emacs for our environment
   - sudo apt-get update -qq
   - sudo apt-get install -qq -yy ${EMACS}-nox ${EMACS}-el
+  # Add run-tests.sh permission to execute
+  - chmod +x test/run-tests.sh
 
 env:
   - EMACS=emacs25
