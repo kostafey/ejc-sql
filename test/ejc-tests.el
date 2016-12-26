@@ -16,9 +16,12 @@
 
 (mapcar (lambda (p) (when (not (package-installed-p p))
                  (package-install p)))
-        '(dash s auto-complete cider clomacs))
+        '(dash s auto-complete cider clomacs undercover))
 
 (require 'cl)
+
+(when (require 'undercover nil t)
+  (undercover "../*.el"))
 (require 'ejc-sql)
 
 (defun ejc-test:run-maven-dependency-plugin ()
