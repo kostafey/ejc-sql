@@ -49,7 +49,7 @@
                                               (expand-file-name folder path))))
                                   path)))
          (concat-path "C:" "Users" (user-login-name) ".m2"))
-     (expand-file-name ".m2" "~"))))
+     (expand-file-name ".m2" (file-truename "~")))))
 
 (defun ejc-test:get-temp-path ()
   (file-name-as-directory
@@ -57,7 +57,7 @@
        (let ((dpath "C:/temp"))
          (make-directory dpath t)
          dpath)
-     "~/tmp")))
+     (file-truename "~/tmp"))))
 
 (ert-deftest ejc-test:get-connection ()
   :tags '(el+cl)
