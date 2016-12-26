@@ -21,7 +21,7 @@
 (require 'cl)
 
 (when (require 'undercover nil t)
-  (undercover "../*.el"))
+  (undercover "*.el"))
 (require 'ejc-sql)
 
 (defun ejc-test:run-maven-dependency-plugin ()
