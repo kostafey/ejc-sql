@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-emacs --script ejc-tests.el
+emacs --script test/ejc-tests.el
