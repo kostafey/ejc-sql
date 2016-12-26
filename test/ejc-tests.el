@@ -37,28 +37,28 @@
 
 (ert-deftest ejc-test:get-connection ()
   :tags '(el)
-  (let ((conn (ejc-create-connection
-               "H2-test-connection"
-               :classpath "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
-               :classname "org.h2.Driver"
-               :subprotocol "h2"
-               :subname (concat "file://" default-directory
-                                "database;AUTO_SERVER=TRUE")
-               :user "a_user"
-               :password "secret")))
+  (let* ((db-path (concat "file://" default-directory
+                          "database;AUTO_SERVER=TRUE"))
+         (conn (ejc-create-connection
+                "H2-test-connection"
+                :classpath "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
+                :classname "org.h2.Driver"
+                :subprotocol "h2"
+                :subname db-path
+                :user "a_user"
+                :password "secret")))
     (should
      (equal
       `(("H2-test-connection" . [cl-struct-ejc-db-conn
-                                "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
-                                "org.h2.Driver"
-                                "h2"
-                                nil
-                                ,(concat "file://"
-                                         default-directory
-                                         "database;AUTO_SERVER=TRUE")
-                                "a_user"
-                                "secret"
-                                nil]))
+                                 "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
+                                 "org.h2.Driver"
+                                 "h2"
+                                 nil
+                                 ,db-path
+                                 "a_user"
+                                 "secret"
+                                 nil
+                                 nil]))
       conn))))
 
 (ejc-test:run-maven-dependency-plugin)
