@@ -16,7 +16,7 @@
 
 (mapcar (lambda (p) (when (not (package-installed-p p))
                  (package-install p)))
-        '(dash s clomacs cider auto-complete))
+        '(dash s auto-complete cider clomacs))
 
 (require 'cl)
 (require 'ejc-sql)
@@ -25,7 +25,9 @@
   (print "Run maven-dependency-plugin")
   (print
    (shell-command-to-string
-    "mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=com.h2database:h2:1.4.192")))
+    (concat
+     "mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get "
+     "-Dartifact=com.h2database:h2:1.4.192"))))
 
 (ert-deftest ejc-test:get-log-file-path ()
   :tags '(el+cl)
