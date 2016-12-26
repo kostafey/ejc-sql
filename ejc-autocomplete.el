@@ -22,190 +22,12 @@
 (require 'auto-complete)
 (require 'ejc-lib)
 
-(defvar ejc-connections-cache (make-hash-table :test #'equal)
-  "Tables and owners cache shared for all buffers of the same connection.
-It has the following example structure:
-  ('h2-payments' (:owners ('root')
-                  :tables ('root' ('users' 'payments')))
-   'mysql-sales' (:owners ('su' 'admin')
-                  :tables ('su' ('product' 'sales')
-                           'admin' ('log'))))")
-
-(defun ejc-get-owners-cache ()
-  (let ((connection-cache (gethash ejc-connection-name ejc-connections-cache)))
-    (if connection-cache
-        (gethash :owners connection-cache))))
-
-(defun ejc-set-owners-cache (owners)
-  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
-         (connection-cache (or connection-cache
-                               (let ((cc (make-hash-table :test #'equal)))
-                                 (puthash ejc-connection-name
-                                          cc
-                                          ejc-connections-cache)
-                                 cc))))
-    (puthash :owners owners connection-cache)))
-
-(defun ejc-get-tables-cache (owner)
-  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
-         (owner-tables-cache (if connection-cache
-                                 (gethash :tables connection-cache))))
-    (if owner-tables-cache
-        (gethash owner owner-tables-cache))))
-
-(defun ejc-set-tables-cache (owner tables)
-  (let* ((connection-cache (gethash ejc-connection-name ejc-connections-cache))
-         (connection-cache (or connection-cache
-                               (let ((cc (make-hash-table :test #'equal)))
-                                 (puthash ejc-connection-name
-                                          cc
-                                          ejc-connections-cache)
-                                 cc)))
-         (owner-tables-cache (gethash :tables connection-cache))
-         (owner-tables-cache (or owner-tables-cache
-                                 (let ((cc (make-hash-table :test #'equal)))
-                                   (puthash :tables
-                                            cc
-                                            connection-cache)
-                                   cc))))
-    (puthash owner tables owner-tables-cache)))
-
-(defun ejc-invalidate-cache ()
-  "Clean your current connection cache (database owners and tables list)."
-  (interactive)
-  (remhash ejc-connection-name ejc-connections-cache))
-
-;;;###autoload
-(defun ejc--select-db-meta-script (meta-type &optional owner table)
-  (let ((owner (if owner
-                   (ejc-add-squotes owner)
-                 (ejc-add-squotes (ejc-db-conn-user ejc-connection-struct))))
-        (db-type (ejc-db-conn-subprotocol ejc-connection-struct))
-        (db-name (or (ejc-db-conn-database ejc-connection-struct)
-                     (ejc-get-db-name
-                      (ejc-db-conn-subname ejc-connection-struct)))))
-    (cond
-     ;;----------
-     ;; informix
-     ;;----------
-     ((string-match "informix" db-type)
-      (cond
-       ((eq :owners meta-type) nil)
-       ((eq :tables meta-type)
-        (concat " SELECT TRIM(t.tabname) as tablesList "
-                " FROM systables AS t   "
-                " WHERE t.tabtype = 'T' "
-                "   AND t.tabid >= 100  "
-                " ORDER BY t.tabname;   "))
-       ((eq :columns meta-type)
-        (concat " SELECT TRIM(c.colname) AS column_name \n"
-                "  FROM systables AS t, syscolumns AS c \n"
-                " WHERE t.tabid = c.tabid               \n"
-                "   AND t.tabtype = 'T'                 \n"
-                "   AND t.tabid >= 100                  \n"
-                "   AND TRIM(t.tabname) = '" table "'   \n"
-                " ORDER BY c.colno;                     \n"))))
-     ;;-------
-     ;; mysql
-     ;;-------
-     ((string-match "mysql" db-type)
-      (cond
-       ((eq :owners meta-type) nil)
-       ((eq :tables meta-type)
-        (concat
-         " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
-         " WHERE table_schema = '" db-name "'"))
-       ((eq :columns meta-type)
-        (concat "SELECT column_name              \n"
-                "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                "WHERE table_name = '" table "'  \n"))))
-     ;;--------
-     ;; oracle
-     ;;--------
-     ((string-match "oracle" db-type)
-      (let ((owner (upcase owner)))
-        (cond
-         ((eq :entity meta-type)
-          (concat "SELECT text             "
-                  "FROM all_source         "
-                  "WHERE name = '" (upcase table) "'"))
-         ((eq :types meta-type)
-          "SELECT * FROM USER_TYPES")
-         ((eq :owners meta-type)
-          (concat "select DISTINCT(owner) "
-                  " from ALL_OBJECTS"))
-         ((eq :tables meta-type)
-          (concat " SELECT table_name, owner \n"
-                  " FROM all_tables          \n"
-                  (if owner
-                      (concat " WHERE owner = " owner) "")))
-         ((eq :columns meta-type)
-          (concat " SELECT column_name             \n"
-                  " FROM ALL_TAB_COLUMNS           \n"
-                  " WHERE table_name = '" table "' \n"))
-         ((eq :constraints meta-type)
-          (if table
-              (concat " SELECT * FROM all_constraints    \n"
-                      " WHERE owner = "owner"            \n"
-                      "       AND table_name = '"table"' \n")
-            "SELECT * FROM user_constraints"))
-         ((eq :procedures meta-type)
-          (concat " SELECT object_name, procedure_name \n"
-                  " FROM all_procedures                \n"
-                  " WHERE owner = "owner"              \n"))
-         ((eq :objects meta-type)
-          (concat "SELECT * FROM all_objects WHERE object_type IN "
-                  "('FUNCTION','PROCEDURE','PACKAGE')")))))
-     ;;--------
-     ;; h2
-     ;;--------
-     ((string-match "h2" db-type)
-      (cond
-       ((eq :tables meta-type)
-        (concat "SELECT table_name              \n"
-                "FROM INFORMATION_SCHEMA.TABLES \n"
-                "WHERE TABLE_SCHEMA='PUBLIC'"))
-       ((eq :columns meta-type)
-        (concat "SELECT column_name              \n"
-                "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                "WHERE table_name = '" table "'  \n"))))
-     ;;-------
-     ;; ms sql server
-     ;;-------
-     ((string-match "sqlserver" db-type)
-      (cond
-       ((eq :tables meta-type)
-        "SELECT * FROM information_schema.tables")
-       ((eq :columns meta-type)
-        (concat "SELECT COLUMN_NAME              \n"
-                "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                "WHERE TABLE_NAME='" table "'      ")))))))
-
-(defun ejc-get-owners-list ()
-  (-distinct (ejc--eval-get-list
-              ejc-db
-              (ejc--select-db-meta-script :owners))))
-
-(defun ejc-get-tables-list (&optional owner)
-  (-distinct (ejc--eval-get-list
-              ejc-db
-              (ejc--select-db-meta-script :tables owner))))
-
-(defun ejc-get-columns-list (owner table)
-  (ejc--eval-get-list
-   ejc-db
-   (ejc--select-db-meta-script :columns owner table)))
-
-(defun ejc-get-procedures-list (&optional owner)
-  (-distinct (ejc--eval-get-list
-              ejc-db
-              (ejc--select-db-meta-script :procedures))))
-
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
   (save-excursion
-    (let ((space-dist (save-excursion
-                        (re-search-backward "[ \n\t\r]+" nil t)))
+    (let ((space-dist (or (save-excursion
+                            (re-search-backward "[ \n\t\r]+" nil t))
+                          0))
           (dot (search-backward "." nil t))
           (space (re-search-backward "[ \n\t\r.]+" nil t)))
       (if (and dot
@@ -230,52 +52,27 @@ It has the following example structure:
           (mapcar 'upcase ejc-ansi-sql-words)
           (mapcar 'upcase ejc-auxulary-sql-words)))
 
+(defun ejc-string-to-boolean (s)
+  (not (equal s "nil")))
+
 ;;;###autoload
 (defun ejc-candidates ()
   "Possible completions list according to already typed prefixes."
-  (message "Receiving database structure...")
-  (let ((need-owners? (ejc--select-db-meta-script :owners)))
-    (if (and need-owners? (not (ejc-get-owners-cache)))
-        (ejc-set-owners-cache (ejc-get-owners-list)))
-    (let* ((owners-cache (ejc-get-owners-cache))
-           (prefix-1 (ejc-get-prefix-word))
-           (prefix-2 (save-excursion
-                       (search-backward "." nil t)
-                       (ejc-get-prefix-word)))
-           (owner
-            (cond ((and prefix-1
-                        (not prefix-2)
-                        (member prefix-1 owners-cache)) prefix-1)
-                  ((and prefix-2
-                        (member prefix-2 owners-cache)) prefix-2)
-                  ;; current db owner - user
-                  (t (ejc-db-conn-user ejc-connection-struct))))
-           (tables-list (let ((tables-cache (ejc-get-tables-cache owner)))
-                          (if tables-cache
-                              tables-cache
-                            (let ((new-tables-cache
-                                   (ejc-get-tables-list owner)))
-                              (ejc-set-tables-cache owner new-tables-cache)
-                              new-tables-cache))))
-           (table (if (and prefix-1
-                           (not (equal prefix-1 owner))
-                           (member prefix-1 tables-list))
-                      prefix-1)))
-      (message "")
-      (cond
-       ;; owner.table._<colomns-list>
-       (prefix-2 (ejc-get-columns-list owner table))
-       ;; [owner|table]._<tables-list|colomns-list>
-       (prefix-1 (if (and need-owners?
-                          (member prefix-1 owners-cache))
-                     tables-list
-                   (if (member prefix-1 tables-list)
-                       (ejc-get-columns-list owner table))))
-       ;; _<owners-list&tables-list>
-       (t (-distinct (append owners-cache tables-list
-                             (ejc-get-ansi-sql-words))))))))
+  (let* ((prefix-1 (ejc-get-prefix-word))
+         (prefix-2 (save-excursion
+                     (search-backward "." nil t)
+                     (ejc-get-prefix-word)))
+         (result (ejc-get-stucture ejc-db prefix-1 prefix-2))
+         (pending (car result))
+         (candidates-cache (cdr result)))
+    (if (ejc-string-to-boolean pending)
+        (message "Receiving database structure (%s)..." pending))
+    (if (and (not prefix-1) (not prefix-2))
+        (append candidates-cache (ejc-get-ansi-sql-words))
+      candidates-cache)))
 
 (defun ejc-return-point ()
+  "Return point position if point (cursor) is located next to dot char (.#)"
   (let ((curr-char (buffer-substring
                     (save-excursion
                       (left-char 1)

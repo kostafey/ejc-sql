@@ -154,6 +154,29 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :namespace ejc-sql.output
                :return-value :stdout)
 
+(clomacs-defun ejc-get-stucture
+               get-stucture
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
+(clomacs-defun ejc-invalidate-cache
+               invalidate-cache
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :doc (concat "Clean your current connection cache "
+                            "(database owners and tables list)."))
+
+(clomacs-defun ejc-get-cache
+               get-cache
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure)
+
+(clomacs-defun ejc-select-db-meta-script
+               select-db-meta-script
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure)
+
 (defun ejc-quit-connection ()
   "Stop nREPL process, mark ejc-sql-mode buffers disconnected."
   (interactive)

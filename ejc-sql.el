@@ -6,7 +6,7 @@
 ;; URL: https://github.com/kostafey/ejc-sql
 ;; Keywords: sql, jdbc
 ;; Version: 0.0.1
-;; Package-Requires: ((emacs "24.4")(clomacs "0.0.2")(dash "2.12.1")(auto-complete "1.5.1")(spinner "1.7.1"))
+;; Package-Requires: ((emacs "24.4")(clomacs "0.0.2")(cider "0.14")(dash "2.12.1")(auto-complete "1.5.1")(spinner "1.7.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -266,8 +266,9 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
       (ejc-get-table-meta ejc-db table-name)
       "\n"
       (ejc-eval-sql-and-log ejc-db
-                            (ejc--select-db-meta-script
-                             :constraints owner table))))))
+                            (ejc-select-db-meta-script ejc-db :constraints
+                                                       :owner owner
+                                                       :table table))))))
 
 (defun ejc-describe-entity (entity-name)
   "Describe SQL entity ENTITY-NAME - function, procedure or type
@@ -276,8 +277,8 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   (ejc-check-connection)
   (ejc-show-last-result
    (ejc-eval-sql-and-log ejc-db
-                         (ejc--select-db-meta-script
-                          :entity nil entity-name))))
+                         (ejc-select-db-meta-script ejc-db :entity
+                                                    :entity-name entity-name))))
 
 (defun ejc-eval-user-sql (sql)
   "Evaluate SQL by user: reload and show query results buffer, update log."
@@ -308,24 +309,30 @@ boundaries."
   "Output tables list."
   (interactive)
   (ejc-check-connection)
-  (ejc-eval-user-sql (ejc--select-db-meta-script :tables owner)))
+  (ejc-eval-user-sql
+   (ejc-select-db-meta-script ejc-db :tables
+                              :owner owner)))
 
 (defun ejc-show-user-types-list (&optional owner)
   "Output user types list."
   (interactive)
   (ejc-check-connection)
-  (ejc-eval-user-sql (ejc--select-db-meta-script :types owner)))
+  (ejc-eval-user-sql (ejc-select-db-meta-script ejc-db :types
+                                                :owner owner)))
 
 (defun ejc-show-constraints-list (&optional owner table)
   "Output constraints list."
   (interactive)
   (ejc-check-connection)
-  (ejc-eval-user-sql (ejc--select-db-meta-script :constraints owner table)))
+  (ejc-eval-user-sql (ejc-select-db-meta-script ejc-db :constraints
+                                                :owner owner
+                                                :table table)))
 
 (defun ejc-show-procedures-list (&optional owner)
   "Output procedures list."
   (interactive)
-  (ejc-eval-user-sql (ejc--select-db-meta-script :procedures)))
+  (ejc-eval-user-sql (ejc-select-db-meta-script ejc-db :procedures
+                                                :owner owner)))
 
 ;;-----------------------------------------------------------------------------
 ;; results buffer

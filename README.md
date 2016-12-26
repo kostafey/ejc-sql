@@ -1,5 +1,7 @@
 [![License GPL 2](https://img.shields.io/badge/license-GPL_2-green.svg)](http://www.gnu.org/licenses/gpl-2.0.txt)
 [![MELPA](https://melpa.org/packages/ejc-sql-badge.svg)](https://melpa.org/#/ejc-sql)
+[![Build Status](https://api.travis-ci.org/kostafey/ejc-sql.svg?branch=new-cache)](https://travis-ci.org/kostafey/ejc-sql#)
+[![Coverage Status](https://coveralls.io/repos/kostafey/ejc-sql/badge.svg?branch=new-cache)](https://coveralls.io/github/kostafey/ejc-sql?branch=new-cache)
 
 # ejc-sql
 
