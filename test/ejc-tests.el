@@ -112,7 +112,6 @@
             "  first_name varchar(255) NOT NULL,          \n"
             "  last_name varchar(45) NOT NULL,            \n"
             "  register_date datetime DEFAULT NULL,       \n"
-            "  about longtext,                            \n"
             "  PRIMARY KEY (id),                          \n"
             "  UNIQUE KEY id_UNIQUE (id)                  \n"
             ")                                            \n"))
@@ -140,6 +139,49 @@
             "VALUES ('neo', 'neo@mail.com', 'Thomas', 'Anderson');   \n"
             "INSERT INTO users (login, email, first_name, last_name) \n"
             "VALUES ('morpheus', 'morpheus@mail.com', 'Nil', 'Nil'); \n"))
+          (ejc-eval-user-sql-at-point))
+        ;; Wait for query evaluation.
+        (sleep-for 15)
+        ;; Get the results.
+        (with-current-buffer ejc-results-buffer
+          (buffer-substring (point-max) (point-min))))))
+    ;; -----------
+    ;; Update data
+    (should
+     (equal
+      "Records affected: 3"
+      (progn
+        ;; Type SQL query and eval it.
+        (with-current-buffer (ejc-switch-to-sql-editor-buffer)
+          (end-of-buffer)
+          (insert
+           (concat
+            "/                                                       \n"
+            "UPDATE users SET register_date = '2012-12-14 17:25:03'; \n"))
+          (ejc-eval-user-sql-at-point))
+        ;; Wait for query evaluation.
+        (sleep-for 15)
+        ;; Get the results.
+        (with-current-buffer ejc-results-buffer
+          (buffer-substring (point-max) (point-min))))))
+    ;; -----------
+    ;; Select data
+    (should
+     (equal
+      (concat
+       "id  login     email              first_name  last_name  register_date          \n"
+       "--  --------  -----------------  ----------  ---------  ---------------------  \n"
+       "1   admin     admin@mail.com     John        Doe        2012-12-14 17:25:03.0  \n"
+       "2   neo       neo@mail.com       Thomas      Anderson   2012-12-14 17:25:03.0  \n"
+       "3   morpheus  morpheus@mail.com  Nil         Nil        2012-12-14 17:25:03.0  \n")
+      (progn
+        ;; Type SQL query and eval it.
+        (with-current-buffer (ejc-switch-to-sql-editor-buffer)
+          (end-of-buffer)
+          (insert
+           (concat
+            "/                                                       \n"
+            "SELECT * FROM users;                                    \n"))
           (ejc-eval-user-sql-at-point))
         ;; Wait for query evaluation.
         (sleep-for 15)
