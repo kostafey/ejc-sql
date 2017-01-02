@@ -153,7 +153,7 @@
     '("Quit connection" . ejc-quit-connection)))
 
 (cl-defun ejc-create-connection (connection-name
-                                 &optional &key
+                                 &key
                                  classpath
                                  classname
                                  subprotocol

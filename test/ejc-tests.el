@@ -1,4 +1,4 @@
-(let ((current-directory (file-name-directory load-file-name)))
+(let ((current-directory (file-name-directory (or load-file-name ""))))
   (setq ejc-test-path (expand-file-name "." current-directory))
   (setq ejc-root-path (expand-file-name ".." current-directory)))
 
