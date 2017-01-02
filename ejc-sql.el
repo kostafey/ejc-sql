@@ -280,15 +280,19 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
                          (ejc-select-db-meta-script ejc-db :entity
                                                     :entity-name entity-name))))
 
-(defun ejc-eval-user-sql (sql)
+(defun ejc-eval-user-sql (sql &optional sync)
   "Evaluate SQL by user: reload and show query results buffer, update log."
   (message "Processing SQL query...")
-  (ejc-eval-sql-and-log  ejc-db sql
-                         :async
-                         (lambda (res)
-                           (ejc-show-last-result res)
-                           (if ejc-show-results-buffer
-                               (message "Done SQL query.")))))
+  (cl-labels ((msg-done () (if ejc-show-results-buffer
+                               (message "Done SQL query."))))
+    (if sync
+        (progn
+          (ejc-show-last-result (ejc-eval-sql-and-log ejc-db sql))
+          (msg-done))
+      (ejc-eval-sql-and-log  ejc-db sql
+                             :async (lambda (res)
+                                      (ejc-show-last-result res)
+                                      (msg-done))))))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
@@ -297,13 +301,13 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   (let ((sql (buffer-substring beg end)))
     (ejc-eval-user-sql sql)))
 
-(defun ejc-eval-user-sql-at-point ()
+(cl-defun ejc-eval-user-sql-at-point (&optional sync)
   "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer
 boundaries."
   (interactive)
   (ejc-check-connection)
   (ejc-flash-this-sql)
-  (ejc-eval-user-sql (ejc-get-sql-at-point)))
+  (ejc-eval-user-sql (ejc-get-sql-at-point) sync))
 
 (defun ejc-show-tables-list (&optional owner)
   "Output tables list."

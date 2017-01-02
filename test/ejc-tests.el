@@ -68,9 +68,7 @@
           (ejc-connect connect))
       (end-of-buffer)
       (insert sql)
-      (ejc-eval-user-sql-at-point))
-    ;; Wait for query evaluation.
-    (sleep-for 15)
+      (ejc-eval-user-sql-at-point t))
     ;; Get the results.
     (with-current-buffer ejc-results-buffer
       (buffer-substring (point-max) (point-min)))))
