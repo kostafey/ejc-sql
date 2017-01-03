@@ -162,7 +162,31 @@
       (ejc-test:run-sql
        (concat
         "/                                                       \n"
-        "SELECT * FROM users;                                    \n"))))))
+        "SELECT * FROM users;                                    \n"))))
+    ;; -----------------------------
+    ;; Check cache for auto-complete
+    (should
+     (equal
+      '("USERS")
+      (progn
+        (with-current-buffer (ejc-switch-to-sql-editor-buffer)
+          (insert "U")
+          (auto-complete)
+          ;; Wait for async cache creation.
+          (sleep-for 15)
+          (get-cached-tables-list ejc-db)))))
+    (should
+     (let ((actual-columns-list
+            '("ID" "LOGIN" "EMAIL" "FIRST_NAME" "LAST_NAME" "REGISTER_DATE")))
+       (equal actual-columns-list
+              (-intersection
+               actual-columns-list
+               (progn
+                 (with-current-buffer (ejc-switch-to-sql-editor-buffer)
+                   (insert "SERS.")
+                   (auto-complete)
+                   (get-cached-colomns-list ejc-db "USERS" t)))))))))
+
 
 (ejc-test:run-maven-dependency-plugin)
 

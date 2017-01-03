@@ -160,6 +160,22 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :namespace ejc-sql.structure
                :return-type :list)
 
+(clomacs-defun get-cached-tables-list
+               get-tables
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list
+               :doc "Return cached tables list.
+  Requires `ejc-db' buffer local variable as parameter.")
+
+(clomacs-defun get-cached-colomns-list
+               get-colomns
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list
+               :doc "Return cached tables list.
+  Requires `ejc-db' buffer local variable and table name as parameters.")
+
 (clomacs-defun ejc-invalidate-cache
                invalidate-cache
                :lib-name "ejc-sql"
