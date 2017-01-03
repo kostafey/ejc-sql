@@ -1,6 +1,6 @@
 ;;; ejc-sql.el --- Emacs SQL client uses Clojure JDBC.
 
-;;; Copyright © 2012-2016 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2017 - Kostafey <kostafey@gmail.com>
 
 ;; Author: Kostafey <kostafey@gmail.com>
 ;; URL: https://github.com/kostafey/ejc-sql
