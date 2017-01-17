@@ -81,6 +81,10 @@ command like this:
 mvn install:install-file -Dfile="~/downloads/sqljdbc.jar" -DgroupId=com.microsoft.sqlserver  -DartifactId=sqljdbc -Dversion=6.0 -Dpackaging=jar -DgeneratePom=true
 ```
 
+**JTDS**
+
+```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=net.sourceforge.jtds:jtds:1.3.1```
+
 **PostgreSQL**
 ```
 mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgresql:postgresql:9.3-1102.jdbc41 -DrepoUrl=http://clojars.org/repo/
@@ -139,12 +143,23 @@ The configuration of ejs-sql might looks like this:
 
 ;; MS SQL Server via :connection-uri example
 (ejc-create-connection
- "MS-SQL-db-connection2"
+ "MS-SQL-db-connection-uri"
  :classpath (concat "~/.m2/repository/com/microsoft"
                     "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
  :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
  :connection-uri (concat "jdbc:sqlserver://localhost\\\\instance:1433;"
                          "databaseName=my_db_name;"
+                         "user=a_user;"
+                         "password=secret;"))
+
+;; MS SQL Server via JTDS example
+(ejc-create-connection
+ "MS-SQL-db-connection-JTDS"
+ :classpath (concat "~/.m2/repository/net/sourceforge/jtds"
+                    "/jtds/1.3.1/jtds-1.3.1.jar")
+ :classname "net.sourceforge.jtds.jdbc.Driver"
+ :connection-uri (concat "jdbc:jtds:sqlserver://localhost:1433/dbname;"
+                         "instance=instance;"
                          "user=a_user;"
                          "password=secret;"))
 
