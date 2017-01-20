@@ -32,6 +32,21 @@
      "mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get "
      "-Dartifact=com.h2database:h2:1.4.192"))))
 
+(defun ejc-test:run-lein ()
+  (print "Run lein test")
+  (let ((result (shell-command-to-string "lein test")))
+    (print result)
+    result))
+
+(ert-deftest ejc-test:run-lein-test ()
+  :tags '(cl)
+  (should
+   (not
+    (equal
+     "Tests failed."
+     (-last (lambda (x) (not (equal "" x)))
+            (s-split "\n" (ejc-test:run-lein)))))))
+
 (ert-deftest ejc-test:get-log-file-path ()
   :tags '(el+cl)
   (let ((log-file-path (ejc-get-log-file-path)))

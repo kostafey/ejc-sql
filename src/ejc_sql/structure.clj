@@ -111,13 +111,22 @@
                     "FROM INFORMATION_SCHEMA.COLUMNS \n"
                     "WHERE TABLE_NAME='" table "'      "))}})
 
-(defn get-db-name [subname]
-  (let [separator (if (= (first (.split subname "/")) subname)
-                    ":" "/")
-        raw-db-name (last (.split subname separator))
-        raw-db-name (first (.split raw-db-name "\\?"))
-        raw-db-name (first (.split raw-db-name ";"))]
-    raw-db-name))
+(defn get-db-name [subname connection-uri]
+  (if subname
+    (let [separator (if (= (first (.split subname "/")) subname)
+                      ":" "/")
+          raw-db-name (last (.split subname separator))
+          raw-db-name (first (.split raw-db-name "\\?"))
+          raw-db-name (first (.split raw-db-name ";"))]
+      raw-db-name)
+    (second
+     (.split (first
+              (filter
+               (fn [prop] (=
+                           "databasename"
+                           (.toLowerCase (first (.split prop "=")))))
+               (.split connection-uri ";")))
+             "="))))
 
 (defn select-db-meta-script [db meta-type &
                              {:keys [owner
@@ -132,7 +141,8 @@
         sql (sql-receiver :owner owner
                           :table table
                           :entity-name entity-name
-                          :db-name (get-db-name (:subname db)))]
+                          :db-name (get-db-name (:subname db)
+                                                (:connection-uri db)))]
     sql))
 
 (defn- get-single-row-result [db sql]
