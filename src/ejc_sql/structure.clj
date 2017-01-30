@@ -1,6 +1,6 @@
 ;;; structure.clj -- Receive database stucture and keep it in cache.
 
-;;; Copyright © 2016 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2016-2017 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -104,45 +104,74 @@
    ;;-------
    :sqlserver ; ms sql server
    ;;-------
-   {:tables  (fn [& _]
-               "SELECT * FROM information_schema.tables")
+   {:owners (fn [& _] (str " SELECT schema_owner              \n"
+                           " FROM information_schema.schemata \n"))
+    :tables  (fn [& _]
+               "SELECT table_name FROM information_schema.tables")
     :columns (fn [& {:keys [table]}]
-               (str "SELECT COLUMN_NAME              \n"
-                    "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                    "WHERE TABLE_NAME='" table "'      "))}})
+               (str "SELECT column_name              \n"
+                    "FROM information_schema.columns \n"
+                    "WHERE table_name='" table "'      "))}})
 
-(defn get-db-name [subname connection-uri]
-  (if subname
-    (let [separator (if (= (first (.split subname "/")) subname)
-                      ":" "/")
-          raw-db-name (last (.split subname separator))
-          raw-db-name (first (.split raw-db-name "\\?"))
-          raw-db-name (first (.split raw-db-name ";"))]
-      raw-db-name)
-    (second
-     (.split (first
-              (filter
-               (fn [prop] (=
-                           "databasename"
-                           (.toLowerCase (first (.split prop "=")))))
-               (.split connection-uri ";")))
-             "="))))
+(defn get-db-name [db]
+  (let [{:keys [database subname connection-uri]} db]
+    (or database
+        (if subname
+          (let [separator (if (= (first (.split subname "/")) subname)
+                            ":" "/")
+                raw-db-name (last (.split subname separator))
+                raw-db-name (first (.split raw-db-name "\\?"))
+                raw-db-name (first (.split raw-db-name ";"))]
+            raw-db-name)
+          ;; No subname - parse connection-uri
+          (let [props-list (.split connection-uri ";")
+                db-name-prop (first
+                              (filter
+                               (fn [prop]
+                                 (=
+                                  "databasename"
+                                  (.toLowerCase (first (.split prop "=")))))
+                               props-list))]
+            (if db-name-prop
+              ;; "databaseName=my_db_name;"
+              (second (.split db-name-prop "="))
+              ;; "jdbc:jtds:sqlserver://localhost:1433/my_db_name;"
+              (last (.split (first props-list) "/"))))))))
+
+(defn get-user [db]
+  (let [{:keys [user connection-uri]} db]
+    (or user
+        (second (.split
+                 (let [props-list (.split connection-uri ";")]
+                   (first
+                    (filter
+                     (fn [prop]
+                       (=
+                        "user"
+                        (.toLowerCase (first (.split prop "=")))))
+                     props-list))) "=")))))
+
+(defn get-db-type [db]
+  (let [{:keys [subprotocol connection-uri]} db]
+    (keyword
+     (or subprotocol
+         ;; jdbc:jtds:sqlserver://...
+         (second (.split connection-uri ":"))))))
 
 (defn select-db-meta-script [db meta-type &
                              {:keys [owner
                                      table
                                      entity-name]}]
   "Return SQL request to obtain some database structure info."
-  (let [db-type (keyword (:subprotocol db))
+  (let [db-type (get-db-type db)
         meta-type (if (keyword? meta-type) meta-type (keyword meta-type))
         need-owners? (get-in queries [db-type :owners])
-        owner (or owner (if need-owners? (:user db)))
+        owner (or owner (if need-owners? (get-user db)))
         sql-receiver (get-in queries [db-type meta-type])
         sql (sql-receiver :owner owner
                           :table table
                           :entity-name entity-name
-                          :db-name (get-db-name (:subname db)
-                                                (:connection-uri db)))]
+                          :db-name (get-db-name db))]
     sql))
 
 (defn- get-single-row-result [db sql]

@@ -1,6 +1,6 @@
 ;;; ejc-interaction.el -- ejc-sql interact with Clojure. -*- lexical-binding: t -*-
 
-;;; Copyright © 2013-2016 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2017 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -176,12 +176,17 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :doc "Return cached tables list.
   Requires `ejc-db' buffer local variable and table name as parameters.")
 
-(clomacs-defun ejc-invalidate-cache
+(clomacs-defun ejc-invalidate-cache-inner
                invalidate-cache
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure
                :doc (concat "Clean your current connection cache "
                             "(database owners and tables list)."))
+
+(defun ejc-invalidate-cache ()
+  "Clean current connection cache (database owners and tables list)."
+  (interactive)
+  (ejc-invalidate-cache-inner ejc-connection-struct))
 
 (clomacs-defun ejc-get-cache
                get-cache
