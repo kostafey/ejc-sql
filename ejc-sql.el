@@ -1,4 +1,4 @@
-;;; ejc-sql.el --- Emacs SQL client uses Clojure JDBC.
+;;; ejc-sql.el --- Emacs SQL client uses Clojure JDBC. -*- lexical-binding: t -*-
 
 ;;; Copyright © 2012-2017 - Kostafey <kostafey@gmail.com>
 
