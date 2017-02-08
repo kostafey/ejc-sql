@@ -155,8 +155,12 @@
   (let [{:keys [subprotocol connection-uri]} db]
     (keyword
      (or subprotocol
-         ;; jdbc:jtds:sqlserver://...
-         (second (.split connection-uri ":"))))))
+         (let [attrs (.split connection-uri ":")]
+           (if (= (second attrs) "jtds")
+             ;; jdbc:jtds:sqlserver://...
+             (nth attrs 2)
+             ;; jdbc:sqlserver://localhost\instance:1433;
+             (second attrs)))))))
 
 (defn select-db-meta-script [db meta-type &
                              {:keys [owner

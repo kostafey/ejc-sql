@@ -44,4 +44,11 @@
              (str "jdbc:sqlserver://localhost\\\\instance:1433;"
                   "databaseName=my_db_name;"
                   "user=a_user;"
+                  "password=secret;")})))
+    (is (= :sqlserver
+           (get-db-type
+            {:connection-uri
+             (str "jdbc:jtds:sqlserver://localhost:1433/dbname;"
+                  "instance=instance;"
+                  "user=a_user;"
                   "password=secret;")})))))
