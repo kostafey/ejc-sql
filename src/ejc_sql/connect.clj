@@ -85,7 +85,7 @@ For debug purpose."
            (if (and sql-query-word (or (.equals sql-query-word "SELECT")
                                        (.equals sql-query-word "SHOW")))
              (list :result-set
-                   (j/query db (list sql-part) {:as-arrays? true}))
+                   (j/query db (list sql-part) {:as-arrays? false}))
              (list :message
                    (str "Records affected: "
                         (first (j/execute! db (list sql-part)))))))
@@ -100,7 +100,7 @@ For debug purpose."
                                 :db  db
                                 :sql clear-sql)]
       (if (= result-type :result-set)
-        (ejc-sql.output/format-array-output result)
+        (ejc-sql.output/print-table result)
         result))))
 
 (defn eval-sql-and-log-print
@@ -157,5 +157,5 @@ For debug purpose."
     (if success
       (str head
            (ejc-sql.lib/simple-join head-length "-") "\n"
-           (ejc-sql.output/format-output result-data))
+           (ejc-sql.output/print-table result-data))
       result-data)))

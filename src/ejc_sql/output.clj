@@ -60,41 +60,35 @@
                                  (new java.util.Date))
                         " " (simple-join 2 "-") "\n" sql "\n")))))
 
-(defn get-column-name [column-symbol]
-  (let [column-string (str column-symbol)]
-    (.substring (str column-symbol) 1 (count column-string))))
-
-(defn format-output [rs & {:keys [as-arrays? add-headers?]
-                           :or {as-arrays? false
-                                add-headers? true}}]
-  (let [records-data (if as-arrays?
-                       (if add-headers? (rest rs) rs)
-                       (filter-data (get-rs-data rs)))
-        headers-data (if add-headers? (if as-arrays?
-                                        (map get-column-name (first rs))
-                                        (get-rs-headers rs))
-                         (range (count rs)))
-        longest-list (find-longest-list
-                      (get-rs-lengths (cons headers-data records-data)))
-        col-step 2
-        result (new StringBuffer "")]
-    (doseq [val (map vector longest-list headers-data)]
-      (.append result (format (str "%-" (get val 0) "s") (get val 1)))
-      (.append result (simple-join col-step " ")))
-    (.append result "\n")
-    (doseq [len longest-list]
-      (.append result (simple-join len "-"))
-      (.append result (simple-join col-step " ")))
-    (.append result "\n")
-    (doseq [row records-data]
-      (doseq [val (map vector longest-list row)]
-        (.append result (format (str "%-" (get val 0) "s") (get val 1) ))
-        (.append result (simple-join col-step " ")))
-      (.append result "\n"))
-    (.toString result)))
-
-(defn format-array-output [result]
-  (format-output result :as-arrays? true))
+(defn print-table
+  "Prints a collection of maps in a textual table. Prints table headings
+   ks, and then a line of output for each row, corresponding to the keys
+   in ks. If ks are not specified, use the keys of the first item in rows."
+  ([ks rows]
+   (when (seq rows)
+     (let [widths (map
+                   (fn [k]
+                     (apply max (count (name k)) (map #(count (str (get % k))) rows)))
+                   ks)
+           headers (map name ks)
+           spacers (map #(apply str (repeat % "-")) widths)
+           ;; TODO: #(str "%" % "d") for numbers
+           fmts (map #(str "%-" % "s") widths)
+           fmt-row (fn [leader divider trailer row]
+                     (str leader
+                          (apply str (interpose divider
+                                                (for [[col fmt] (map vector (map #(get row %) ks) fmts)]
+                                                  (format fmt (str col)))))
+                          trailer))
+           result (new StringBuffer "")
+           ;; TODO: cahnge to #(println %) when async output ready
+           out #(.append result (str % "\n"))]
+       (out (fmt-row "" " | " "" (zipmap ks headers)))
+       (out (fmt-row "" "-+-" "" (zipmap ks spacers)))
+       (doseq [row rows]
+         (out (fmt-row "" " | " "" row)))
+       (.toString result))))
+  ([rows] (print-table (keys (first rows)) rows)))
 
 (defn pretty-print [sql formatter]
   (if (= formatter :jpa)

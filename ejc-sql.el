@@ -39,6 +39,7 @@
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'ejc-interaction)
+(require 'ejc-result-mode)
 (require 'ejc-autocomplete)
 
 (defvar-local ejc-db nil
@@ -345,9 +346,7 @@ boundaries."
   (set-buffer (get-buffer-create ejc-results-buffer-name))
   (setq ejc-results-buffer (current-buffer))
   (setq view-read-only t)
-  (rst-mode)
-  (ejc-sql-mode)
-  (ejc-sql-mode t)
+  (ejc-result-mode)
   ejc-results-buffer)
 
 (defun ejc-get-buffer-or-create (buffer-or-name create-buffer-fn)

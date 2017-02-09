@@ -5,19 +5,6 @@
 (add-to-list 'load-path ejc-root-path)
 (add-to-list 'load-path ejc-test-path)
 
-(require 'package)
-
-(add-to-list 'package-archives
-             '("melpa" . "https://melpa.org/packages/") t)
-
-(prefer-coding-system 'utf-8)
-(package-initialize)
-(package-refresh-contents)
-
-(mapcar (lambda (p) (when (not (package-installed-p p))
-                 (package-install p)))
-        '(dash s auto-complete cider clomacs undercover))
-
 (require 'cl)
 
 (when (require 'undercover nil t)
@@ -169,11 +156,11 @@
     (should
      (equal
       (concat
-       "id  login     email              first_name  last_name  register_date          \n"
-       "--  --------  -----------------  ----------  ---------  ---------------------  \n"
-       "1   admin     admin@mail.com     John        Doe        2012-12-14 17:25:03.0  \n"
-       "2   neo       neo@mail.com       Thomas      Anderson   2012-12-14 17:25:03.0  \n"
-       "3   morpheus  morpheus@mail.com  Nil         Nil        2012-12-14 17:25:03.0  \n")
+       "id | login    | email             | first_name | last_name | register_date        \n"
+       "---+----------+-------------------+------------+-----------+----------------------\n"
+       "1  | admin    | admin@mail.com    | John       | Doe       | 2012-12-14 17:25:03.0\n"
+       "2  | neo      | neo@mail.com      | Thomas     | Anderson  | 2012-12-14 17:25:03.0\n"
+       "3  | morpheus | morpheus@mail.com | Nil        | Nil       | 2012-12-14 17:25:03.0\n")
       (ejc-test:run-sql
        (concat
         "/                                                       \n"
