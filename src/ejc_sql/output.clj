@@ -66,7 +66,13 @@
    in ks. If ks are not specified, use the keys of the first item in rows."
   ([ks rows]
    (when (seq rows)
-     (let [widths (map
+     (let [row-limit 1000
+           [rows msg] (if (> (count rows) row-limit)
+                        [(take row-limit rows)
+                         (format "Too many rows. Only %s from %s is shown.\n\n"
+                                 row-limit (count rows))]
+                        [rows ""])
+           widths (map
                    (fn [k]
                      (apply max (count (name k)) (map #(count (str (get % k))) rows)))
                    ks)
@@ -87,7 +93,7 @@
        (out (fmt-row "" "-+-" "" (zipmap ks spacers)))
        (doseq [row rows]
          (out (fmt-row "" " | " "" row)))
-       (.toString result))))
+       (str msg (.toString result)))))
   ([rows] (print-table (keys (first rows)) rows)))
 
 (defn pretty-print [sql formatter]
