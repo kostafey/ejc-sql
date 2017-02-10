@@ -186,6 +186,13 @@ The configuration of ejs-sql might looks like this:
  :password "secret")
 ```
 
+`ejc-set-rows-limit` set limit for number of records to output (1000 by
+default). Set nil if you want to disable limit.
+
+```lisp
+(ejc-set-rows-limit 1000)
+```
+
 ## Usage
 
 First of all, open your SQL buffer file (or any temporary buffer) and connect

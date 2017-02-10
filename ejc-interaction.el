@@ -154,6 +154,13 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :namespace ejc-sql.output
                :return-value :stdout)
 
+(clomacs-defun ejc-set-rows-limit
+               set-rows-limit
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.output
+               :doc (str "Set limit for number of records to output. "
+                         "When nil no limit."))
+
 (clomacs-defun ejc-get-stucture
                get-stucture
                :lib-name "ejc-sql"

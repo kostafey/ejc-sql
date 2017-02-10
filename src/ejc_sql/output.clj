@@ -60,14 +60,22 @@
                                  (new java.util.Date))
                         " " (simple-join 2 "-") "\n" sql "\n")))))
 
+(def rows-limit
+  "Limit number of records to output."
+  (atom 1000))
+
+(defn set-rows-limit [val]
+  "Set limit for number of records to output. When nil no limit."
+  (reset! rows-limit val))
+
 (defn print-table
   "Prints a collection of maps in a textual table. Prints table headings
    ks, and then a line of output for each row, corresponding to the keys
    in ks. If ks are not specified, use the keys of the first item in rows."
   ([ks rows]
    (when (seq rows)
-     (let [row-limit 1000
-           [rows msg] (if (> (count rows) row-limit)
+     (let [row-limit @rows-limit
+           [rows msg] (if (and row-limit (> (count rows) row-limit))
                         [(take row-limit rows)
                          (format "Too many rows. Only %s from %s is shown.\n\n"
                                  row-limit (count rows))]
