@@ -184,6 +184,17 @@ The configuration of ejs-sql might looks like this:
  :subname "file://~/projects/my_proj/db/database;AUTO_SERVER=TRUE"
  :user "a_user"
  :password "secret")
+
+;; PostgreSQL example
+(ejc-create-connetion
+"PostgreSQL-db-connection"
+:classpath (concat "~/.m2/repository/postgresql/postgresql/9.3.1102.jdbc41/"
+                   "postgresql-9.3-1102.jdbc41.jar")
+:classname "org.postgresql.Driver"
+:subprotocol "postgresql"
+:subname "//localhost:5432/my_db_name"
+:user "a_user"
+:password "secret")
 ```
 
 `ejc-set-rows-limit` set limit for number of records to output (1000 by
