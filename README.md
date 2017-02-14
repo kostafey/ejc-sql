@@ -116,6 +116,8 @@ are the same as database connection structure of
 The configuration of ejs-sql might looks like this:
 
 ```lisp
+(require 'ejc-sql)
+
 ;; Create your jdbc database connections configuration:
 
 ;; MySQL example
