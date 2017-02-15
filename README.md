@@ -22,27 +22,11 @@ SQL scripts formatting are also available.
 
 ## Installation
 
-1. To run Clojure install [Leiningen](http://leiningen.org).
+1. To run Clojure install [Leiningen](http://leiningen.org) (assume you have
+   already installed Java 7+).
 
-2. Install CIDER middleware [CIDER nREPL](https://github.com/clojure-emacs/cider-nrepl).
-
-   Quick hint to install [CIDER nREPL](https://github.com/clojure-emacs/cider-nrepl)
-   if you are not Clojure developer (yet):
-
-   Create `~/.lein/profiles.clj` and add the following contents to it:
-
-   ```clojure
-   {:user {:plugins [[cider/cider-nrepl "0.12.0"]]}}
-   ```
-
-3. Add MELPA (if not yet) to your package-archives list:
-
-   ```lisp
-   (require 'package)
-   (add-to-list 'package-archives
-                '("melpa" . "http://melpa.milkbox.net/packages/"))
-   (package-initialize)
-   ```
+2. Add [MELPA](https://github.com/melpa/melpa#usage) (if not yet) to your
+   `package-archives` list.
 
    Then you can install ejc-sql with the following command:
 
