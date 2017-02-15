@@ -172,7 +172,7 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   (setq ejc-connections (cons (cons
                                connection-name
                                (make-ejc-db-conn
-                                :classpath classpath
+                                :classpath (file-truename classpath)
                                 :classname classname
                                 :subprotocol subprotocol
                                 :subname subname
