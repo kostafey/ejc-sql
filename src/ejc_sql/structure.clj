@@ -111,7 +111,13 @@
     :columns (fn [& {:keys [table]}]
                (str "SELECT column_name              \n"
                     "FROM information_schema.columns \n"
-                    "WHERE table_name='" table "'      "))}})
+                    "WHERE table_name='" table "'      "))
+    :constraints (fn [& {:keys [table]}]
+                   (str "SELECT type_desc AS constraint_type, \n"
+                        "       name                          \n"
+                        "FROM sys.objects                     \n"
+                        "WHERE type_desc LIKE '%CONSTRAINT'   \n"
+                        "  AND OBJECT_NAME(parent_object_id)='" table "'"))}})
 
 (defn get-db-name [db]
   (let [{:keys [database subname connection-uri]} db]
@@ -172,10 +178,11 @@
         need-owners? (get-in queries [db-type :owners])
         owner (or owner (if need-owners? (get-user db)))
         sql-receiver (get-in queries [db-type meta-type])
-        sql (sql-receiver :owner owner
-                          :table table
-                          :entity-name entity-name
-                          :db-name (get-db-name db))]
+        sql (if sql-receiver
+              (sql-receiver :owner owner
+                            :table table
+                            :entity-name entity-name
+                            :db-name (get-db-name db)))]
     sql))
 
 (defn- get-single-row-result [db sql]

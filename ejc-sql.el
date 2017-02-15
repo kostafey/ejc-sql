@@ -266,10 +266,12 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
      (concat
       (ejc-get-table-meta ejc-db table-name)
       "\n"
-      (ejc-eval-sql-and-log ejc-db
-                            (ejc-select-db-meta-script ejc-db :constraints
-                                                       :owner owner
-                                                       :table table))))))
+      (let ((sql (ejc-select-db-meta-script ejc-db :constraints
+                                            :owner owner
+                                            :table table)))
+        (if (not (equal "nil" sql))
+            (ejc-eval-sql-and-log ejc-db sql)
+          ""))))))
 
 (defun ejc-describe-entity (entity-name)
   "Describe SQL entity ENTITY-NAME - function, procedure or type
