@@ -52,7 +52,7 @@
           (mapcar 'upcase ejc-ansi-sql-words)
           (mapcar 'upcase ejc-auxulary-sql-words)))
 
-(defun ejc-string-to-boolean (s)
+(defun ejc-not-nil-str (s)
   (not (equal s "nil")))
 
 ;;;###autoload
@@ -65,7 +65,7 @@
          (result (ejc-get-stucture ejc-db prefix-1 prefix-2))
          (pending (car result))
          (candidates-cache (cdr result)))
-    (if (ejc-string-to-boolean pending)
+    (if (ejc-not-nil-str pending)
         (message "Receiving database structure (%s)..." pending))
     (if (and (not prefix-1) (not prefix-2))
         (append candidates-cache (ejc-get-ansi-sql-words))

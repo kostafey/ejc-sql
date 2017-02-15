@@ -269,7 +269,7 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
       (let ((sql (ejc-select-db-meta-script ejc-db :constraints
                                             :owner owner
                                             :table table)))
-        (if (not (equal "nil" sql))
+        (if (ejc-not-nil-str sql)
             (ejc-eval-sql-and-log ejc-db sql)
           ""))))))
 

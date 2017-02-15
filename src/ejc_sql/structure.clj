@@ -119,6 +119,9 @@
                         "WHERE type_desc LIKE '%CONSTRAINT'   \n"
                         "  AND OBJECT_NAME(parent_object_id)='" table "'"))}})
 
+(defn autocomplete-available-for-db? [db-type]
+  (queries db-type))
+
 (defn get-db-name [db]
   (let [{:keys [database subname connection-uri]} db]
     (or database
@@ -242,68 +245,82 @@ check if receiveing process is not running, then start it."
   (get? (get-in @cache [db :colomns (keyword table)]) force?))
 
 (defn get-stucture [db prefix-1 prefix-2]
-  (let [db-type (get-db-type db)
-        need-owners? (get-in queries [db-type :owners])]
-    ;; Check against following cases:
-    ;; prefix-2.prefix-1.#
-    ;; prefix-1.#
-    ;; something#
-    (cond
-      ;; owner.table.#<colomns-list>
-      prefix-2 (let [table prefix-1
-                     colomns-list (get-colomns db table true)]
-                 (if colomns-list
-                   (cons "nil" colomns-list)
-                   ;; pending colomns...
-                   (list "colomns")))
-      ;; [owner|table].#<tables-list|colomns-list>
-      prefix-1 (let [get-columns
-                     (fn []
-                       (let [tables-list (get-tables db)]
-                         (if tables-list
-                           (if (in? tables-list prefix-1)
-                             ;; table.#<colomns-list>
-                             (let [table prefix-1
-                                   ;; force columns-cache obtaining...
-                                   columns-list (get-colomns db table true)]
-                               ;; ok - columns
-                               (cons "nil" columns-list))
-                             ;; unknown.# case
-                             ;; nothing to complete
-                             (list "nil"))
-                           ;; no tables yet
-                           ;; pending tables...
-                           (list "tables"))))]
-                 (if need-owners?
-                   (let [owners-list (get-owners db)]
-                     (if owners-list
-                       (if (in? owners-list prefix-1)
-                         ;; owner.#<tables-list>
-                         (let [owner prefix-1
-                               tables-list (get-tables db)]
-                           (if tables-list
-                             ;; ok - tables
-                             (cons "nil" tables-list)
-                             ;; pending tables...
-                             (list "tables")))
-                         ;; not-owner.#<tables-list>
-                         (get-columns))
-                       ;; no owners yet
-                       ;; pending owners...
-                       (list "owners")))
-                   ;; Do not assume owner.#<tables-list> for this database
-                   ;; only table.#<colomns-list>
-                   (get-columns)))
-      ;; #<owners-list&tables-list>
-      :else (let [owners-list (get-owners db)
-                  tables-list (get-tables db)]
-              (cons (cond
-                      (and (not owners-list)
-                           (not tables-list)) "owners and tables"
-                      (not owners-list) "owners"
-                      (not tables-list) "tables"
-                      :else "nil")
-                    (distinct (concat owners-list tables-list)))))))
+  "Return candidates autocomplete list from the database structure cache or
+async request to fill it, if not yet.
+Current completion environment near to point (cursor - #) could be:
+- `prefix-2`.`prefix-1`.#
+- `prefix-1`.#
+- something#
+The result list has the following structure:
+(pending item1 item2 ...)
+- If `pending` is some text (not nil) - the async request to get the structure
+  is running and `pending` describes whether it is owners, tables or both.
+- If `pending` is nil - no request is running, return result immediately."
+  (let [db-type (get-db-type db)]
+    (if (not (autocomplete-available-for-db? db-type))
+      ;; Do nothing
+      (list "nil")
+      ;; Try to create candidates autocomplete list
+      (let [need-owners? (get-in queries [db-type :owners])]
+        ;; Check against following cases:
+        ;; prefix-2.prefix-1.#
+        ;; prefix-1.#
+        ;; something#
+        (cond
+          ;; owner.table.#<colomns-list>
+          prefix-2 (let [table prefix-1
+                         colomns-list (get-colomns db table true)]
+                     (if colomns-list
+                       (cons "nil" colomns-list)
+                       ;; pending colomns...
+                       (list "colomns")))
+          ;; [owner|table].#<tables-list|colomns-list>
+          prefix-1 (letfn [(get-columns []
+                             (let [tables-list (get-tables db)]
+                               (if tables-list
+                                 (if (in? tables-list prefix-1)
+                                   ;; table.#<colomns-list>
+                                   (let [table prefix-1
+                                         ;; force columns-cache obtaining...
+                                         columns-list (get-colomns db table true)]
+                                     ;; ok - columns
+                                     (cons "nil" columns-list))
+                                   ;; unknown.# case
+                                   ;; nothing to complete
+                                   (list "nil"))
+                                 ;; no tables yet
+                                 ;; pending tables...
+                                 (list "tables"))))]
+                     (if need-owners?
+                       (let [owners-list (get-owners db)]
+                         (if owners-list
+                           (if (in? owners-list prefix-1)
+                             ;; owner.#<tables-list>
+                             (let [owner prefix-1
+                                   tables-list (get-tables db)]
+                               (if tables-list
+                                 ;; ok - tables
+                                 (cons "nil" tables-list)
+                                 ;; pending tables...
+                                 (list "tables")))
+                             ;; not-owner.#<tables-list>
+                             (get-columns))
+                           ;; no owners yet
+                           ;; pending owners...
+                           (list "owners")))
+                       ;; Do not assume owner.#<tables-list> for this database
+                       ;; only table.#<colomns-list>
+                       (get-columns)))
+          ;; #<owners-list&tables-list>
+          :else (let [owners-list (get-owners db)
+                      tables-list (get-tables db)]
+                  (cons (cond
+                          (and (not owners-list)
+                               (not tables-list)) "owners and tables"
+                          (not owners-list) "owners"
+                          (not tables-list) "tables"
+                          :else "nil")
+                        (distinct (concat owners-list tables-list)))))))))
 
 (defn get-cache []
   "Output actual cache."
