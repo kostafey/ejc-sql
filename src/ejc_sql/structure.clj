@@ -204,7 +204,7 @@
 (defn get-owners [db]
   "Return owners list from cache if already received from DB,
 check if receiveing process is not running, then start it."
-  (let [db-type (keyword (:subprotocol db))
+  (let [db-type (get-db-type db)
         need-owners? (get-in queries [db-type :owners])]
     (if need-owners?
       (do
@@ -242,7 +242,7 @@ check if receiveing process is not running, then start it."
   (get? (get-in @cache [db :colomns (keyword table)]) force?))
 
 (defn get-stucture [db prefix-1 prefix-2]
-  (let [db-type (keyword (:subprotocol db))
+  (let [db-type (get-db-type db)
         need-owners? (get-in queries [db-type :owners])]
     ;; Check against following cases:
     ;; prefix-2.prefix-1.#
@@ -257,37 +257,43 @@ check if receiveing process is not running, then start it."
                    ;; pending colomns...
                    (list "colomns")))
       ;; [owner|table].#<tables-list|colomns-list>
-      prefix-1 (if need-owners?
-                 (let [owners-list (get-owners db)]
-                   (if owners-list
-                     (if (in? owners-list prefix-1)
-                       ;; owner.#<tables-list>
-                       (let [owner prefix-1
-                             tables-list (get-tables db)]
-                         (if tables-list
-                           ;; ok - tables
-                           (cons "nil" tables-list)
-                           ;; pending tables...
-                           (list "tables")))
-                       ;; not-owner.#<tables-list>
+      prefix-1 (let [get-columns
+                     (fn []
                        (let [tables-list (get-tables db)]
-                        (if tables-list
-                          (if (in? tables-list prefix-1)
-                            ;; table.#<colomns-list>
-                            (let [table prefix-1
-                                  ;; force columns-cache obtaining...
-                                  columns-list (get-colomns db table true)]
-                              ;; ok - columns
-                              (cons "nil" columns-list))
-                            ;; unknown.# case
-                            ;; nothing to complete
-                            (list "nil"))
-                          ;; no tables yet
-                          ;; pending tables...
-                          (list "tables"))))
-                     ;; no owners yet
-                     ;; pending owners...
-                     (list "owners"))))
+                         (if tables-list
+                           (if (in? tables-list prefix-1)
+                             ;; table.#<colomns-list>
+                             (let [table prefix-1
+                                   ;; force columns-cache obtaining...
+                                   columns-list (get-colomns db table true)]
+                               ;; ok - columns
+                               (cons "nil" columns-list))
+                             ;; unknown.# case
+                             ;; nothing to complete
+                             (list "nil"))
+                           ;; no tables yet
+                           ;; pending tables...
+                           (list "tables"))))]
+                 (if need-owners?
+                   (let [owners-list (get-owners db)]
+                     (if owners-list
+                       (if (in? owners-list prefix-1)
+                         ;; owner.#<tables-list>
+                         (let [owner prefix-1
+                               tables-list (get-tables db)]
+                           (if tables-list
+                             ;; ok - tables
+                             (cons "nil" tables-list)
+                             ;; pending tables...
+                             (list "tables")))
+                         ;; not-owner.#<tables-list>
+                         (get-columns))
+                       ;; no owners yet
+                       ;; pending owners...
+                       (list "owners")))
+                   ;; Do not assume owner.#<tables-list> for this database
+                   ;; only table.#<colomns-list>
+                   (get-columns)))
       ;; #<owners-list&tables-list>
       :else (let [owners-list (get-owners db)
                   tables-list (get-tables db)]
@@ -297,7 +303,7 @@ check if receiveing process is not running, then start it."
                       (not owners-list) "owners"
                       (not tables-list) "tables"
                       :else "nil")
-                  (distinct (concat owners-list tables-list)))))))
+                    (distinct (concat owners-list tables-list)))))))
 
 (defn get-cache []
   "Output actual cache."
