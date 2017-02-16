@@ -347,7 +347,6 @@ boundaries."
 (defun ejc-create-output-buffer ()
   (set-buffer (get-buffer-create ejc-results-buffer-name))
   (setq ejc-results-buffer (current-buffer))
-  (setq view-read-only t)
   (ejc-result-mode)
   ejc-results-buffer)
 

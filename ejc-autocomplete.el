@@ -22,6 +22,7 @@
 (require 'auto-complete)
 (require 'ejc-lib)
 (require 'ejc-interaction)
+(require 'ejc-doc)
 
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
@@ -83,6 +84,12 @@
         (point)
       nil)))
 
+(defun ac-ejc-documentation (symbol-name)
+  "Return a documentation string for SYMBOL-NAME."
+  (if (not ejc-doc-created-p)
+      (ejc-create-doc))
+  (gethash (intern (downcase symbol-name)) ejc-sql-doc))
+
 (defvar ac-source-ejc-sql
   '((candidates . ejc-candidates)
     (symbol . "d")
@@ -99,6 +106,7 @@
 (defvar ac-source-ejc-ansi-sql-words
   '((candidates . ejc-get-ansi-sql-words)
     (symbol . "a")
+    (document . ac-ejc-documentation)
     (requires . 1)
     (cache . t)))
 

@@ -214,8 +214,9 @@ Prepare SQL string, evaluate SQL script and write them to log file"
     (let ((buffers (buffer-list)))
       (while buffers
         (with-current-buffer (car buffers)
-          (when (equal major-mode ejc-sql-mode)
-            (sql-highlight-product)))
+          (when (member 'ejc-sql-mode minor-mode-list)
+            (sql-highlight-product)
+            (spinner-stop)))
         (setq buffers (cdr buffers)))))
   (unless (cider-connected-p)
     (cider-close-ancillary-buffers)))
