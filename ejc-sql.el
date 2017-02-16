@@ -250,7 +250,7 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
             val))))
 
 (defun ejc-check-connection ()
-  (unless ejc-db
+  (unless (ejc-buffer-connected-p)
     (error "Run M-x ejc-connect first!")))
 
 (defun ejc-describe-table (table-name)
