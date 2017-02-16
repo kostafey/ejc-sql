@@ -21,6 +21,7 @@
 (require 'dash)
 (require 'auto-complete)
 (require 'ejc-lib)
+(require 'ejc-interaction)
 
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
@@ -62,14 +63,19 @@
          (prefix-2 (save-excursion
                      (search-backward "." nil t)
                      (ejc-get-prefix-word)))
-         (result (ejc-get-stucture ejc-db prefix-1 prefix-2))
-         (pending (car result))
-         (candidates-cache (cdr result)))
-    (if (ejc-not-nil-str pending)
-        (message "Receiving database structure (%s)..." pending))
-    (if (and (not prefix-1) (not prefix-2))
-        (append candidates-cache (ejc-get-ansi-sql-words))
-      candidates-cache)))
+         (candidates-cache (list)))
+    (if (ejc-buffer-connected-p)
+        (let* ((result (ejc-get-stucture ejc-db prefix-1 prefix-2))
+               (pending (car result))
+               (candidates-cache (cdr result)))
+          (if (ejc-not-nil-str pending)
+              (message "Receiving database structure (%s)..." pending))
+          (if (and (not prefix-1) (not prefix-2))
+              (append candidates-cache (ejc-get-ansi-sql-words))
+            candidates-cache))
+      (if (and (not prefix-1) (not prefix-2))
+          (append candidates-cache (ejc-get-ansi-sql-words))
+        candidates-cache))))
 
 (defun ejc-return-point ()
   "Return point position if point (cursor) is located next to dot char (.#)"

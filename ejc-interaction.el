@@ -220,6 +220,12 @@ Prepare SQL string, evaluate SQL script and write them to log file"
   (unless (cider-connected-p)
     (cider-close-ancillary-buffers)))
 
+(defalias 'ejc-close-connection 'ejc-quit-connection)
+
+(defun ejc-buffer-connected-p ()
+  "Check if current buffer is connected to database."
+  (and (clomacs-get-connection "ejc-sql") (boundp 'ejc-db) ejc-db))
+
 (provide 'ejc-interaction)
 
 ;;; ejc-interaction.el ends here
