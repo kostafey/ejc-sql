@@ -59,23 +59,18 @@
 ;;;###autoload
 (defun ejc-candidates ()
   "Possible completions list according to already typed prefixes."
-  (let* ((prefix-1 (ejc-get-prefix-word))
-         (prefix-2 (save-excursion
-                     (search-backward "." nil t)
-                     (ejc-get-prefix-word)))
-         (candidates-cache (list)))
-    (if (ejc-buffer-connected-p)
-        (let* ((result (ejc-get-stucture ejc-db prefix-1 prefix-2))
-               (pending (car result))
-               (candidates-cache (cdr result)))
-          (if (ejc-not-nil-str pending)
-              (message "Receiving database structure (%s)..." pending))
-          (if (and (not prefix-1) (not prefix-2))
-              (append candidates-cache (ejc-get-ansi-sql-words))
-            candidates-cache))
-      (if (and (not prefix-1) (not prefix-2))
-          (append candidates-cache (ejc-get-ansi-sql-words))
-        candidates-cache))))
+  (if (ejc-buffer-connected-p)
+      (let* ((prefix-1 (ejc-get-prefix-word))
+             (prefix-2 (save-excursion
+                         (search-backward "." nil t)
+                         (ejc-get-prefix-word)))
+             (result (ejc-get-stucture ejc-db prefix-1 prefix-2))
+             (pending (car result))
+             (candidates-cache (cdr result)))
+        (if (ejc-not-nil-str pending)
+            (message "Receiving database structure (%s)..." pending))
+        candidates-cache)
+    (list)))
 
 (defun ejc-return-point ()
   "Return point position if point (cursor) is located next to dot char (.#)"
@@ -90,13 +85,21 @@
 
 (defvar ac-source-ejc-sql
   '((candidates . ejc-candidates)
+    (symbol . "d")
     (requires . 1)
     (cache . t)))
 
 (defvar ac-source-ejc-sql-point
   '((candidates . ejc-candidates)
+    (symbol . "d")
     (prefix . ejc-return-point)
     (requires . 0)
+    (cache . t)))
+
+(defvar ac-source-ejc-ansi-sql-words
+  '((candidates . ejc-get-ansi-sql-words)
+    (symbol . "a")
+    (requires . 1)
     (cache . t)))
 
 ;;;###autoload
@@ -104,8 +107,9 @@
   "Add the completion sources to the front of `ac-sources'.
 This affects only the current buffer."
   (interactive)
+  (add-to-list 'ac-sources 'ac-source-ejc-ansi-sql-words)
   (add-to-list 'ac-sources 'ac-source-ejc-sql)
-  (add-to-list 'ac-sources 'ac-source-ejc-sql-point ))
+  (add-to-list 'ac-sources 'ac-source-ejc-sql-point))
 
 (provide 'ejc-autocomplete)
 
