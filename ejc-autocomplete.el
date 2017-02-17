@@ -105,7 +105,7 @@
 
 (defvar ac-source-ejc-ansi-sql-words
   '((candidates . ejc-get-ansi-sql-words)
-    (symbol . "a")
+    (symbol . "s")
     (document . ac-ejc-documentation)
     (requires . 1)
     (cache . t)))

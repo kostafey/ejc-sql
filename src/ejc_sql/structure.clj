@@ -24,6 +24,18 @@
 
 (def cache (atom {}))
 
+(def default-queries
+  {:owners  (fn [& _]
+              (str " SELECT schema_owner              \n"
+                   " FROM information_schema.schemata \n"))
+   :tables  (fn [& _]
+              (str " SELECT table_name                \n"
+                   " FROM information_schema.tables   \n"))
+   :columns (fn [& {:keys [table]}]
+              (str " SELECT column_name               \n"
+                   " FROM information_schema.columns  \n"
+                   " WHERE table_name = '" table "'   \n"))})
+
 (def queries
   {
    ;;--------
@@ -83,41 +95,32 @@
    ;;-------
    :mysql
    ;;-------
-   {:owners nil
-    :tables  (fn [& {:keys [db-name]}]
-               (str " SELECT table_name FROM INFORMATION_SCHEMA.TABLES "
-                    " WHERE table_schema = '" db-name "'"))
-    :columns (fn [& {:keys [table]}]
-               (str "SELECT column_name              \n"
-                    "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                    "WHERE table_name = '" table "'  \n"))}
+   {:owners  (default-queries :owners)
+    :tables  (default-queries :tables)
+    :columns (default-queries :columns)}
    ;;--------
    :h2
    ;;--------
-   {:tables  (fn [& _] (str "SELECT table_name              \n"
-                            "FROM INFORMATION_SCHEMA.TABLES \n"
-                            "WHERE TABLE_SCHEMA='PUBLIC'"))
-    :columns (fn [& {:keys [table]}]
-               (str "SELECT column_name              \n"
-                    "FROM INFORMATION_SCHEMA.COLUMNS \n"
-                    "WHERE table_name = '" table "'  \n"))}
+   {:tables  (default-queries :tables)
+    :columns (default-queries :columns)}
    ;;-------
    :sqlserver ; ms sql server
    ;;-------
-   {:owners (fn [& _] (str " SELECT schema_owner              \n"
-                           " FROM information_schema.schemata \n"))
-    :tables  (fn [& _]
-               "SELECT table_name FROM information_schema.tables")
-    :columns (fn [& {:keys [table]}]
-               (str "SELECT column_name              \n"
-                    "FROM information_schema.columns \n"
-                    "WHERE table_name='" table "'      "))
+   {:owners  (default-queries :owners)
+    :tables  (default-queries :tables)
+    :columns (default-queries :columns)
     :constraints (fn [& {:keys [table]}]
                    (str "SELECT type_desc AS constraint_type, \n"
                         "       name                          \n"
                         "FROM sys.objects                     \n"
                         "WHERE type_desc LIKE '%CONSTRAINT'   \n"
-                        "  AND OBJECT_NAME(parent_object_id)='" table "'"))}})
+                        "  AND OBJECT_NAME(parent_object_id)='" table "'"))}
+   ;;-------
+   :postgresql
+   ;;-------
+   {:owners  (default-queries :owners)
+    :tables  (default-queries :tables)
+    :columns (default-queries :columns)}})
 
 (defn autocomplete-available-for-db? [db-type]
   (queries db-type))

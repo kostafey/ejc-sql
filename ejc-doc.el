@@ -17,7 +17,7 @@
 (defvar ejc-doc-created-p nil)
 
 (defun ejc-create-doc ()
-  (fill-doc
+  (ejc-fill-doc
    'select
    "The SQL SELECT statement returns a result
 set of records from one or more tables.
