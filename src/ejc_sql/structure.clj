@@ -28,9 +28,12 @@
   {:owners  (fn [& _]
               (str " SELECT schema_owner              \n"
                    " FROM information_schema.schemata \n"))
-   :tables  (fn [& _]
+   :tables  (fn [& {:keys [schema]}]
               (str " SELECT table_name                \n"
-                   " FROM information_schema.tables   \n"))
+                   " FROM information_schema.tables   \n"
+                   (if schema
+                     (str " WHERE table_schema = '" schema "'")
+                     "")))
    :columns (fn [& {:keys [table]}]
               (str " SELECT column_name               \n"
                    " FROM information_schema.columns  \n"
@@ -101,7 +104,7 @@
    ;;--------
    :h2
    ;;--------
-   {:tables  (default-queries :tables)
+   {:tables  (fn [& _] ((default-queries :tables) :schema "PUBLIC"))
     :columns (default-queries :columns)}
    ;;-------
    :sqlserver ; ms sql server
