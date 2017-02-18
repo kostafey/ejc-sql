@@ -167,7 +167,25 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :namespace ejc-sql.structure
                :return-type :list)
 
-(clomacs-defun get-cached-tables-list
+(clomacs-defun ejc-get-owners-candidates
+               get-owners-candidates
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
+(clomacs-defun ejc-get-tables-candidates
+               get-tables-candidates
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
+(clomacs-defun ejc-get-colomns-candidates
+               get-colomns-candidates
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
+(clomacs-defun ejc-get-cached-tables-list
                get-tables
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure

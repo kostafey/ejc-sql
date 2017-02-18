@@ -57,21 +57,30 @@
 (defun ejc-not-nil-str (s)
   (not (equal s "nil")))
 
+(defmacro ejc-candidates (cand-fn)
+  `(if (ejc-buffer-connected-p)
+       (let* ((prefix-1 (ejc-get-prefix-word))
+              (prefix-2 (save-excursion
+                           (search-backward "." nil t)
+                           (ejc-get-prefix-word)))
+              (result (funcall ,cand-fn ejc-db prefix-1 prefix-2))
+              (pending (car result))
+              (candidates-cache (cdr result)))
+         (if (ejc-not-nil-str pending)
+             (message "Receiving database structure...")
+           candidates-cache))))
+
 ;;;###autoload
-(defun ejc-candidates ()
-  "Possible completions list according to already typed prefixes."
-  (if (ejc-buffer-connected-p)
-      (let* ((prefix-1 (ejc-get-prefix-word))
-             (prefix-2 (save-excursion
-                         (search-backward "." nil t)
-                         (ejc-get-prefix-word)))
-             (result (ejc-get-stucture ejc-db prefix-1 prefix-2))
-             (pending (car result))
-             (candidates-cache (cdr result)))
-        (if (ejc-not-nil-str pending)
-            (message "Receiving database structure (%s)..." pending))
-        candidates-cache)
-    (list)))
+(defun ejc-owners-candidates ()
+  (ejc-candidates 'ejc-get-owners-candidates))
+
+;;;###autoload
+(defun ejc-tables-candidates ()
+  (ejc-candidates 'ejc-get-tables-candidates))
+
+;;;###autoload
+(defun ejc-colomns-candidates ()
+  (ejc-candidates 'ejc-get-colomns-candidates))
 
 (defun ejc-return-point ()
   "Return point position if point (cursor) is located next to dot char (.#)"
@@ -90,20 +99,33 @@
       (ejc-create-doc))
   (gethash (intern (downcase symbol-name)) ejc-sql-doc))
 
-(defvar ac-source-ejc-sql
-  '((candidates . ejc-candidates)
-    (symbol . "d")
+(defvar ac-source-ejc-owners
+  '((candidates . ejc-owners-candidates)
+    (symbol . "o")
     (requires . 1)
     (cache . t)))
 
-(defvar ac-source-ejc-sql-point
-  '((candidates . ejc-candidates)
-    (symbol . "d")
+(defvar ac-source-ejc-tables
+  '((candidates . ejc-tables-candidates)
+    (symbol . "t")
+    (requires . 1)
+    (cache . t)))
+
+(defvar ac-source-ejc-tables-point
+  '((candidates . ejc-tables-candidates)
+    (symbol . "t")
     (prefix . ejc-return-point)
     (requires . 0)
     (cache . t)))
 
-(defvar ac-source-ejc-ansi-sql-words
+(defvar ac-source-ejc-colomns-point
+  '((candidates . ejc-colomns-candidates)
+    (symbol . "c")
+    (prefix . ejc-return-point)
+    (requires . 0)
+    (cache . t)))
+
+(defvar ac-source-ejc-ansi-sql
   '((candidates . ejc-get-ansi-sql-words)
     (symbol . "s")
     (document . ac-ejc-documentation)
@@ -113,11 +135,18 @@
 ;;;###autoload
 (defun ejc-ac-setup ()
   "Add the completion sources to the front of `ac-sources'.
-This affects only the current buffer."
+This affects only the current buffer.
+
+Check against following cases:
+prefix-2.prefix-1.#
+prefix-1.#
+something#"
   (interactive)
-  (add-to-list 'ac-sources 'ac-source-ejc-ansi-sql-words)
-  (add-to-list 'ac-sources 'ac-source-ejc-sql)
-  (add-to-list 'ac-sources 'ac-source-ejc-sql-point))
+  (add-to-list 'ac-sources 'ac-source-ejc-ansi-sql)
+  (add-to-list 'ac-sources 'ac-source-ejc-owners)
+  (add-to-list 'ac-sources 'ac-source-ejc-tables)
+  (add-to-list 'ac-sources 'ac-source-ejc-tables-point)
+  (add-to-list 'ac-sources 'ac-source-ejc-colomns-point))
 
 (provide 'ejc-autocomplete)
 

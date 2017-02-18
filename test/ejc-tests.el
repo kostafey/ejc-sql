@@ -176,7 +176,7 @@
           (auto-complete)
           ;; Wait for async cache creation.
           (sleep-for 15)
-          (get-cached-tables-list ejc-db)))))
+          (ejc-get-cached-tables-list ejc-db)))))
     (should
      (let ((actual-columns-list
             '("ID" "LOGIN" "EMAIL" "FIRST_NAME" "LAST_NAME" "REGISTER_DATE")))
