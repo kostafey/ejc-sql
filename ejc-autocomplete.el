@@ -118,6 +118,12 @@
     (requires . 0)
     (cache . t)))
 
+(defvar ac-source-ejc-colomns
+  '((candidates . ejc-colomns-candidates)
+    (symbol . "c")
+    (requires . 1)
+    (cache . t)))
+
 (defvar ac-source-ejc-colomns-point
   '((candidates . ejc-colomns-candidates)
     (symbol . "c")
@@ -146,6 +152,7 @@ something#"
   (add-to-list 'ac-sources 'ac-source-ejc-owners)
   (add-to-list 'ac-sources 'ac-source-ejc-tables)
   (add-to-list 'ac-sources 'ac-source-ejc-tables-point)
+  (add-to-list 'ac-sources 'ac-source-ejc-colomns)
   (add-to-list 'ac-sources 'ac-source-ejc-colomns-point))
 
 (provide 'ejc-autocomplete)

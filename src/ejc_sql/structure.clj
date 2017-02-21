@@ -33,11 +33,13 @@
                    " FROM information_schema.tables   \n"
                    (if schema
                      (str " WHERE table_schema = '" schema "'")
-                     "")))
+                     "")
+                   " ORDER BY table_name              \n"))
    :columns (fn [& {:keys [table]}]
               (str " SELECT column_name               \n"
                    " FROM information_schema.columns  \n"
-                   " WHERE table_name = '" table "'   \n"))})
+                   " WHERE table_name = '" table "'   \n"
+                   " ORDER BY column_name             \n"))})
 
 (def queries
   {
