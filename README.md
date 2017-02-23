@@ -253,11 +253,12 @@ List of other interactive functions
 
 Autocompletion is available for the following databases:
 
-* Informix
-* MySQL
 * Oracle
-* H2
 * MS SQL Server
+* PostgreSQL
+* MySQL
+* Informix
+* H2
 
 ## Troubleshooting
 
