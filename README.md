@@ -107,7 +107,7 @@ The configuration of ejs-sql might looks like this:
 ;; MySQL example
 (ejc-create-connection
  "MySQL-db-connection"
- :classpath (concat (file-truename "~/.m2/repository/mysql/mysql-connector-java/5.1.6")
+ :classpath (concat "~/.m2/repository/mysql/mysql-connector-java/5.1.6"
                     "/mysql-connector-java-5.1.6.jar")
  :classname "com.mysql.jdbc.Driver"
  :subprotocol "mysql"
@@ -118,7 +118,7 @@ The configuration of ejs-sql might looks like this:
 ;; MS SQL Server example
 (ejc-create-connection
  "MS-SQL-db-connection"
- :classpath (concat (file-truename "~/.m2/repository/com/microsoft")
+ :classpath (concat "~/.m2/repository/com/microsoft"
                     "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
  :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
  :subprotocol "sqlserver"
@@ -130,7 +130,7 @@ The configuration of ejs-sql might looks like this:
 ;; MS SQL Server via :connection-uri example
 (ejc-create-connection
  "MS-SQL-db-connection-uri"
- :classpath (concat (file-truename "~/.m2/repository/com/microsoft")
+ :classpath (concat "~/.m2/repository/com/microsoft"
                     "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
  :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
  :connection-uri (concat "jdbc:sqlserver://localhost\\\\instance:1433;"
@@ -141,7 +141,7 @@ The configuration of ejs-sql might looks like this:
 ;; MS SQL Server via JTDS example
 (ejc-create-connection
  "MS-SQL-db-connection-JTDS"
- :classpath (concat (file-truename "~/.m2/repository/net/sourceforge/jtds")
+ :classpath (concat "~/.m2/repository/net/sourceforge/jtds"
                     "/jtds/1.3.1/jtds-1.3.1.jar")
  :classname "net.sourceforge.jtds.jdbc.Driver"
  :connection-uri (concat "jdbc:jtds:sqlserver://localhost:1433/dbname;"
@@ -152,7 +152,7 @@ The configuration of ejs-sql might looks like this:
 ;; Oracle example
 (ejc-create-connection
  "Oracle-db-connection"
- :classpath (concat (file-truename "~/.m2/repository/com/oracle/jdbc")
+ :classpath (concat "~/.m2/repository/com/oracle/jdbc"
                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
  :classname "oracle.jdbc.driver.OracleDriver"
  :subprotocol "oracle"
@@ -164,7 +164,7 @@ The configuration of ejs-sql might looks like this:
 ;; H2 example
 (ejc-create-connection
  "H2-db-connection"
- :classpath (file-truename "~/.m2/repository/com/h2database/h2/1.4.191/h2-1.4.191.jar")
+ :classpath "~/.m2/repository/com/h2database/h2/1.4.191/h2-1.4.191.jar"
  :classname "org.h2.Driver"
  :subprotocol "h2"
  :subname "file:///projects/my_proj/db/database;AUTO_SERVER=TRUE"

@@ -31,7 +31,7 @@
 
 ;; See README.md for detailed description.
 
-;;; Code: 
+;;; Code:
 
 (require 'sql)
 (require 'dash)
