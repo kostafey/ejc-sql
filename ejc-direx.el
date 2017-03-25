@@ -19,8 +19,9 @@
 ;;; Code:
 
 
-(require 'ejc-sql)
+(require 'dash)
 (require 'direx)
+(require 'ejc-interaction)
 
 (defgroup ejc-direx nil
   "Database structure visualisation tree."
@@ -125,9 +126,17 @@
 (defvar ejc-direx:item-refresh--recurring nil)
 
 (defun ejc-direx:get-structure ()
-  ;; TODO: implement
-  (list (list (list :type "table" :name "myTable")
-              (list (list :type "colomn" :name "myColumn")))))
+  "Provide data - database structure for direx tree."
+  (cl-labels ((column-item (column)
+                           (list :type "column" :name column))
+              (table-item (table)
+                          (let ((columns
+                                 (cdr (ejc-get-colomns-candidates ejc-db table))))
+                            (cons (list :type "table" :name table)
+                                  (-map 'list
+                                        (-map #'column-item columns))))))
+    (let ((tables (cdr (ejc-get-tables-candidates ejc-db nil nil))))
+      (-map #'table-item tables))))
 
 (defmethod direx:item-refresh ((item ejc-direx:item) &key recursive)
   "Currently it always recursively refreshes whole tree."
