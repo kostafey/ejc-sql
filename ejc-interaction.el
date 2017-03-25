@@ -193,7 +193,7 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :doc "Return cached tables list.
   Requires `ejc-db' buffer local variable as parameter.")
 
-(clomacs-defun get-cached-colomns-list
+(clomacs-defun ejc-get-cached-colomns-list
                get-colomns
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure
@@ -220,6 +220,11 @@ Prepare SQL string, evaluate SQL script and write them to log file"
 
 (clomacs-defun ejc-select-db-meta-script
                select-db-meta-script
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure)
+
+(clomacs-defun ejc-get-db-name
+               get-db-name
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure)
 

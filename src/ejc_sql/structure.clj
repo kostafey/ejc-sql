@@ -227,7 +227,7 @@ check if receiveing process is not running, then start it."
         (get? (get-in @cache [db :owners])))
       (list))))
 
-(defn get-tables [db & [owner]]
+(defn get-tables [db & [owner force?]]
   "Return tables list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [;; default owner
@@ -239,7 +239,7 @@ check if receiveing process is not running, then start it."
                                                          :owner owner)]
                           (get-first-row-result db sql)))
                       db owner))))
-    (get? (get-in @cache [db :tables (keyword owner)]))))
+    (get? (get-in @cache [db :tables (keyword owner)]) force?)))
 
 (defn get-colomns [db table force?]
   "Return colomns list for this table from cache if already received from DB,

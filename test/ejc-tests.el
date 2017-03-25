@@ -187,7 +187,7 @@
                  (with-current-buffer (ejc-switch-to-sql-editor-buffer)
                    (insert "SERS.")
                    (auto-complete)
-                   (get-cached-colomns-list ejc-db "USERS" t)))))))))
+                   (ejc-get-cached-colomns-list ejc-db "USERS" t)))))))))
 
 
 (ejc-test:run-maven-dependency-plugin)

@@ -64,6 +64,10 @@
 
 
 ;;; Face
+(defface ejc-direx:database
+  '((t :inherit font-lock-keyword-face))
+  "Face for database name in direx tree"
+  :group 'ejc-direx)
 
 (defface ejc-direx:schema
   '((t :inherit font-lock-type-face))
@@ -103,6 +107,11 @@
     (oset item :face 'ejc-direx:schema)
     item))
 
+(defmethod direx:make-item ((tree ejc-direx:database) parent)
+  (let ((item (call-next-method)))
+    (oset item :face 'ejc-direx:database)
+    item))
+
 (defun direx-ejc:-goto-item (item)
   (destructuring-bind (&key line_nr column &allow-other-keys)
       (car (oref (direx:item-tree item) :cache))
@@ -131,11 +140,11 @@
                            (list :type "column" :name column))
               (table-item (table)
                           (let ((columns
-                                 (cdr (ejc-get-colomns-candidates ejc-db table))))
+                                 (ejc-get-cached-colomns-list ejc-db table t)))
                             (cons (list :type "table" :name table)
                                   (-map 'list
                                         (-map #'column-item columns))))))
-    (let ((tables (cdr (ejc-get-tables-candidates ejc-db nil nil))))
+    (let ((tables (ejc-get-cached-tables-list ejc-db nil t)))
       (-map #'table-item tables))))
 
 (defmethod direx:item-refresh ((item ejc-direx:item) &key recursive)
@@ -157,7 +166,7 @@
 (defun ejc-direx:make-buffer ()
   (direx:ensure-buffer-for-root
    (make-instance 'ejc-direx:database
-                  :name (format "*direx-ejc: %s*" ejc-connection-name)
+                  :name (format "%s" (ejc-get-db-name ejc-db))
                   :buffer (current-buffer)
                   :file-name (buffer-file-name)
                   :cache (cons nil (ejc-direx:get-structure)))))
