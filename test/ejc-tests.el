@@ -67,6 +67,8 @@
     (with-current-buffer (ejc-switch-to-sql-editor-buffer)
       ;; Connect to test database, if bufer just created
       (if connect
+          (setq cider-boot-parameters "repl -s -H localhost wait")
+          (setq cider-lein-parameters "repl :headless :host localhost")
           (ejc-connect connect))
       (end-of-buffer)
       (insert sql)
