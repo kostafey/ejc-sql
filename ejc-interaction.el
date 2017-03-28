@@ -185,6 +185,12 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :namespace ejc-sql.structure
                :return-type :list)
 
+(clomacs-defun ejc-get-cached-owners-list
+               get-owners
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
 (clomacs-defun ejc-get-cached-tables-list
                get-tables
                :lib-name "ejc-sql"
@@ -197,9 +203,7 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                get-colomns
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure
-               :return-type :list
-               :doc "Return cached tables list.
-  Requires `ejc-db' buffer local variable and table name as parameters.")
+               :return-type :list)
 
 (clomacs-defun ejc-invalidate-cache-inner
                invalidate-cache

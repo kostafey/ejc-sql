@@ -191,6 +191,7 @@
         sql-receiver (get-in queries [db-type meta-type])
         sql (if sql-receiver
               (sql-receiver :owner owner
+                            :schema owner
                             :table table
                             :entity-name entity-name
                             :db-name (get-db-name db)))]
@@ -212,7 +213,7 @@
   (if (and obj (or force? (realized? obj)))
     @obj))
 
-(defn get-owners [db]
+(defn get-owners [db & [force?]]
   "Return owners list from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [db-type (get-db-type db)
@@ -224,14 +225,14 @@ check if receiveing process is not running, then start it."
                  (future ((fn [db]
                             (let [sql (select-db-meta-script db :owners)]
                               (get-single-row-result db sql))) db))))
-        (get? (get-in @cache [db :owners])))
+        (get? (get-in @cache [db :owners]) force?))
       (list))))
 
-(defn get-tables [db & [owner force?]]
+(defn get-tables [db & [owner_ force?]]
   "Return tables list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [;; default owner
-        owner (:user db)]
+        owner (or owner_ (:user db))]
     (if (not (get-in @cache [db :tables (keyword owner)]))
       (swap! cache assoc-in [db :tables (keyword owner)]
              (future ((fn [db owner]
