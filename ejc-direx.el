@@ -164,12 +164,16 @@
 ;;; Command
 
 (defun ejc-direx:make-buffer ()
-  (direx:ensure-buffer-for-root
-   (make-instance 'ejc-direx:database
-                  :name (format "%s" (ejc-get-db-name ejc-db))
-                  :buffer (current-buffer)
-                  :file-name (buffer-file-name)
-                  :cache (cons nil (ejc-direx:get-structure)))))
+  (let ((current-ejc-db ejc-db)
+        (buf (direx:ensure-buffer-for-root
+              (make-instance 'ejc-direx:database
+                             :name (format "%s" (ejc-get-db-name ejc-db))
+                             :buffer (current-buffer)
+                             :file-name (buffer-file-name)
+                             :cache (cons nil (ejc-direx:get-structure))))))
+    (with-current-buffer buf
+      (setq-local ejc-db current-ejc-db))
+    buf))
 
 ;;;###autoload
 (defun ejc-direx:pop-to-buffer ()
