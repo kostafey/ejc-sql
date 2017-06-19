@@ -1,7 +1,7 @@
 [![License GPL 2](https://img.shields.io/badge/license-GPL_2-green.svg)](http://www.gnu.org/licenses/gpl-2.0.txt)
 [![MELPA](https://melpa.org/packages/ejc-sql-badge.svg)](https://melpa.org/#/ejc-sql)
-[![Build Status](https://api.travis-ci.org/kostafey/ejc-sql.svg?branch=new-cache)](https://travis-ci.org/kostafey/ejc-sql#)
-[![Coverage Status](https://coveralls.io/repos/kostafey/ejc-sql/badge.svg?branch=new-cache)](https://coveralls.io/github/kostafey/ejc-sql?branch=new-cache)
+[![Build Status](https://api.travis-ci.org/kostafey/ejc-sql.svg?branch=master)](https://travis-ci.org/kostafey/ejc-sql#)
+[![Coverage Status](https://coveralls.io/repos/kostafey/ejc-sql/badge.svg?branch=master)](https://coveralls.io/github/kostafey/ejc-sql?branch=master)
 
 # ejc-sql
 
@@ -248,6 +248,7 @@ List of other interactive functions
  `ejc-open-log`                     | Open log
  `ejc-switch-to-sql-editor-buffer`  | Create buffer with `ejc-sql-mode`
  `ejc-invalidate-cache`             | Clean your current connection cache (database owners and tables list)
+ `ejc-direx:pop-to-buffer`          | Create buffer with database structure tree
 
 ## Autocomplete
 
@@ -281,6 +282,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 * [dash](https://github.com/magnars/dash.el)
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 * [spinner.el](https://github.com/Malabarba/spinner.el)
+* [direx.el](https://github.com/m2ym/direx-el)
 
 ## License
 

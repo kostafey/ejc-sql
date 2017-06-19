@@ -231,8 +231,14 @@ check if receiveing process is not running, then start it."
 (defn get-tables [db & [owner_ force?]]
   "Return tables list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
-  (let [;; default owner
-        owner (or owner_ (:user db))]
+  (let [db-type (get-db-type db)
+        ;; default owner
+        owner (or owner_
+                  (if (= db-type :sqlserver)
+                    ;; Get default SQL Server schema for session
+                    (first (get-single-row-result db "SELECT SCHEMA_NAME()"))
+                    ;; Assume owner == schema (it can be wrong in general).
+                    (:user db)))]
     (if (not (get-in @cache [db :tables (keyword owner)]))
       (swap! cache assoc-in [db :tables (keyword owner)]
              (future ((fn [db owner]
