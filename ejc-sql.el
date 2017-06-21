@@ -31,7 +31,7 @@
 
 ;; See README.md for detailed description.
 
-;;; Code: 
+;;; Code:
 
 (require 'sql)
 (require 'dash)
@@ -61,21 +61,33 @@
 (defvar ejc-show-results-buffer t
   "When t show results in separate buffer, use minibuffer otherwise.")
 
+(defcustom ejc-keymap-prefix (kbd "C-c e")
+  "ejc-sql keymap prefix."
+  :group 'ejc-sql
+  :type 'string)
+
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
-(define-key ejc-sql-mode-keymap (kbd "C-x S") 'ejc-eval-user-sql-region)
-(define-key ejc-sql-mode-keymap (kbd "C-x <up>") 'ejc-show-last-result)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
 (define-key ejc-sql-mode-keymap (kbd "C-h T") 'ejc-describe-entity)
-(define-key ejc-sql-mode-keymap (kbd "C-c t") 'ejc-show-tables-list)
-(define-key ejc-sql-mode-keymap (kbd "C-c T") 'ejc-show-user-types-list)
-(define-key ejc-sql-mode-keymap (kbd "C-c s") 'ejc-strinp-sql-at-point)
-(define-key ejc-sql-mode-keymap (kbd "C-c S") 'ejc-dress-sql-at-point)
-(define-key ejc-sql-mode-keymap (kbd "C-c p") 'ejc-pretty-print-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-S-s-<up>") '(lambda() (interactive) (ejc-previous-sql t)))
 (define-key ejc-sql-mode-keymap (kbd "C-S-s-<down>") '(lambda() (interactive) (ejc-next-sql t)))
 (define-key ejc-sql-mode-keymap (kbd "C-s-<up>") 'ejc-previous-sql)
 (define-key ejc-sql-mode-keymap (kbd "C-s-<down>") 'ejc-next-sql)
+
+(defvar ejc-command-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "<up>") #'ejc-show-last-result)
+    (define-key map (kbd "t") #'ejc-show-tables-list)
+    (define-key map (kbd "T") #'ejc-show-user-types-list)
+    (define-key map (kbd "s") #'ejc-strinp-sql-at-point)
+    (define-key map (kbd "S") #'ejc-dress-sql-at-point)
+    (define-key map (kbd "p") #'ejc-pretty-print-sql-at-point)
+    map)
+  "Keymap for ejc-sql commands after `ejc-keymap-prefix'.")
+(fset 'ejc-command-map ejc-command-map)
+
+(define-key ejc-sql-mode-keymap ejc-keymap-prefix 'ejc-command-map)
 
 (defvar ejc-sql-minor-mode-exit-hook nil
   "*Functions to be called when `ejc-sql-mode' is exited.")
