@@ -70,10 +70,10 @@
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
 (define-key ejc-sql-mode-keymap (kbd "C-h T") 'ejc-describe-entity)
-(define-key ejc-sql-mode-keymap (kbd "C-S-s-<up>") '(lambda() (interactive) (ejc-previous-sql t)))
-(define-key ejc-sql-mode-keymap (kbd "C-S-s-<down>") '(lambda() (interactive) (ejc-next-sql t)))
-(define-key ejc-sql-mode-keymap (kbd "C-s-<up>") 'ejc-previous-sql)
-(define-key ejc-sql-mode-keymap (kbd "C-s-<down>") 'ejc-next-sql)
+(define-key ejc-sql-mode-keymap (kbd "C-M-S-b") '(lambda() (interactive) (ejc-previous-sql t)))
+(define-key ejc-sql-mode-keymap (kbd "C-M-S-f") '(lambda() (interactive) (ejc-next-sql t)))
+(define-key ejc-sql-mode-keymap (kbd "C-M-b") 'ejc-previous-sql)
+(define-key ejc-sql-mode-keymap (kbd "C-M-f") 'ejc-next-sql)
 
 (defvar ejc-command-map
   (let ((map (make-sparse-keymap)))

@@ -217,21 +217,21 @@ Have a much fun!
 
 New keybindings defined in `ejc-sql-mode` minor mode:
 
- Keyboard shortcut               | Command                         | Description
----------------------------------|---------------------------------|------------------------------------------------------
- <kbd>C-c C-c</kbd>              | `ejc-eval-user-sql-at-point`    | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
- <kbd>C-h t</kbd>                | `ejc-describe-table`            | Describe SQL table.
- <kbd>C-h T</kbd>                | `ejc-describe-entity`           | Describe SQL entity entity - function, procedure or type.
- <kbd>C-c e up</kbd>             | `ejc-show-last-result`          | Show last result.
- <kbd>C-c e t</kbd>              | `ejc-show-tables-list`          | Show tables list.
- <kbd>C-c e T</kbd>              | `ejc-show-user-types-list`      | Show user types list.
- <kbd>C-c e s</kbd>              | `ejc-strinp-sql-at-point`       | Strip SQL (trim java string tokens).
- <kbd>C-c e S</kbd>              | `ejc-dress-sql-at-point`        | Dress SQL (to copy-paste it to java code).
- <kbd>C-c e p</kbd>              | `ejc-pretty-print-sql-at-point` | Pretty-print this SQL statement.
- <kbd>C-s-&lt;up&gt;</kbd>       | `ejc-previous-sql`              | Goto previous SQL statement.
- <kbd>C-s-&lt;down&gt;</kbd>     | `ejc-next-sql`                  | Goto next SQL statement.
- <kbd>C-S-s-&lt;up&gt;</kbd>     | `ejc-previous-sql`              | Select from point to previous SQL statement.
- <kbd>C-S-s-&lt;down&gt;</kbd>   | `ejc-next-sql`                  | Select from point to next SQL statement.
+ Keyboard shortcut   | Command                         | Description
+---------------------|---------------------------------|------------------------------------------------------
+ <kbd>C-c C-c</kbd>  | `ejc-eval-user-sql-at-point`    | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
+ <kbd>C-h t</kbd>    | `ejc-describe-table`            | Describe SQL table.
+ <kbd>C-h T</kbd>    | `ejc-describe-entity`           | Describe SQL entity entity - function, procedure or type.
+ <kbd>C-c e up</kbd> | `ejc-show-last-result`          | Show last result.
+ <kbd>C-c e t</kbd>  | `ejc-show-tables-list`          | Show tables list.
+ <kbd>C-c e T</kbd>  | `ejc-show-user-types-list`      | Show user types list.
+ <kbd>C-c e s</kbd>  | `ejc-strinp-sql-at-point`       | Strip SQL (trim java string tokens).
+ <kbd>C-c e S</kbd>  | `ejc-dress-sql-at-point`        | Dress SQL (to copy-paste it to java code).
+ <kbd>C-c e p</kbd>  | `ejc-pretty-print-sql-at-point` | Pretty-print this SQL statement.
+ <kbd>C-M-b</kbd>    | `ejc-previous-sql`              | Goto previous SQL statement.
+ <kbd>C-M-f</kbd>    | `ejc-next-sql`                  | Goto next SQL statement.
+ <kbd>C-M-S-b</kbd>  | `ejc-previous-sql`              | Select from point to previous SQL statement.
+ <kbd>C-M-S-f</kbd>  | `ejc-next-sql`                  | Select from point to next SQL statement.
 
 List of other interactive functions
 
