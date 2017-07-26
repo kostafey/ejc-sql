@@ -41,6 +41,16 @@
                    " WHERE table_name = '" table "'   \n"
                    " ORDER BY column_name             \n"))})
 
+(defn get-ms-sql-server-version [db]
+  (nth
+   (filter
+    #(not (= % ""))
+    (.split
+     (first
+      (get-single-row-result db "SELECT @@VERSION AS 'SQL Server Version'"))
+     " "))
+   3))
+
 (def queries
   {
    ;;--------
@@ -119,7 +129,15 @@
                         "       name                          \n"
                         "FROM sys.objects                     \n"
                         "WHERE type_desc LIKE '%CONSTRAINT'   \n"
-                        "  AND OBJECT_NAME(parent_object_id)='" table "'"))}
+                        "  AND OBJECT_NAME(parent_object_id)='" table "'"))
+    :entity      (fn [& {:keys [entity-name]}]
+                   (if (= (get-ms-sql-server-version @c/db) "2000")
+                     ;; MS SQL Server 2000
+                     (str
+                      "SELECT c.text                     \n"
+                      "FROM sysobjects  o                \n"
+                      "JOIN syscomments c on c.id = o.id \n"
+                      "WHERE o.name = '" entity-name "'  \n")))}
    ;;-------
    :postgresql
    ;;-------
@@ -156,17 +174,19 @@
               (last (.split (first props-list) "/"))))))))
 
 (defn get-user [db]
-  (let [{:keys [user connection-uri]} db]
-    (or user
-        (second (.split
-                 (let [props-list (.split connection-uri ";")]
-                   (first
-                    (filter
-                     (fn [prop]
-                       (=
-                        "user"
-                        (.toLowerCase (first (.split prop "=")))))
-                     props-list))) "=")))))
+  (or
+   (:user db)
+   (let [{:keys [user connection-uri]} db]
+     (or user
+         (second (.split
+                  (let [props-list (.split connection-uri ";")]
+                    (first
+                     (filter
+                      (fn [prop]
+                        (=
+                         "user"
+                         (.toLowerCase (first (.split prop "=")))))
+                      props-list))) "="))))))
 
 (defn get-db-type [db]
   (let [{:keys [subprotocol connection-uri]} db]
@@ -179,6 +199,19 @@
              ;; jdbc:sqlserver://localhost\instance:1433;
              (second attrs)))))))
 
+(defn get-this-owner [db & [owner]]
+  "Return current owner/schema."
+  (or owner
+      ;; default owner
+      (let [db-type (get-db-type db)
+            need-owners? (get-in queries [db-type :owners])]
+        (if need-owners?
+          (if (= db-type :sqlserver)
+            ;; Get default SQL Server schema for session
+            (first (get-single-row-result db "SELECT SCHEMA_NAME()"))
+            ;; Assume owner == schema (it can be wrong in general).
+            (get-user db))))))
+
 (defn select-db-meta-script [db meta-type &
                              {:keys [owner
                                      table
@@ -186,8 +219,7 @@
   "Return SQL request to obtain some database structure info."
   (let [db-type (get-db-type db)
         meta-type (if (keyword? meta-type) meta-type (keyword meta-type))
-        need-owners? (get-in queries [db-type :owners])
-        owner (or owner (if need-owners? (get-user db)))
+        owner (get-this-owner db owner)
         sql-receiver (get-in queries [db-type meta-type])
         sql (if sql-receiver
               (sql-receiver :owner owner
@@ -231,14 +263,7 @@ check if receiveing process is not running, then start it."
 (defn get-tables [db & [owner_ force?]]
   "Return tables list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
-  (let [db-type (get-db-type db)
-        ;; default owner
-        owner (or owner_
-                  (if (= db-type :sqlserver)
-                    ;; Get default SQL Server schema for session
-                    (first (get-single-row-result db "SELECT SCHEMA_NAME()"))
-                    ;; Assume owner == schema (it can be wrong in general).
-                    (:user db)))]
+  (let [owner (get-this-owner db owner_)]
     (if (not (get-in @cache [db :tables (keyword owner)]))
       (swap! cache assoc-in [db :tables (keyword owner)]
              (future ((fn [db owner]
@@ -321,4 +346,3 @@ if `pending` is nil - no request is running, return result immediately."
 (defn invalidate-cache [db]
   "Clean your current connection cache (database owners and tables list)."
   (swap! cache assoc-in [db] nil))
-
