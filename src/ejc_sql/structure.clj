@@ -218,17 +218,19 @@
 (defn get-this-owner [db & [owner]]
   "Return current owner/schema."
   (or owner
-      ;; default owner
-      (let [db-type (get-db-type db)
-            need-owners? (get-in queries [db-type :owners])]
-        (if need-owners?
-          (if (= db-type :sqlserver)
-            (if (> (get-ms-sql-server-version db) 2000)
-              ;; Get default SQL Server schema for session
-              (first (get-single-row-result db "SELECT SCHEMA_NAME()"))
-              "dbo")
-            ;; Assume owner == schema (it can be wrong in general).
-            (get-user db))))))
+      (let [db-type (get-db-type db)]
+        (case db-type
+          :sqlserver (if (> (get-ms-sql-server-version db) 2000)
+                       ;; Get default SQL Server schema for session
+                       (first (get-single-row-result db "SELECT SCHEMA_NAME()"))
+                       "dbo")
+          :oracle (first
+                   (get-single-row-result
+                    db
+                    "SELECT sys_context('userenv', 'current_schema') FROM dual;"))
+          ;; By default
+          ;; Assume owner == schema (it can be wrong in general).
+          (get-user db)))))
 
 (defn select-db-meta-script [db meta-type &
                              {:keys [owner
