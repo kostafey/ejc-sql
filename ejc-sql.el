@@ -55,8 +55,10 @@
 (defvar ejc-results-buffer-name "*ejc-sql-output*"
   "The results buffer name.")
 
-(defvar ejc-sql-editor-buffer-name "*ejc-sql-editor*"
+(defvar ejc-temp-editor-buffer-name "*ejc-sql-editor*"
   "The buffer for conveniently edit ad-hoc SQL scripts.")
+
+(defvar ejc-temp-editor-file "~/tmp/ejc-sql-editor.sql")
 
 (defvar ejc-show-results-buffer t
   "When t show results in separate buffer, use minibuffer otherwise.")
@@ -409,40 +411,26 @@ If this buffer is not exists or it was killed - create buffer via
                          "... ("
                          (number-to-string (- (length result-lines) 3))
                          " more)"))))))
-;;
-;;-----------------------------------------------------------------------------
-
-;;-----------------------------------------------------------------------------
-;; editor buffer
-;;
-(defun ejc-create-sql-editor-buffer ()
-  "Create buffer dedicated to ad-hoc edit and SQL scripts."
-  (let ((sql-editor-buffer (get-buffer-create ejc-sql-editor-buffer-name)))
-    (save-excursion
-      (set-buffer sql-editor-buffer)
-      (ejc-configure-sql-buffer "ansi"))
-    sql-editor-buffer))
 
 (defun ejc-switch-to-sql-editor-buffer ()
   "Switch to buffer dedicated to ad-hoc edit and SQL scripts.
-If the buffer is not exists - create it."
+If the buffer is not exists - create it.
+Buffer can be saved to file with `ejc-temp-editor-file' path."
   (interactive)
-  (switch-to-buffer
-   (ejc-get-buffer-or-create
-    ejc-sql-editor-buffer-name
-    'ejc-create-sql-editor-buffer)))
-;;
-;;-----------------------------------------------------------------------------
+  (if (get-buffer ejc-temp-editor-buffer-name)
+      (switch-to-buffer ejc-temp-editor-buffer-name)
+    (progn
+      (unless (file-exists-p
+               (file-name-directory ejc-temp-editor-file))
+        (make-directory (file-name-directory ejc-temp-editor-file) t))
+      (find-file ejc-temp-editor-file)
+      (rename-buffer ejc-temp-editor-buffer-name)
+      (ejc-configure-sql-buffer "ansi"))))
 
-;;-----------------------------------------------------------------------------
-;; log buffer
-;;
 (defun ejc-open-log ()
   (interactive)
   (find-file-read-only (ejc-get-log-file-path))
   (end-of-buffer))
-;;
-;;-----------------------------------------------------------------------------
 
 (provide 'ejc-sql)
 
