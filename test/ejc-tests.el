@@ -94,17 +94,15 @@
                 :password "secret")))
     (should
      (equal
-      `(("H2-test-connection" . [cl-struct-ejc-db-conn
-                                 ,classpath
-                                 "org.h2.Driver"
-                                 "h2"
-                                 nil
-                                 ,db-path
-                                 "a_user"
-                                 "secret"
-                                 nil
-                                 nil]))
-      conn))
+      `("H2-test-connection"
+        (:classpath . ,classpath)
+        (:classname . "org.h2.Driver")
+        (:subprotocol . "h2")
+        (:subname . ,db-path)
+        (:user . "a_user")
+        (:password . "secret"))
+      (cons (car (car conn))
+            (ejc-connection-struct-to-plist (cdr (car conn))))))
     ;; Delete previous run temp database files
     (mapcar (lambda (x)
               (let ((path-to-x (expand-file-name x (ejc-test:get-temp-path))))

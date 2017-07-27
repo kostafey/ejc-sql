@@ -75,6 +75,7 @@
   (-filter
    (lambda (x) (cdr x))
    (list
+    `(:classpath      . ,(ejc-db-conn-classpath      conn-struct))
     `(:classname      . ,(ejc-db-conn-classname      conn-struct))
     `(:subprotocol    . ,(ejc-db-conn-subprotocol    conn-struct))
     `(:subname        . ,(ejc-db-conn-subname        conn-struct))
