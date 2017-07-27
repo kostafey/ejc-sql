@@ -24,6 +24,28 @@
 
 (def cache (atom {}))
 
+(defn- get-single-row-result [db sql]
+  (if sql
+    (rest
+     (flatten
+      (j/query db (list sql) {:as-arrays? true})))))
+
+(defn- get-first-row-result [db sql]
+  (if sql
+    (rest
+     (map first
+          (j/query db (list sql) {:as-arrays? true})))))
+
+(defn get-ms-sql-server-version [db]
+  (->
+   (->>
+    (-> (get-single-row-result db "SELECT @@VERSION AS 'SQL Server Version'")
+        first
+        (.split " "))
+    (filter not-empty))
+   (nth 3)
+   Integer/parseInt))
+
 (def default-queries
   {:owners  (fn [& _]
               (str " SELECT schema_owner              \n"
@@ -40,16 +62,6 @@
                    " FROM information_schema.columns  \n"
                    " WHERE table_name = '" table "'   \n"
                    " ORDER BY column_name             \n"))})
-
-(defn get-ms-sql-server-version [db]
-  (nth
-   (filter
-    #(not (= % ""))
-    (.split
-     (first
-      (get-single-row-result db "SELECT @@VERSION AS 'SQL Server Version'"))
-     " "))
-   3))
 
 (def queries
   {
@@ -130,13 +142,17 @@
                         "FROM sys.objects                     \n"
                         "WHERE type_desc LIKE '%CONSTRAINT'   \n"
                         "  AND OBJECT_NAME(parent_object_id)='" table "'"))
-    :entity      (fn [& {:keys [entity-name]}]
-                   (if (= (get-ms-sql-server-version @c/db) "2000")
-                     ;; MS SQL Server 2000
+    :entity      (fn [& {:keys [db entity-name]}]
+                   (if (> (get-ms-sql-server-version db) 2000)
+                     (str
+                      "SELECT definition                                   \n"
+                      "FROM sys.objects     o                              \n"
+                      "JOIN sys.sql_modules m ON m.object_id = o.object_id \n"
+                      "WHERE o.object_id = object_id('" entity-name "')    \n")
                      (str
                       "SELECT c.text                     \n"
                       "FROM sysobjects  o                \n"
-                      "JOIN syscomments c on c.id = o.id \n"
+                      "JOIN syscomments c ON c.id = o.id \n"
                       "WHERE o.name = '" entity-name "'  \n")))}
    ;;-------
    :postgresql
@@ -207,8 +223,10 @@
             need-owners? (get-in queries [db-type :owners])]
         (if need-owners?
           (if (= db-type :sqlserver)
-            ;; Get default SQL Server schema for session
-            (first (get-single-row-result db "SELECT SCHEMA_NAME()"))
+            (if (> (get-ms-sql-server-version db) 2000)
+              ;; Get default SQL Server schema for session
+              (first (get-single-row-result db "SELECT SCHEMA_NAME()"))
+              "dbo")
             ;; Assume owner == schema (it can be wrong in general).
             (get-user db))))))
 
@@ -222,24 +240,13 @@
         owner (get-this-owner db owner)
         sql-receiver (get-in queries [db-type meta-type])
         sql (if sql-receiver
-              (sql-receiver :owner owner
+              (sql-receiver :db db
+                            :owner owner
                             :schema owner
                             :table table
                             :entity-name entity-name
                             :db-name (get-db-name db)))]
     sql))
-
-(defn- get-single-row-result [db sql]
-  (if sql
-    (rest
-     (flatten
-      (j/query db (list sql) {:as-arrays? true})))))
-
-(defn- get-first-row-result [db sql]
-  (if sql
-    (rest
-     (map first
-          (j/query db (list sql) {:as-arrays? true})))))
 
 (defn- get? [obj & [force?]]
   (if (and obj (or force? (realized? obj)))
