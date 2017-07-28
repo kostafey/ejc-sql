@@ -64,7 +64,8 @@
 (cl-defun ejc-test:run-sql (sql &optional connect)
   (progn
     ;; Type SQL query and eval it.
-    (with-current-buffer (ejc-switch-to-sql-editor-buffer)
+    (with-current-buffer
+        (get-buffer-create ejc-temp-editor-buffer-name)
       ;; Connect to test database, if bufer just created
       (when connect
         (setq cider-boot-parameters "repl -s -H localhost wait")
@@ -109,7 +110,8 @@
                 (if (file-exists-p path-to-x) (delete-file path-to-x))))
             '("database.mv.db" "database.trace.db"))
     ;; Ensure temp SQL editor buffer is empty.
-    (kill-buffer (ejc-create-sql-editor-buffer))
+    (if (get-buffer ejc-temp-editor-buffer-name)
+        (kill-buffer ejc-temp-editor-buffer-name))
     ;; ------------
     ;; Create table
     (should
@@ -171,7 +173,8 @@
      (equal
       '("USERS")
       (progn
-        (with-current-buffer (ejc-switch-to-sql-editor-buffer)
+        (with-current-buffer
+            (get-buffer-create ejc-temp-editor-buffer-name)
           (insert "U")
           (auto-complete)
           ;; Wait for async cache creation.
@@ -184,7 +187,8 @@
               (-intersection
                actual-columns-list
                (progn
-                 (with-current-buffer (ejc-switch-to-sql-editor-buffer)
+                 (with-current-buffer
+                     (get-buffer-create ejc-temp-editor-buffer-name)
                    (insert "SERS.")
                    (auto-complete)
                    (ejc-get-cached-colomns-list ejc-db "USERS" t)))))))))
