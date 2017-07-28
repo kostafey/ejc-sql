@@ -24,25 +24,23 @@
 
 (def cache (atom {}))
 
-(defn- get-single-row-result [db sql]
-  (if sql
-    (rest
-     (flatten
-      (j/query db (list sql) {:as-arrays? true})))))
-
-(defn- get-first-row-result [db sql]
+(defn- db->column [db sql]
+  "Execute `sql`, return first column of result set as result list."
   (if sql
     (rest
      (map first
           (j/query db (list sql) {:as-arrays? true})))))
 
+(defn- db->value [db sql]
+  "Execute `sql`, return first value of first column of result set as result."
+  (first (db->column db sql)))
+
 (defn get-ms-sql-server-version [db]
   (->
-   (->>
-    (-> (get-single-row-result db "SELECT @@VERSION AS 'SQL Server Version'")
-        first
-        (.split " "))
-    (filter not-empty))
+   (filter not-empty
+           (.split
+            (db->value db "SELECT @@VERSION AS 'SQL Server Version'")
+            " "))
    (nth 3)
    Integer/parseInt))
 
@@ -218,19 +216,24 @@
 (defn get-this-owner [db & [owner]]
   "Return current owner/schema."
   (or owner
-      (let [db-type (get-db-type db)]
-        (case db-type
-          :sqlserver (if (> (get-ms-sql-server-version db) 2000)
-                       ;; Get default SQL Server schema for session
-                       (first (get-single-row-result db "SELECT SCHEMA_NAME()"))
-                       "dbo")
-          :oracle (first
-                   (get-single-row-result
-                    db
-                    "SELECT sys_context('userenv', 'current_schema') FROM dual;"))
-          ;; By default
-          ;; Assume owner == schema (it can be wrong in general).
-          (get-user db)))))
+      (get? (get-in @cache [db :this-owner]) false)
+      (do
+        (swap! cache assoc-in [db :this-owner]
+               (future
+                 ((fn [db]
+                    (let [db-type (get-db-type db)]
+                      (case db-type
+                        :sqlserver (if (> (get-ms-sql-server-version db) 2000)
+                                     ;; Get default SQL Server schema for session
+                                     (db->value db "SELECT SCHEMA_NAME()")
+                                     "dbo")
+                        :oracle (db->value
+                                 db
+                                 "SELECT sys_context('userenv', 'current_schema') FROM dual")
+                        ;; By default
+                        ;; Assume owner == schema (it can be wrong in general).
+                        (get-user db)))) db)))
+        (get? (get-in @cache [db :this-owner]) true))))
 
 (defn select-db-meta-script [db meta-type &
                              {:keys [owner
@@ -265,7 +268,7 @@ check if receiveing process is not running, then start it."
           (swap! cache assoc-in [db :owners]
                  (future ((fn [db]
                             (let [sql (select-db-meta-script db :owners)]
-                              (get-single-row-result db sql))) db))))
+                              (db->column db sql))) db))))
         (get? (get-in @cache [db :owners]) force?))
       (list))))
 
@@ -278,7 +281,7 @@ check if receiveing process is not running, then start it."
              (future ((fn [db owner]
                         (let [sql (select-db-meta-script db :tables
                                                          :owner owner)]
-                          (get-first-row-result db sql)))
+                          (db->column db sql)))
                       db owner))))
     (get? (get-in @cache [db :tables (keyword owner)]) force?)))
 
@@ -290,7 +293,7 @@ check if receiveing process is not running, then start it."
            (future ((fn [db table]
                       (let [sql (select-db-meta-script db :columns
                                                        :table table)]
-                        (get-single-row-result db sql)))
+                        (db->column db sql)))
                     db table))))
   (get? (get-in @cache [db :colomns (keyword table)]) force?))
 
