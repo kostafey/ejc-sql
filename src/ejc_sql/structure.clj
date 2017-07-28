@@ -213,6 +213,10 @@
              ;; jdbc:sqlserver://localhost\instance:1433;
              (second attrs)))))))
 
+(defn- get? [obj & [force?]]
+  (if (and obj (or force? (realized? obj)))
+    @obj))
+
 (defn get-this-owner [db & [owner]]
   "Return current owner/schema."
   (or owner
@@ -252,10 +256,6 @@
                             :entity-name entity-name
                             :db-name (get-db-name db)))]
     sql))
-
-(defn- get? [obj & [force?]]
-  (if (and obj (or force? (realized? obj)))
-    @obj))
 
 (defn get-owners [db & [force?]]
   "Return owners list from cache if already received from DB,
