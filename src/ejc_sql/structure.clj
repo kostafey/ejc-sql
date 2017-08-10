@@ -120,7 +120,9 @@
    ;;-------
    :mysql
    ;;-------
-   {:owners  (default-queries :owners)
+   {:owners  (fn [& _]
+              (str " SELECT schema_name               \n"
+                   " FROM information_schema.schemata \n"))
     :tables  (default-queries :tables)
     :columns (default-queries :columns)}
    ;;--------
