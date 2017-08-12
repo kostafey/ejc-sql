@@ -172,6 +172,17 @@ The configuration of ejs-sql might looks like this:
  :user "a_user"
  :password "secret")
 
+;; H2 remote example
+;; run on remote server first:
+;; java -jar ~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar -tcpAllowOthers
+(ejc-create-connection
+ "H2-remote-db-connection"
+ :classpath "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
+ :classname "org.h2.Driver"
+ :connection-uri (concat "jdbc:h2:tcp://192.168.0.1:9092/~/db/database;ifexists=true;"
+                         "user=a_user;"
+                         "password=secret;"))
+
 ;; PostgreSQL example
 (ejc-create-connetion
  "PostgreSQL-db-connection"
