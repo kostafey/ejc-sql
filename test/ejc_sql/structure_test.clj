@@ -52,3 +52,21 @@
                   "instance=instance;"
                   "user=a_user;"
                   "password=secret;")})))))
+
+(deftest get-colomns-candidates-test
+  (testing "get-colomns-candidates fn test."
+    (with-redefs-fn {#'get-tables (fn [db]
+                                    '("users" "products"))
+                     #'get-colomns (fn [db table force?]
+                                     ({"users" '("id" "name")
+                                       "products" '("id" "price")}
+                                      table))}
+      #(is
+        (and
+         (= '("nil" "id" "name")
+            (let [sql "SELECT users. FROM users"]
+              (get-colomns-candidates nil sql "users")))
+         ;; Table alias
+         (= '("nil" "id" "name")
+            (let [sql "SELECT a. FROM users AS a"]
+              (get-colomns-candidates nil sql "a"))))))))

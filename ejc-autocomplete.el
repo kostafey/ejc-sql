@@ -23,6 +23,7 @@
 (require 'ejc-lib)
 (require 'ejc-interaction)
 (require 'ejc-doc)
+(require 'ejc-format)
 
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
@@ -63,7 +64,13 @@
               (prefix-2 (save-excursion
                            (search-backward "." nil t)
                            (ejc-get-prefix-word)))
-              (result (funcall ,cand-fn ejc-db prefix-1 prefix-2))
+              (result (funcall ,cand-fn
+                               ejc-db
+                               (apply
+                                'buffer-substring
+                                (ejc-get-sql-boundaries-at-point))
+                               prefix-1
+                               prefix-2))
               (pending (car result))
               (candidates-cache (cdr result)))
          (if (ejc-not-nil-str pending)

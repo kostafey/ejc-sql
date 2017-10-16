@@ -20,6 +20,7 @@
   (:use [ejc-sql.lib])
   (:require
    [clojure.java.jdbc :as j]
+   [clojure.string :as s]
    [ejc-sql.connect :as c]))
 
 (def cache (atom {}))
@@ -302,7 +303,7 @@ check if receiveing process is not running, then start it."
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix))
 
-(defn get-owners-candidates [db & _]
+(defn get-owners-candidates [db sql & _]
   "Return owners candidates autocomplete list from the database structure
 cache, async request to fill it, if not yet.
 The result list has the following structure:
@@ -315,7 +316,7 @@ if `pending` is nil - no request is running, return result immediately."
       ;; pending owners...
       (list "t"))))
 
-(defn get-tables-candidates [db prefix-1 & _]
+(defn get-tables-candidates [db sql prefix-1 & _]
   "Return tables candidates autocomplete list."
   (let [tables (if (not prefix-1)
                  ;; something#
@@ -331,7 +332,7 @@ if `pending` is nil - no request is running, return result immediately."
       ;; pending tables...
       (list "t"))))
 
-(defn get-colomns-candidates [db prefix-1 & [prefix-2]]
+(defn get-colomns-candidates [db sql prefix-1 & [prefix-2]]
   "Return colomns candidates autocomplete list."
   ;; Possible 2 cases:
   ;; 1. owner.table.#<colomns-list>
@@ -346,9 +347,27 @@ if `pending` is nil - no request is running, return result immediately."
               columns-list (get-colomns db table true)]
           ;; ok - columns
           (cons "nil" columns-list))
-        ;; unknown?.# case
-        ;; nothing to complete
-        (list "nil"))
+        (let [sql (s/lower-case
+                   (s/replace
+                    sql #"(  )|( \t)|\t" " "))
+              table-alias (first
+                           (filter
+                            (fn [table]
+                              (or (s/includes?
+                                   sql
+                                   (s/lower-case
+                                    (str table " " prefix-1)))
+                                  (s/includes?
+                                   sql
+                                   (s/lower-case
+                                    (str table " as " prefix-1)))))
+                            tables-list))]
+          (if table-alias
+            ;; table-alias.#<colomns-list>
+            (cons "nil" (get-colomns db table-alias true))
+            ;; unknown?.# case
+            ;; nothing to complete
+            (list "nil"))))
       ;; no tables yet
       ;; pending tables...
       (list "t"))))
