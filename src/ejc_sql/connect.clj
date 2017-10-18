@@ -126,36 +126,33 @@ For debug purpose."
       (-> result rest flatten)
       result)))
 
+(defn query-meta [db sql]
+  "Get metadata for `sql` result dataset."
+  (jd/with-connection db
+    (let [connect (jd/connection)
+          statement (.createStatement connect)]
+      (try
+        {:success true
+         :result (let [resultSet (.executeQuery
+                                  statement
+                                  (str
+                                   "SELECT nodata.* "
+                                   "FROM (" sql ") nodata "
+                                   "WHERE 0 = 1"))
+                       rsMeta (.getMetaData resultSet)
+                       colCount (.getColumnCount rsMeta)]
+                   (mapv (fn [i]
+                           {:name (.getColumnLabel rsMeta i)
+                            :type (.getColumnTypeName rsMeta i)})
+                         (range 1 (+ 1 colCount))))}
+        (catch SQLException e
+          {:success false
+           :result (str "Error: " (.getMessage e))})))))
+
 (defn table-meta
   [db table-name]
   (set-db db)
-  (jd/with-connection db
-    (let
-        [connect (jd/connection)
-         statement (.createStatement connect)
-         execResult (try
-                      (list
-                       (.executeQuery
-                        statement
-                        (str "select * from " table-name " where 0 = 1")) true)
-                      (catch SQLException e
-                        (list (str "Error: " (.getMessage e)) false)))
-         result-data (first execResult)
-         success (last execResult)]
-      (if success
-        {:success true
-         :result
-         (let [resultSet result-data
-               rsMeta (.getMetaData resultSet)
-               colCount (.getColumnCount rsMeta)]
-           (loop [i 1
-                  acc []]
-             (if (> i colCount)
-               acc
-               (recur (inc i)
-                      (conj acc {:name (.getColumnLabel rsMeta i)
-                                 :type (.getColumnTypeName rsMeta i)})))))}
-        {:success false :result result-data}))))
+  (query-meta db (str "SELECT * FROM " table-name)))
 
 (defn get-table-meta
   "Discribe table."
