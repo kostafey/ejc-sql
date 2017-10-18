@@ -60,8 +60,7 @@
                  (str "SELECT s.schema_owner, s.schema_name, t.table_name \n"
                       "FROM information_schema.schemata AS s,             \n"
                       "     information_schema.tables AS t                \n"
-                      "WHERE t.table_schema = s.schema_name               \n"
-                      "  AND LCASE(s.schema_name) != 'information_schema' \n"))
+                      "WHERE t.table_schema = s.schema_name               \n"))
    :columns (fn [& {:keys [table]}]
               (str " SELECT column_name               \n"
                    " FROM information_schema.columns  \n"
@@ -136,7 +135,12 @@
    :h2
    ;;--------
    {:tables  (fn [& _] ((default-queries :tables) :schema "PUBLIC"))
-    :all-tables (default-queries :all-tables)
+    :all-tables (fn [& _]
+                  (str "SELECT s.schema_owner, s.schema_name, t.table_name \n"
+                       "FROM information_schema.schemata AS s,             \n"
+                       "     information_schema.tables AS t                \n"
+                       "WHERE t.table_schema = s.schema_name               \n"
+                       "  AND LCASE(s.schema_name) != 'information_schema' \n"))
     :columns (default-queries :columns)}
    ;;-------
    :sqlserver ; ms sql server
