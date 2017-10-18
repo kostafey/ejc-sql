@@ -56,6 +56,12 @@
                      (str " WHERE table_schema = '" schema "'")
                      "")
                    " ORDER BY table_name              \n"))
+   :all-tables (fn [& _]
+                 (str "SELECT s.schema_owner, s.schema_name, t.table_name \n"
+                      "FROM information_schema.schemata AS s,             \n"
+                      "     information_schema.tables AS t                \n"
+                      "WHERE t.table_schema = s.schema_name               \n"
+                      "  AND LCASE(s.schema_name) != 'information_schema' \n"))
    :columns (fn [& {:keys [table]}]
               (str " SELECT column_name               \n"
                    " FROM information_schema.columns  \n"
@@ -130,12 +136,14 @@
    :h2
    ;;--------
    {:tables  (fn [& _] ((default-queries :tables) :schema "PUBLIC"))
+    :all-tables (default-queries :all-tables)
     :columns (default-queries :columns)}
    ;;-------
    :sqlserver ; ms sql server
    ;;-------
    {:owners  (default-queries :owners)
     :tables  (default-queries :tables)
+    :all-tables (default-queries :all-tables)
     :columns (default-queries :columns)
     :constraints (fn [& {:keys [table]}]
                    (str "SELECT type_desc AS constraint_type, \n"
@@ -249,7 +257,7 @@
   "Return SQL request to obtain some database structure info."
   (let [db-type (get-db-type db)
         meta-type (if (keyword? meta-type) meta-type (keyword meta-type))
-        owner (get-this-owner db owner)
+        ;; owner (get-this-owner db owner)
         sql-receiver (get-in queries [db-type meta-type])
         sql (if sql-receiver
               (sql-receiver :db db

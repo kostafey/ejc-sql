@@ -327,13 +327,12 @@ boundaries."
   (ejc-flash-this-sql)
   (ejc-eval-user-sql (ejc-get-sql-at-point) sync))
 
-(defun ejc-show-tables-list (&optional owner)
+(defun ejc-show-tables-list ()
   "Output tables list."
   (interactive)
   (ejc-check-connection)
   (ejc-eval-user-sql
-   (ejc-select-db-meta-script ejc-db :tables
-                              :owner owner)))
+   (ejc-select-db-meta-script ejc-db :all-tables)))
 
 (defun ejc-show-user-types-list (&optional owner)
   "Output user types list."
