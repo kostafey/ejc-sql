@@ -22,7 +22,8 @@
         [ejc-sql.output])
   (:require [clojure.java.jdbc :as j]
             [clojure.java.jdbc.deprecated :as jd]
-            [clojure.contrib.java-utils])
+            [clojure.contrib.java-utils]
+            [clojure.string :as s])
   (:import [java.sql Connection
                      DriverManager
                      PreparedStatement
@@ -34,8 +35,20 @@
 For debug purpose."
   (atom nil))
 
+;; TODO: running query termination handler
+(def current-query
+  "Current running query."
+  (atom nil))
+
 (defn set-db [ejc-db]
   (reset! db ejc-db))
+
+(defn clean-sql [sql]
+  (-> sql
+      (s/replace #"(--).*\n" "")
+      (s/replace #"(  )|( \t)|\t" " ")
+      (s/replace "^\n" "")
+      trim))
 
 (def dml-set
   #{"SELECT"
@@ -43,20 +56,18 @@ For debug purpose."
     "UPDATE"
     "DELETE"})
 
-(def ignore-set #{"(" "["})
+(def ignore-set #{\( \[ \space})
 
 (defn determine-dml [sql]
   "Determine if current SQL is Data Manipulation Language (DML) case."
-  (let [sql (.trim sql)
-        pos (loop [rest-sql sql
-                   pos 0]
-              (let [symb (subs rest-sql 0 1)]
-                (if (ignore-set symb)
-                  (recur (subs rest-sql 1) (inc pos))
-                  pos)))]
+  (let [sql (clean-sql sql)
+        pos (loop [pos 0]
+              (if (ignore-set (get sql pos))
+                (recur (inc pos))
+                pos))]
     (or
-     (dml-set (.toUpperCase (subs sql pos 6)))
-     (#{"SHOW"} (.toUpperCase (subs sql pos 4))))))
+     (dml-set (.toUpperCase (subs sql pos (+ 6 pos))))
+     (#{"SHOW"} (.toUpperCase (subs sql pos (+ 4 pos)))))))
 
 (defn handle-special-cases [db sql]
   (case (:subprotocol db)

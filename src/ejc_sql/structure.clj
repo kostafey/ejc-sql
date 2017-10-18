@@ -359,9 +359,7 @@ if `pending` is nil - no request is running, return result immediately."
               columns-list (get-colomns db table true)]
           ;; ok - columns
           (cons "nil" columns-list))
-        (let [sql (s/lower-case
-                   (s/replace
-                    sql #"(  )|( \t)|\t" " "))
+        (let [sql (s/lower-case (c/clean-sql sql))
               table-alias (first
                            (filter
                             (fn [table]
