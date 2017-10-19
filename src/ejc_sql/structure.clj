@@ -361,16 +361,16 @@ if `pending` is nil - no request is running, return result immediately."
               columns-list (get-colomns db table true)]
           ;; ok - columns
           (cons "nil" columns-list))
-        (let [sql (s/lower-case (c/clean-sql sql))
+        (let [sql (c/clean-sql sql)
               table-alias (first
                            (filter
                             (fn [table]
                               (or (s/includes?
-                                   sql
+                                   (s/lower-case sql)
                                    (s/lower-case
                                     (str table " " prefix-1)))
                                   (s/includes?
-                                   sql
+                                   (s/lower-case sql)
                                    (s/lower-case
                                     (str table " as " prefix-1)))))
                             tables-list))]
