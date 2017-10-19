@@ -390,7 +390,7 @@ if `pending` is nil - no request is running, return result immediately."
                    (if success
                      ;; complex-alias.#<colomns-list>
                     (cons "nil" (mapv :name result))
-                    ;; Can't execute "blah blah" in
+                    ;; Can't execute "blah blah" to get metadata in
                     ;; "SELECT t.# FROM (blah blah) AS t" case.
                     (list "nil"))))
                 ;; unknown?.# case
