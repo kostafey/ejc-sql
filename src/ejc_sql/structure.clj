@@ -130,6 +130,7 @@
               (str " SELECT schema_name               \n"
                    " FROM information_schema.schemata \n"))
     :tables  (default-queries :tables)
+    :all-tables (default-queries :all-tables)
     :columns (default-queries :columns)}
    ;;--------
    :h2
@@ -172,6 +173,7 @@
    ;;-------
    {:owners  (default-queries :owners)
     :tables  (default-queries :tables)
+    :all-tables (default-queries :all-tables)
     :columns (default-queries :columns)}})
 
 (defn autocomplete-available-for-db? [db-type]
@@ -375,9 +377,25 @@ if `pending` is nil - no request is running, return result immediately."
           (if table-alias
             ;; table-alias.#<colomns-list>
             (cons "nil" (get-colomns db table-alias true))
-            ;; unknown?.# case
-            ;; nothing to complete
-            (list "nil"))))
+            ;; Check "SELECT t.# FROM (SELECT ... ) AS t" case.
+            (let [pattern (re-pattern (str "\\(.+\\)(\\s|\\s(as)\\s)"
+                                           prefix-1))
+                  complex-alias (first (re-find pattern sql))
+                  complex-alias (if complex-alias
+                                  (subs complex-alias 1
+                                        (.lastIndexOf complex-alias ")")))]
+              (if complex-alias
+                (do
+                 (let [{:keys [success result]} (c/query-meta db complex-alias)]
+                   (if success
+                     ;; complex-alias.#<colomns-list>
+                    (cons "nil" (mapv :name result))
+                    ;; Can't execute "blah blah" in
+                    ;; "SELECT t.# FROM (blah blah) AS t" case.
+                    (list "nil"))))
+                ;; unknown?.# case
+                ;; nothing to complete
+                (list "nil"))))))
       ;; no tables yet
       ;; pending tables...
       (list "t"))))

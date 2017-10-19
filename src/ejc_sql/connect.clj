@@ -56,7 +56,7 @@ For debug purpose."
     "UPDATE"
     "DELETE"})
 
-(def ignore-set #{\( \[ \space})
+(def ignore-set #{\( \[})
 
 (defn determine-dml [sql]
   "Determine if current SQL is Data Manipulation Language (DML) case."
