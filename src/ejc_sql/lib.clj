@@ -17,16 +17,20 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.lib
-  (:import (java.io File)))
+  (:import (java.io File))
+  (:require [clojure.string :as s]))
 
 (def windows?
   "The value is true if it runs under the os Windows."
   (>= 0 (.indexOf (System/getProperty "os.name") "Windows")))
 
 (defn in?
-  "true if seq contains elm"
-  [seq elm]
-  (some #(= elm %) seq))
+  "true if `seq` contains `elm`.
+  Search case insensitive wthen `case-sensitive` is false."
+  [seq elm & {:keys [case-sensitive] :or {case-sensitive true}}]
+  (if (not case-sensitive)
+    (in? (mapv s/lower-case seq) (s/lower-case elm))
+    (some #(= elm %) seq)))
 
 (defn array? [x]
   (-> x .getClass .isArray))

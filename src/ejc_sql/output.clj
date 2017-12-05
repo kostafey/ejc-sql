@@ -1,6 +1,6 @@
 ;;; output.clj -- Output & formatting clojure functions for ejc-sql.
 
-;;; Copyright © 2013, 2016 - Kostafey <kostafey@gmail.com>
+;;; Copyright Â© 2013, 2016 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by

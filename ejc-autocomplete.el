@@ -49,12 +49,6 @@
   '("show" "errors" "desc" "count" "type" "table" "function" "procedure"
     "begin" "end" "for" "return"))
 
-(defun ejc-get-ansi-sql-words ()
-  (append ejc-ansi-sql-words
-          ejc-auxulary-sql-words
-          (mapcar 'upcase ejc-ansi-sql-words)
-          (mapcar 'upcase ejc-auxulary-sql-words)))
-
 (defun ejc-not-nil-str (s)
   (not (equal s "nil")))
 
@@ -99,6 +93,15 @@
     (if (equal curr-char ".")
         (point)
       nil)))
+
+(defun ejc-get-ansi-sql-words ()
+  (if (not (ejc-return-point))
+      (progn
+        (append ejc-ansi-sql-words
+                ejc-auxulary-sql-words
+                (mapcar 'upcase ejc-ansi-sql-words)
+                (mapcar 'upcase ejc-auxulary-sql-words)))
+    nil))
 
 (defun ac-ejc-documentation (symbol-name)
   "Return a documentation string for SYMBOL-NAME."
@@ -161,6 +164,12 @@ something#"
   (add-to-list 'ac-sources 'ac-source-ejc-tables-point)
   (add-to-list 'ac-sources 'ac-source-ejc-colomns)
   (add-to-list 'ac-sources 'ac-source-ejc-colomns-point))
+
+(add-hook 'ejc-sql-minor-mode-hook
+          (lambda ()
+            (delq 'ac-source-dictionary ac-sources)
+            (delq 'ac-source-abbrev ac-sources)
+            (delq 'ac-source-words-in-same-mode-buffers ac-sources)))
 
 (provide 'ejc-autocomplete)
 

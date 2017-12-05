@@ -302,17 +302,29 @@ check if receiveing process is not running, then start it."
                       db owner))))
     (get? (get-in @cache [db :tables (keyword owner)]) force?)))
 
+(defn get-in-case-insensitive [obj path]
+  (get-in obj
+          (conj (into [] (butlast path))
+                (keyword (last path)))
+          (get-in obj
+                  (conj (into [] (butlast path))
+                        (keyword (s/upper-case (last path))))
+                  (get-in obj
+                          (conj (into [] (butlast path))
+                                (keyword (s/lower-case (last path))))))))
+
 (defn get-colomns [db table force?]
   "Return colomns list for this table from cache if already received from DB,
 check if receiveing process is not running, then start it."
-  (if (not (get-in @cache [db :colomns (keyword table)]))
+  (if (not (get-in-case-insensitive @cache [db :colomns table]))
     (swap! cache assoc-in [db :colomns (keyword table)]
            (future ((fn [db table]
                       (let [sql (select-db-meta-script db :columns
                                                        :table table)]
                         (db->column db sql)))
                     db table))))
-  (get? (get-in @cache [db :colomns (keyword table)]) force?))
+  (get? (get-in-case-insensitive @cache [db :colomns table])
+        force?))
 
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix))
@@ -354,7 +366,7 @@ if `pending` is nil - no request is running, return result immediately."
   ;; In both cases consider prefix-1 as table
   (let [tables-list (get-tables db)]
     (if tables-list
-      (if (in? tables-list prefix-1)
+      (if (in? tables-list prefix-1 :case-sensitive false)
         ;; table.#<colomns-list>
         (let [table prefix-1
               ;; force columns-cache obtaining...
@@ -365,6 +377,7 @@ if `pending` is nil - no request is running, return result immediately."
               table-alias (first
                            (filter
                             (fn [table]
+                              ;; TODO: replace with regexp
                               (or (s/includes?
                                    (s/lower-case sql)
                                    (s/lower-case
@@ -385,14 +398,13 @@ if `pending` is nil - no request is running, return result immediately."
                                   (subs complex-alias 1
                                         (.lastIndexOf complex-alias ")")))]
               (if complex-alias
-                (do
-                 (let [{:keys [success result]} (c/query-meta db complex-alias)]
-                   (if success
-                     ;; complex-alias.#<colomns-list>
+                (let [{:keys [success result]} (c/query-meta db complex-alias)]
+                  (if success
+                    ;; complex-alias.#<colomns-list>
                     (cons "nil" (mapv :name result))
                     ;; Can't execute "blah blah" to get metadata in
                     ;; "SELECT t.# FROM (blah blah) AS t" case.
-                    (list "nil"))))
+                    (list "nil")))
                 ;; unknown?.# case
                 ;; nothing to complete
                 (list "nil"))))))
