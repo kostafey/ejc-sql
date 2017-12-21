@@ -95,7 +95,7 @@
       nil)))
 
 (defun ejc-get-ansi-sql-words ()
-  (if (not (ejc-return-point))
+  (if (not (or (ejc-return-point) (ejc-get-prefix-word)))
       (progn
         (append ejc-ansi-sql-words
                 ejc-auxulary-sql-words

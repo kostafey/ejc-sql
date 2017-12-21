@@ -69,4 +69,8 @@
          ;; Table alias
          (= '("nil" "id" "name")
             (let [sql "SELECT a. FROM users AS a"]
+              (get-colomns-candidates nil sql "a")))
+         ;; Table alias: spaces + tabs near to "AS"
+         (= '("nil" "id" "name")
+            (let [sql "SELECT a. FROM users  AS 	a"]
               (get-colomns-candidates nil sql "a"))))))))

@@ -358,6 +358,16 @@ if `pending` is nil - no request is running, return result immediately."
       ;; pending tables...
       (list "t"))))
 
+(defn match-alias? [sql table probable-alias]
+  "Check if prefix (`probable-alias`) is alias for `table` in this `sql`."
+  (let [sql (s/lower-case sql)
+        table (s/lower-case table)
+        probable-alias (s/lower-case probable-alias)
+        alias-pattern (re-pattern
+                       (str "\\s+" table "(\\s+as)?"
+                            "\\s+" probable-alias))]
+    (not (nil? (re-find alias-pattern sql)))))
+
 (defn get-colomns-candidates [db sql prefix-1 & [prefix-2]]
   "Return colomns candidates autocomplete list."
   ;; Possible 2 cases:
@@ -377,15 +387,7 @@ if `pending` is nil - no request is running, return result immediately."
               table-alias (first
                            (filter
                             (fn [table]
-                              ;; TODO: replace with regexp
-                              (or (s/includes?
-                                   (s/lower-case sql)
-                                   (s/lower-case
-                                    (str table " " prefix-1)))
-                                  (s/includes?
-                                   (s/lower-case sql)
-                                   (s/lower-case
-                                    (str table " as " prefix-1)))))
+                              (match-alias? sql table prefix-1))
                             tables-list))]
           (if table-alias
             ;; table-alias.#<colomns-list>
