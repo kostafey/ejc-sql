@@ -64,6 +64,10 @@ command like this:
 ```
 mvn install:install-file -Dfile="~/downloads/sqljdbc.jar" -DgroupId=com.microsoft.sqlserver  -DartifactId=sqljdbc -Dversion=6.0 -Dpackaging=jar -DgeneratePom=true
 ```
+or from Maven Central:
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=com.microsoft.sqlserver:mssql-jdbc:6.2.2.jre8
+```
 
 **JTDS**
 

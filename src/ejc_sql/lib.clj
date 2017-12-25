@@ -1,6 +1,6 @@
 ;;; lib.clj -- Misc clojure functions for ejc-sql emacs extension.
 
-;;; Copyright © 2013 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2017 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -28,9 +28,10 @@
   "true if `seq` contains `elm`.
   Search case insensitive wthen `case-sensitive` is false."
   [seq elm & {:keys [case-sensitive] :or {case-sensitive true}}]
-  (if (not case-sensitive)
-    (in? (mapv s/lower-case seq) (s/lower-case elm))
-    (some #(= elm %) seq)))
+  (if (and elm seq)
+    (if (not case-sensitive)
+      (in? (mapv s/lower-case seq) (s/lower-case elm))
+      (some #(= elm %) seq))))
 
 (defn array? [x]
   (-> x .getClass .isArray))

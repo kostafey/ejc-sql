@@ -57,6 +57,8 @@
   (testing "get-colomns-candidates fn test."
     (with-redefs-fn {#'get-tables (fn [db]
                                     '("users" "products"))
+                     #'get-db-type (fn [db] :h2)
+                     #'get-all-tables get-tables
                      #'get-colomns (fn [db table force?]
                                      ({"users" '("id" "name")
                                        "products" '("id" "price")}

@@ -49,6 +49,9 @@
   {:owners  (fn [& _]
               (str " SELECT schema_owner              \n"
                    " FROM information_schema.schemata \n"))
+   :schemas (fn [& _]
+              (str " SELECT schema_name               \n"
+                   " FROM information_schema.schemata \n"))
    :tables  (fn [& {:keys [schema]}]
               (str " SELECT table_name                \n"
                    " FROM information_schema.tables   \n"
@@ -147,6 +150,7 @@
    :sqlserver ; ms sql server
    ;;-------
    {:owners  (default-queries :owners)
+    :schemas (default-queries :schemas)
     :tables  (default-queries :tables)
     :all-tables (default-queries :all-tables)
     :columns (default-queries :columns)
@@ -274,19 +278,32 @@
                             :db-name (get-db-name db)))]
     sql))
 
+(defn get-namespace [db]
+  "Find tables namespace for current database type.
+Possible cases for namespace:
+* schema is sutable (or both schema and owner)
+  for this DB type - use `:schemas`
+* only owner is sutable, so use `:owners`
+* none of them is sutable - `nil`"
+  (let [db-type (get-db-type db)]
+   (cond
+     (get-in queries [db-type :schemas]) :schemas
+     (get-in queries [db-type :owners]) :owners
+     :else nil)))
+
 (defn get-owners [db & [force?]]
   "Return owners list from cache if already received from DB,
 check if receiveing process is not running, then start it."
-  (let [db-type (get-db-type db)
-        need-owners? (get-in queries [db-type :owners])]
-    (if need-owners?
+  (let [namespace (get-namespace db)]
+    (if namespace
       (do
-        (if (not (get-in @cache [db :owners]))
-          (swap! cache assoc-in [db :owners]
+        (if (not (get-in @cache [db namespace]))
+          (swap! cache assoc-in [db namespace]
                  (future ((fn [db]
-                            (let [sql (select-db-meta-script db :owners)]
+                            (let [sql (select-db-meta-script
+                                       db namespace)]
                               (db->column db sql))) db))))
-        (get? (get-in @cache [db :owners]) force?))
+        (get? (get-in @cache [db namespace]) force?))
       (list))))
 
 (defn get-tables [db & [owner_ force?]]
@@ -358,24 +375,59 @@ if `pending` is nil - no request is running, return result immediately."
       ;; pending tables...
       (list "t"))))
 
-(defn match-alias? [sql table probable-alias]
+(defn match-alias? [sql owner table probable-alias]
   "Check if prefix (`probable-alias`) is alias for `table` in this `sql`."
   (let [sql (s/lower-case sql)
+        owner (if owner
+                (str (s/lower-case owner) "\\.")
+                "\\s+(\\w+\\.)?")
         table (s/lower-case table)
         probable-alias (s/lower-case probable-alias)
         alias-pattern (re-pattern
-                       (str "\\s+" table "(\\s+as)?"
+                       (str owner table "(\\s+as)?"
                             "\\s+" probable-alias))]
     (not (nil? (re-find alias-pattern sql)))))
 
+(defn get-all-tables [db]
+  "Get all tables for all owners/schemas."
+  (flatten
+   (map #(get-tables db % true)
+        (get-owners db true))))
+
 (defn get-colomns-candidates [db sql prefix-1 & [prefix-2]]
   "Return colomns candidates autocomplete list."
-  ;; Possible 2 cases:
-  ;; 1. owner.table.#<colomns-list>
-  ;; 2. [owner|table].#<tables-list|colomns-list>
-  ;; In both cases consider prefix-1 as table
-  (let [tables-list (get-tables db)]
-    (if tables-list
+  ;; Possible cases:
+  ;; 1. [owner|schema.]table.#<colomns-list>
+  ;; 2. SELECT alias.#<colomns-list> FROM [owner|schema.]table AS alias
+  ;; 3. SELECT complex-alias.#<colomns-list> FROM (SELECT...) AS complex-alias
+  ;;
+  ;; In any case consider `prefix-1` as table or alias
+  ;; and optional `prefix-2` as owner or schema
+  (let [owner prefix-2
+        tables-list (if owner
+                      (get-tables db owner)
+                      ;; In case of queries like
+                      ;; "SELECT u.# FROM custom.Users as u"
+                      ;; when "custom" is not the current
+                      ;; schema, the full DB structure tree
+                      ;; sould be built to obtain overall
+                      ;; tables list for all owners/schemas.
+                      (if (get-namespace db)
+                        ;; Database has namespaces
+                        (if (not (get-owners db))
+                          ;; Not received owners list yet -
+                          ;; pending...
+                          (do
+                            (future (get-all-tables db))
+                            nil)
+                          ;; Owners list is already here -
+                          ;; force tables list receiving!
+                          (get-all-tables db))
+                        ;; Database hasn't namespaces -
+                        ;; no owners needed
+                        (get-tables db)))]
+    (if (and tables-list
+             (not-empty (filter not-empty tables-list)))
       (if (in? tables-list prefix-1 :case-sensitive false)
         ;; table.#<colomns-list>
         (let [table prefix-1
@@ -387,7 +439,7 @@ if `pending` is nil - no request is running, return result immediately."
               table-alias (first
                            (filter
                             (fn [table]
-                              (match-alias? sql table prefix-1))
+                              (match-alias? sql owner table prefix-1))
                             tables-list))]
           (if table-alias
             ;; table-alias.#<colomns-list>
