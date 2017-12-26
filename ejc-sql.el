@@ -209,8 +209,8 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
 
 (defun ejc-configure-sql-buffer (product-name)
   (sql-mode)
-  (sql-set-product (or (cdr (assoc product-name ejc-product-assoc))
-                       (car (assoc product-name sql-product-alist))
+  (sql-set-product (or (cdr (assoc-string product-name ejc-product-assoc))
+                       (car (assoc-string product-name sql-product-alist))
                        "ansi"))
   (auto-complete-mode t)
   (auto-fill-mode t)

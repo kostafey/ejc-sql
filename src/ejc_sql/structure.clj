@@ -391,8 +391,8 @@ if `pending` is nil - no request is running, return result immediately."
 (defn get-all-tables [db]
   "Get all tables for all owners/schemas."
   (flatten
-   (map #(get-tables db % true)
-        (get-owners db true))))
+   (mapv #(get-tables db % true)
+         (get-owners db true))))
 
 (defn get-colomns-candidates [db sql prefix-1 & [prefix-2]]
   "Return colomns candidates autocomplete list."
