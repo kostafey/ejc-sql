@@ -70,6 +70,7 @@
       (when connect
         (setq cider-boot-parameters "repl -s -H localhost wait")
         (setq cider-lein-parameters "repl :headless :host localhost")
+        (make-directory (file-name-directory ejc-conn-statistics-file))
         (ejc-connect connect))
       (end-of-buffer)
       (insert sql)
