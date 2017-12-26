@@ -275,6 +275,23 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
     (setq mode-name (format "%s->[%s]" mode-name connection-name))
     (message "Connected.")))
 
+;;;###autoload
+(defun ejc-connect-existing-repl (host port)
+  "Connect to existing ejc-sql nREPL running process.
+You can `cd` to your ejc-sql project folder (typically
+'~/.emacs.d/elpa/ejc-sql-<version>') and launch nREPL via `lein run`.
+Then run in Emacs `ejc-connect-existing-repl', type HOST and PORT
+from your `lein run` console output. Finally, use `ejc-connect' from
+any SQL buffer to connect to exact database, as always. "
+  (interactive (cider-select-endpoint))
+  (cider-connect host port)
+  (let ((current-repl-b-name
+         (format nrepl-repl-buffer-name-template (concat " " host)))
+        (ejc-repl-b-name
+         (format nrepl-repl-buffer-name-template " ejc-sql")))
+    (with-current-buffer current-repl-b-name
+      (rename-buffer ejc-repl-b-name))))
+
 (defun ejc-get-word-at-point (pos)
   "Return SQL word around the point."
   (interactive "d")

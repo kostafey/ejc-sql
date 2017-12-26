@@ -228,6 +228,21 @@ eval. It's possible to run multiple statements, you can use `;` to separate it.
 
 Have a much fun!
 
+## Use existing nREPL
+
+If you have to restart Emacs multiple times, you can keep the ejc-sql clojure
+backend alive between Emacs restarts by runnig this backend out of Emacs and
+connect to it from Emacs.
+
+To accomplish that, you should `cd` to your ejc-sql project folder (typically
+`~/.emacs.d/elpa/ejc-sql-<version>`) and launch nREPL via `lein run`.
+
+Then run in Emacs `M-x ejc-connect-existing-repl`, type `Host` and `Port`
+from your `lein run` console output.
+
+Finally, use `M-x ejc-connect` from any SQL buffer to connect to exact database,
+as always.
+
 ## List of keybindings & functions
 
 New keybindings defined in `ejc-sql-mode` minor mode:
