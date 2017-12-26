@@ -99,6 +99,16 @@
 
 (defvar ejc-sql-mode nil)
 
+(defvar ejc-conn-statistics (list)
+  "Keep connection usage statistics and offer most frequently used first
+ when `ejc-connect' is called.")
+
+(defcustom ejc-conn-statistics-file (expand-file-name
+                                     "~/.ejc-sql/connection-statistics.el")
+  "Connection usage statistics data file location."
+  :group 'ejc-sql
+  :type 'string)
+
 ;;;###autoload
 (define-minor-mode ejc-sql-mode
   "Toggle ejc-sql mode."
@@ -217,13 +227,46 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
   (ejc-sql-mode)
   (ejc-sql-mode t))
 
+(defun ejc-load-conn-statistics ()
+  "Load connection usage statistics to `ejc-conn-statistics' var."
+  (condition-case nil
+      (let ((dir (file-name-directory ejc-conn-statistics-file)))
+        (if (not (file-accessible-directory-p dir))
+            (make-directory dir))
+        (load-file ejc-conn-statistics-file))
+    (error
+     (with-temp-file ejc-conn-statistics-file
+       (insert "(setq ejc-conn-statistics (list))"))
+     (load-file ejc-conn-statistics-file)))
+  ejc-conn-statistics)
+
+(defun ejc-update-conn-statistics (connection-name)
+  "Update connection usage statistics, persist it in `ejc-conn-statistics-file'"
+  (setq ejc-conn-statistics
+        (lax-plist-put
+         ejc-conn-statistics
+         connection-name
+         (1+ (or (lax-plist-get ejc-conn-statistics connection-name) 0))))
+  (with-temp-file ejc-conn-statistics-file
+    (insert "(setq ejc-conn-statistics '")
+    (prin1 ejc-conn-statistics (current-buffer))
+    (insert ")")))
+
+;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."
   (interactive
    (list
-    (ido-completing-read "DataBase connection name: "
-                         (mapcar 'car ejc-connections))))
+    (ido-completing-read
+     "DataBase connection name: "
+     (let ((conn-list (mapcar 'car ejc-connections))
+           (conn-statistics (ejc-load-conn-statistics)))
+       (-sort (lambda (c1 c2)
+                (> (or (lax-plist-get conn-statistics c1) 0)
+                   (or (lax-plist-get conn-statistics c2) 0)))
+              conn-list)))))
   (let ((db (cdr (ejc-find-connection connection-name))))
+    (ejc-update-conn-statistics connection-name)
     (ejc-configure-sql-buffer (ejc-db-conn-subprotocol db))
     (setq-local ejc-connection-name connection-name)
     (setq-local ejc-db (ejc-connection-struct-to-plist db))
