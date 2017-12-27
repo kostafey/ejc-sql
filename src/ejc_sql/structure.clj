@@ -89,6 +89,11 @@
                         (if owner
                           (str " WHERE owner = '"owner"'"))
                         " ORDER BY table_name"))
+    :all-tables  (fn [& _]
+                   (str " SELECT owner, table_name             \n"
+                        " FROM all_tables                      \n"
+                        " WHERE owner NOT IN ('SYS', 'SYSTEM') \n"
+                        " ORDER BY owner"))
     :columns     (fn [& {:keys [table]}]
                    (str " SELECT column_name      \n"
                         " FROM ALL_TAB_COLUMNS    \n"
