@@ -70,7 +70,9 @@
       (when connect
         (setq cider-boot-parameters "repl -s -H localhost wait")
         (setq cider-lein-parameters "repl :headless :host localhost")
-        (make-directory (file-name-directory ejc-conn-statistics-file))
+        (let ((dir (file-name-directory ejc-conn-statistics-file)))
+          (if (not (file-accessible-directory-p dir))
+              (make-directory dir)))
         (ejc-connect connect))
       (end-of-buffer)
       (insert sql)
