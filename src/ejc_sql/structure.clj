@@ -32,6 +32,13 @@
      (map first
           (j/query db (list sql) {:as-arrays? true})))))
 
+(defn- db->>column [db sql]
+  "Execute `sql`, return last column of result set as result list."
+  (if sql
+    (rest
+     (map last
+          (j/query db (list sql) {:as-arrays? true})))))
+
 (defn- db->value [db sql]
   "Execute `sql`, return first value of first column of result set as result."
   (first (db->column db sql)))
@@ -87,7 +94,8 @@
                    (str " SELECT table_name, owner \n"
                         " FROM all_tables          \n"
                         (if owner
-                          (str " WHERE owner = '"owner"'"))
+                          (str " WHERE UPPER(owner) = '"
+                               (s/upper-case owner)"'"))
                         " ORDER BY table_name"))
     :all-tables  (fn [& _]
                    (str " SELECT owner, table_name             \n"
@@ -97,11 +105,13 @@
     :columns     (fn [& {:keys [table]}]
                    (str " SELECT column_name      \n"
                         " FROM ALL_TAB_COLUMNS    \n"
-                        " WHERE table_name = '"table"'"))
+                        " WHERE UPPER(table_name) = '"
+                        (s/upper-case table)"'"))
     :constraints (fn [& {:keys [owner table]}]
                    (if table
                      (str " SELECT * FROM all_constraints    \n"
                           " WHERE owner = "owner"            \n"
+                          
                           "       AND table_name = '"table"' \n")
                      "SELECT * FROM user_constraints"))
     :procedures  (fn [& {:keys [owner]}]
@@ -322,19 +332,28 @@ check if receiveing process is not running, then start it."
                                                          :owner owner)]
                           (db->column db sql)))
                       db owner))))
-    (get? (get->in @cache [db :tables owner]) force?)))
+    (if owner_
+      (get? (get->in @cache [db :tables owner]) force?)
+      (do (if (not (get-in @cache [db :all-tables]))
+            (swap! cache assoc-in [db :all-tables]
+                   (future ((fn [db]
+                              (let [sql (select-db-meta-script
+                                         db :all-tables)]
+                                (db->>column db sql)))
+                            db))))
+          (get? (get-in @cache [db :all-tables]) force?)))))
 
 (defn get-colomns [db table force?]
   "Return colomns list for this table from cache if already received from DB,
 check if receiveing process is not running, then start it."
-  (if (not (get->in @cache [db :colomns (keyword table)]))
-    (swap! cache assoc-in [db :colomns (keyword table)]
+  (if (not (get->in @cache [db :colomns table]))
+    (swap! cache assoc-in [db :colomns table]
            (future ((fn [db table]
                       (let [sql (select-db-meta-script db :columns
                                                        :table table)]
                         (db->column db sql)))
                     db table))))
-  (get? (get->in @cache [db :colomns (keyword table)])
+  (get? (get->in @cache [db :colomns table])
         force?))
 
 (defn is-owner? [db prefix]
