@@ -315,41 +315,30 @@ check if receiveing process is not running, then start it."
   "Return tables list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [owner (get-this-owner db owner_)]
-    (if (not (get-in @cache [db :tables (keyword owner)]))
-      (swap! cache assoc-in [db :tables (keyword owner)]
+    (if (not (get->in @cache [db :tables owner]))
+      (swap! cache assoc-in [db :tables owner]
              (future ((fn [db owner]
                         (let [sql (select-db-meta-script db :tables
                                                          :owner owner)]
                           (db->column db sql)))
                       db owner))))
-    (get? (get-in @cache [db :tables (keyword owner)]) force?)))
-
-(defn get-in-case-insensitive [obj path]
-  (get-in obj
-          (conj (into [] (butlast path))
-                (keyword (last path)))
-          (get-in obj
-                  (conj (into [] (butlast path))
-                        (keyword (s/upper-case (last path))))
-                  (get-in obj
-                          (conj (into [] (butlast path))
-                                (keyword (s/lower-case (last path))))))))
+    (get? (get->in @cache [db :tables owner]) force?)))
 
 (defn get-colomns [db table force?]
   "Return colomns list for this table from cache if already received from DB,
 check if receiveing process is not running, then start it."
-  (if (not (get-in-case-insensitive @cache [db :colomns table]))
+  (if (not (get->in @cache [db :colomns (keyword table)]))
     (swap! cache assoc-in [db :colomns (keyword table)]
            (future ((fn [db table]
                       (let [sql (select-db-meta-script db :columns
                                                        :table table)]
                         (db->column db sql)))
                     db table))))
-  (get? (get-in-case-insensitive @cache [db :colomns table])
+  (get? (get->in @cache [db :colomns (keyword table)])
         force?))
 
 (defn is-owner? [db prefix]
-  (in? (get-owners db) prefix))
+  (in? (get-owners db) prefix :case-sensitive false))
 
 (defn get-owners-candidates [db sql & _]
   "Return owners candidates autocomplete list from the database structure

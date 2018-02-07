@@ -33,6 +33,18 @@
       (in? (mapv s/lower-case seq) (s/lower-case elm))
       (some #(= elm %) seq))))
 
+(defn get->in [obj path & {:keys [case-sensitive] :or {case-sensitive false}}]
+  "Case insensitive `get-in` for last key in sequence."
+  (get-in obj
+          (conj (into [] (butlast path))
+                (last path))
+          (get-in obj
+                  (conj (into [] (butlast path))
+                        (s/upper-case (last path)))
+                  (get-in obj
+                          (conj (into [] (butlast path))
+                                (s/lower-case (last path)))))))
+
 (defn array? [x]
   (-> x .getClass .isArray))
 
