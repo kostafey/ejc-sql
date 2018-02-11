@@ -111,7 +111,6 @@
                    (if table
                      (str " SELECT * FROM all_constraints    \n"
                           " WHERE owner = "owner"            \n"
-                          
                           "       AND table_name = '"table"' \n")
                      "SELECT * FROM user_constraints"))
     :procedures  (fn [& {:keys [owner]}]
@@ -359,7 +358,7 @@ check if receiveing process is not running, then start it."
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
 
-(defn get-owners-candidates [db sql & _]
+(defn get-owners-candidates [db sql prefix-1 & _]
   "Return owners candidates autocomplete list from the database structure
 cache, async request to fill it, if not yet.
 The result list has the following structure:
@@ -367,10 +366,14 @@ The result list has the following structure:
 If `pending` is t - the async request to get the structure is running
 if `pending` is nil - no request is running, return result immediately."
   (let [owners (get-owners db)]
-    (if owners
-      (cons "nil" owners)
-      ;; pending owners...
-      (list "t"))))
+    (if prefix-1
+      ;; Assume schema|table.#<schemas-list> is not applicable.
+      ;; So, return empty list.
+      (list "nil")
+      (if owners
+        (cons "nil" owners)
+        ;; pending owners...
+        (list "t")))))
 
 (defn get-tables-candidates [db sql prefix-1 & _]
   "Return tables candidates autocomplete list."
