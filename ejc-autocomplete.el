@@ -42,7 +42,7 @@
 
 (defvar ejc-ansi-sql-words
   '("select" "where" "and" "or" "from" "insert" "update" "delete" "join"
-    "order" "by" "distinct" "create" "alter" "drop"
+    "order" "by" "distinct" "create" "alter" "drop" "like"
     "grant" "revoke" "deny" "commit" "rollback" "savepoint"))
 
 (defvar ejc-auxulary-sql-words

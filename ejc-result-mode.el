@@ -18,7 +18,8 @@
 
 ;;; Code:
 
-(defface ejc-result-table-borders-face '((t :inherit font-lock-comment-face))
+(defface ejc-result-table-borders-face '((t :inherit font-lock-comment-face
+                                            :italic nil))
   "Face used to font-lock table borders."
   :group 'ejc-sql-faces)
 
