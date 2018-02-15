@@ -104,7 +104,8 @@
        (doseq [row rows]
          (out (fmt-row "" " | " "" row)))
        (str msg (.toString result)))))
-  ([rows limit] (print-table (keys (first rows)) rows limit)))
+  ([rows limit] (print-table (keys (first rows)) rows limit))
+  ([rows] (print-table (keys (first rows)) rows @rows-limit)))
 
 (defn pretty-print [sql formatter]
   (if (= formatter :jpa)
