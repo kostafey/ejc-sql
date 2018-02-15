@@ -72,10 +72,12 @@
   "Prints a collection of maps in a textual table. Prints table headings
    ks, and then a line of output for each row, corresponding to the keys
    in ks. If ks are not specified, use the keys of the first item in rows."
-  ([ks rows]
+  ([ks rows limit]
    (when (seq rows)
-     (let [row-limit @rows-limit
-           [rows msg] (if (and row-limit (> (count rows) row-limit))
+     (let [row-limit (or limit @rows-limit)
+           [rows msg] (if (and row-limit
+                               (> row-limit 0)
+                               (> (count rows) row-limit))
                         [(take row-limit rows)
                          (format "Too many rows. Only %s from %s is shown.\n\n"
                                  row-limit (count rows))]
@@ -102,7 +104,7 @@
        (doseq [row rows]
          (out (fmt-row "" " | " "" row)))
        (str msg (.toString result)))))
-  ([rows] (print-table (keys (first rows)) rows)))
+  ([rows limit] (print-table (keys (first rows)) rows limit)))
 
 (defn pretty-print [sql formatter]
   (if (= formatter :jpa)

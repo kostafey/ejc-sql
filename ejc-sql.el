@@ -358,19 +358,24 @@ any SQL buffer to connect to exact database, as always. "
                          (ejc-select-db-meta-script ejc-db :entity
                                                     :entity-name entity-name))))
 
-(defun ejc-eval-user-sql (sql &optional sync)
+(cl-defun ejc-eval-user-sql (sql &key sync rows-limit)
   "Evaluate SQL by user: reload and show query results buffer, update log."
   (message "Processing SQL query...")
   (cl-labels ((msg-done () (if ejc-show-results-buffer
                                (message "Done SQL query."))))
     (if sync
         (progn
-          (ejc-show-last-result (ejc-eval-sql-and-log ejc-db sql))
+          (ejc-show-last-result (ejc-eval-sql-and-log ejc-db
+                                                      sql
+                                                      :rows-limit rows-limit))
           (msg-done))
-      (ejc-eval-sql-and-log  ejc-db sql
-                             :async (lambda (res)
-                                      (ejc-show-last-result res)
-                                      (msg-done))))))
+      (ejc-eval-sql-and-log  ejc-db
+                             sql
+                             :call-type :async
+                             :callback (lambda (res)
+                                         (ejc-show-last-result res)
+                                         (msg-done))
+                             :rows-limit rows-limit))))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
@@ -385,14 +390,15 @@ boundaries."
   (interactive)
   (ejc-check-connection)
   (ejc-flash-this-sql)
-  (ejc-eval-user-sql (ejc-get-sql-at-point) sync))
+  (ejc-eval-user-sql (ejc-get-sql-at-point) :sync sync))
 
 (defun ejc-show-tables-list ()
   "Output tables list."
   (interactive)
   (ejc-check-connection)
   (ejc-eval-user-sql
-   (ejc-select-db-meta-script ejc-db :all-tables)))
+   (ejc-select-db-meta-script ejc-db :all-tables)
+   :rows-limit 0))
 
 (defun ejc-show-user-types-list (&optional owner)
   "Output user types list."

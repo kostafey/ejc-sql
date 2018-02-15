@@ -18,12 +18,12 @@
 
 (ns ejc-sql.connect
   (:use [clojure.java.io]
-        [ejc-sql.lib]
-        [ejc-sql.output])
+        [ejc-sql.lib])
   (:require [clojure.java.jdbc :as j]
             [clojure.java.jdbc.deprecated :as jd]
             [clojure.contrib.java-utils]
-            [clojure.string :as s])
+            [clojure.string :as s]
+            [ejc-sql.output])
   (:import [java.sql Connection
                      DriverManager
                      PreparedStatement
@@ -104,20 +104,20 @@ For debug purpose."
            (list :message
                  (str "Error: "(.getMessage e)))))))))
 
-(defn eval-user-sql [db sql]
+(defn eval-user-sql [db sql & {:keys [rows-limit]}]
   (let [clear-sql (.trim sql)]
     (ejc-sql.output/log-sql (str clear-sql "\n"))
     (let [[result-type result] (eval-sql-core
                                 :db  db
                                 :sql clear-sql)]
       (if (= result-type :result-set)
-        (ejc-sql.output/print-table result)
+        (ejc-sql.output/print-table result rows-limit)
         result))))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
-  [db sql]
-  (print (eval-user-sql db sql)))
+  [db sql & {:keys [rows-limit]}]
+  (print (eval-user-sql db sql :rows-limit rows-limit)))
 
 (defn eval-sql-internal-get-column [db sql]
   (let [[result-type result] (eval-sql-core :db db

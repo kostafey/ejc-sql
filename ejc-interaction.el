@@ -77,7 +77,7 @@
                :doc "Evaluate user's SQL scripts and write them to log file.")
 
 (clomacs-defun ejc--eval-sql-and-log-print
-               ejc-sql.connect/eval-sql-and-log-print
+               eval-sql-and-log-print
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect
                :return-type :string
@@ -90,7 +90,7 @@
                :return-type :string
                :return-value :stdout)
 
-(defun ejc-eval-sql-and-log (db sql &optional call-type callback)
+(cl-defun ejc-eval-sql-and-log (db sql &key call-type callback rows-limit)
   "Core function to evaluate SQL queries.
 Prepare SQL string, evaluate SQL script and write them to log file"
   (if sql
@@ -102,7 +102,7 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                               (let* ((buf (current-buffer))
                                      (eval-sql-and-log-async
                                       (clomacs-defun _
-                                                     ejc-sql.connect/eval-sql-and-log-print
+                                                     eval-sql-and-log-print
                                                      :lib-name "ejc-sql"
                                                      :namespace ejc-sql.connect
                                                      :call-type :async
@@ -113,8 +113,14 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                                                      :return-type :string
                                                      :return-value :stdout)))
                                 (spinner-start 'rotating-line)
-                                (funcall eval-sql-and-log-async db prepared-sql))
-                            (ejc--eval-sql-and-log-print db prepared-sql))))
+                                (funcall eval-sql-and-log-async
+                                         db
+                                         prepared-sql
+                                         :rows-limit rows-limit))
+                            (ejc--eval-sql-and-log-print
+                             db
+                             prepared-sql
+                             :rows-limit rows-limit))))
                        (:jpa (ejc--eval-jpql prepared-sql))
                        (nil "No database connection."))))
         result)))
