@@ -1,6 +1,6 @@
 ;;; connect.clj -- Core clojure functions for ejc-sql emacs extension.
 
-;;; Copyright © 2013-2016 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2018 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -160,7 +160,7 @@ For debug purpose."
   (let [result-map (table-meta db table-name)
         success (:success result-map)
         result-data (:result result-map)
-        head (str "Table ``" table-name "`` description:\n")
+        head (str "Table \"" table-name "\" description:\n")
         head-length (dec (.length head))]
     (if success
       (str head

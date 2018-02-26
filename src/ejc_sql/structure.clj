@@ -1,6 +1,6 @@
 ;;; structure.clj -- Receive database stucture and keep it in cache.
 
-;;; Copyright © 2016-2017 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2016-2018 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -108,10 +108,15 @@
                         " WHERE UPPER(table_name) = '"
                         (s/upper-case table)"'"))
     :constraints (fn [& {:keys [owner table]}]
-                   (if table
+                   (cond
+                     (and owner table)
                      (str " SELECT * FROM all_constraints    \n"
                           " WHERE owner = "owner"            \n"
                           "       AND table_name = '"table"' \n")
+                     table
+                     (str " SELECT * FROM all_constraints \n"
+                          " WHERE table_name = '"table"'  \n")
+                     :else
                      "SELECT * FROM user_constraints"))
     :procedures  (fn [& {:keys [owner]}]
                    (str " SELECT object_name, procedure_name \n"

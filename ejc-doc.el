@@ -49,7 +49,25 @@ UPDATE table_name SET column_name = value [, column_name = value ...]
    'delete
    "The SQL DELETE statement removes one or more records from a table.
 
-DELETE FROM table_name [WHERE condition]")
+DELETE FROM table_name [WHERE condition]"
+
+   'alter
+   "The ALTER TABLE command modifies column definitions and table constraints
+'on the fly'. This means existing definitions are extended, changed or
+deleted or existing data is casted to a different type or existing data is
+evaluated against the new definitions.
+
+-- change column definitions
+ALTER TABLE <table_name> { ADD | ALTER } [ COLUMN ]
+            <column_name> <column_definition>;
+ALTER TABLE <table_name> { DROP        } [ COLUMN ]
+            <column_name>;
+
+-- change table constraints
+ALTER TABLE <table_name> { ADD | ALTER } CONSTRAINT
+            <constraint_name> <constraint_definition>;
+ALTER TABLE <table_name> { DROP        } CONSTRAINT
+            <constraint_name>;")
  (setq ejc-doc-created-p t))
 
 (provide 'ejc-doc)

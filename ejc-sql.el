@@ -1,6 +1,6 @@
 ;;; ejc-sql.el --- Emacs SQL client uses Clojure JDBC. -*- lexical-binding: t -*-
 
-;;; Copyright © 2012-2017 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2018 - Kostafey <kostafey@gmail.com>
 
 ;; Author: Kostafey <kostafey@gmail.com>
 ;; URL: https://github.com/kostafey/ejc-sql
@@ -345,7 +345,14 @@ any SQL buffer to connect to exact database, as always. "
                                             :owner owner
                                             :table table)))
         (if (ejc-not-nil-str sql)
-            (ejc-eval-sql-and-log ejc-db sql)
+            (let ((constraints (ejc-eval-sql-and-log ejc-db sql)))
+              (if (and constraints
+                       (not (equal (string-trim constraints) "nil")))
+                  (concat
+                   "Constraints:\n"
+                   "------------\n"
+                   constraints)
+                  ""))
           ""))))))
 
 (defun ejc-describe-entity (entity-name)
