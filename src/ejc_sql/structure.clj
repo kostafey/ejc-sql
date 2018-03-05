@@ -83,9 +83,13 @@
    :oracle
    ;;--------
    {:entity      (fn [& {:keys [entity-name]}]
-                   (str " SELECT text             \n"
-                        " FROM all_source         \n"
-                        " WHERE name = '"entity-name"'"))
+                   (str " SELECT text                    \n"
+                        " FROM all_source                \n"
+                        " WHERE name = '" entity-name "' \n"))
+    :view        (fn [& {:keys [entity-name]}]
+                   (str "SELECT text                         \n"
+                        "FROM all_views                      \n"
+                        "WHERE view_name = '" entity-name "' \n"))
     :types       (fn [& _] "SELECT * FROM USER_TYPES")
     :owners      (fn [& _] (str " SELECT DISTINCT(owner) \n"
                                 " FROM ALL_OBJECTS       \n"

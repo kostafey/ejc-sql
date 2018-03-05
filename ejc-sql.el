@@ -356,14 +356,27 @@ any SQL buffer to connect to exact database, as always. "
           ""))))))
 
 (defun ejc-describe-entity (entity-name)
-  "Describe SQL entity ENTITY-NAME - function, procedure or type
+  "Describe SQL entity ENTITY-NAME - function, procedure, type or view
    (default entity name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe entity"))
   (ejc-check-connection)
   (ejc-show-last-result
-   (ejc-eval-sql-and-log ejc-db
-                         (ejc-select-db-meta-script ejc-db :entity
-                                                    :entity-name entity-name))))
+   (let ((entity-result
+          ;; Try to get entity source code.
+          (ejc-eval-sql-and-log
+           ejc-db
+           (ejc-select-db-meta-script ejc-db :entity
+                                      :entity-name entity-name))))
+     (if (not (equal entity-result "nil"))
+         ;; Show entity text.
+         ;; Assume there is no entity and view with the same names.
+         entity-result
+       ;; No entity with such name.
+       ;; Try to get view source code.
+       (ejc-eval-sql-and-log
+        ejc-db
+        (ejc-select-db-meta-script ejc-db :view
+                                   :entity-name entity-name))))))
 
 (cl-defun ejc-eval-user-sql (sql &key sync rows-limit)
   "Evaluate SQL by user: reload and show query results buffer, update log."
