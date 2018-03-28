@@ -402,13 +402,14 @@ any SQL buffer to connect to exact database, as always. "
                              (format-time-string ejc-date-output-format
                                                  (current-time))
                              (float-time (time-since start-time))))))
-    (if sync
-        (progn
-          (ejc-show-last-result (ejc-eval-sql-and-log ejc-db
-                                                      sql
-                                                      :rows-limit rows-limit))
-          (msg-done))
-      (let ((start-time (current-time)))
+    (let ((start-time (current-time)))
+      (if sync
+          (progn
+            (let ((res (ejc-eval-sql-and-log ejc-db
+                                             sql
+                                             :rows-limit rows-limit)))
+              (ejc-show-last-result res)
+              (msg-done start-time res)))
         (ejc-eval-sql-and-log  ejc-db
                                sql
                                :call-type :async
