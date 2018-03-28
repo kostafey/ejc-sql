@@ -391,8 +391,10 @@ any SQL buffer to connect to exact database, as always. "
                             (message
                              "%s SQL query at %s. Exec time %.03f"
                              (if (not
-                                  (equal
-                                   (downcase (cl-subseq res 0 5)) "error"))
+                                  (and
+                                   (>= (length res) 5)
+                                   (equal
+                                    (downcase (cl-subseq res 0 5)) "error")))
                                  (propertize
                                   "Done" 'face 'font-lock-keyword-face)
                                (propertize
