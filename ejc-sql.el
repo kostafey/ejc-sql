@@ -58,13 +58,18 @@
 (defvar ejc-temp-editor-buffer-name "*ejc-sql-editor*"
   "The buffer for conveniently edit ad-hoc SQL scripts.")
 
-(defvar ejc-temp-editor-file "~/tmp/ejc-sql-editor.sql")
+(defvar ejc-temp-editor-file (expand-file-name "~/tmp/ejc-sql-editor.sql"))
 
 (defvar ejc-show-results-buffer t
   "When t show results in separate buffer, use minibuffer otherwise.")
 
 (defcustom ejc-keymap-prefix (kbd "C-c e")
   "ejc-sql keymap prefix."
+  :group 'ejc-sql
+  :type 'string)
+
+(defcustom ejc-date-output-format "%d.%m.%Y %H:%M:%S"
+  "ejc-sql date output format."
   :group 'ejc-sql
   :type 'string)
 
@@ -381,21 +386,34 @@ any SQL buffer to connect to exact database, as always. "
 (cl-defun ejc-eval-user-sql (sql &key sync rows-limit)
   "Evaluate SQL by user: reload and show query results buffer, update log."
   (message "Processing SQL query...")
-  (cl-labels ((msg-done () (if ejc-show-results-buffer
-                               (message "Done SQL query."))))
+  (cl-labels ((msg-done (start-time res)
+                        (if ejc-show-results-buffer
+                            (message
+                             "%s SQL query at %s. Exec time %.03f"
+                             (if (not
+                                  (equal
+                                   (downcase (cl-subseq res 0 5)) "error"))
+                                 (propertize
+                                  "Done" 'face 'font-lock-keyword-face)
+                               (propertize
+                                "Error" 'face 'error))
+                             (format-time-string ejc-date-output-format
+                                                 (current-time))
+                             (float-time (time-since start-time))))))
     (if sync
         (progn
           (ejc-show-last-result (ejc-eval-sql-and-log ejc-db
                                                       sql
                                                       :rows-limit rows-limit))
           (msg-done))
-      (ejc-eval-sql-and-log  ejc-db
-                             sql
-                             :call-type :async
-                             :callback (lambda (res)
-                                         (ejc-show-last-result res)
-                                         (msg-done))
-                             :rows-limit rows-limit))))
+      (let ((start-time (current-time)))
+        (ejc-eval-sql-and-log  ejc-db
+                               sql
+                               :call-type :async
+                               :callback (lambda (res)
+                                           (ejc-show-last-result res)
+                                           (msg-done start-time res))
+                               :rows-limit rows-limit)))))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
