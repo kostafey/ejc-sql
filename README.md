@@ -12,7 +12,7 @@ You can use multiple connections at the same time. Autocompletion and basic
 formatting of SQL scripts are also available.
 
 - [Installation](#installation)
-- [Install JDBC](#install-jdbc)
+- [Install JDBC Drivers](#install-jdbc-drivers)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Autocomplete](#autocomplete)
@@ -25,7 +25,7 @@ formatting of SQL scripts are also available.
 1. To run Clojure, install [Leiningen](http://leiningen.org) (assumes you have
    already installed Java 7+).
 
-2. Add [MELPA](https://github.com/melpa/melpa#usage) (if not yet) to your
+2. Add [MELPA](https://github.com/melpa/melpa#usage) (if not yet present) to your
    `package-archives` list.
 
    Then you can install ejc-sql with the following command:
@@ -40,7 +40,7 @@ The most common way is to install JDBC drivers to your `~/.m2` directory.
 Here is a list of such installation examples. Anyway, __it will become outdated
 soon__, so please consult Google to install your database JDBC driver.
 
-First of all, install [maven](https://maven.apache.org/), then you can install
+First of all, install [Maven](https://maven.apache.org/), then you can install
 your JDBC driver with one of the following commands.
 
 **Oracle**
@@ -231,7 +231,7 @@ Have much fun!
 ## Use existing nREPL
 
 If you have to restart Emacs multiple times, you can keep the ejc-sql clojure
-backend alive between Emacs restarts by running this backend out of Emacs and
+backend alive between Emacs restarts by running this backend out of Emacs, and
 connect to it from Emacs.
 
 To accomplish that, you should `cd` to your ejc-sql project folder (typically
