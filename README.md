@@ -5,14 +5,14 @@
 
 # ejc-sql
 
-ejc-sql turns Emacs into simple SQL client, it uses JDBC connection to
+ejc-sql turns Emacs into a simple SQL client; it uses a JDBC connection to
 databases via [clojure/java.jdbc](https://github.com/clojure/java.jdbc) lib.
 
 You can use multiple connections at the same time. Autocompletion and basic
-SQL scripts formatting are also available.
+formatting of SQL scripts are also available.
 
 - [Installation](#installation)
-- [Install JDBC](#install-jdbc)
+- [Install JDBC Drivers](#install-jdbc-drivers)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Autocomplete](#autocomplete)
@@ -22,25 +22,25 @@ SQL scripts formatting are also available.
 
 ## Installation
 
-1. To run Clojure install [Leiningen](http://leiningen.org) (assume you have
+1. To run Clojure, install [Leiningen](http://leiningen.org) (assumes you have
    already installed Java 7+).
 
-2. Add [MELPA](https://github.com/melpa/melpa#usage) (if not yet) to your
+2. Add [MELPA](https://github.com/melpa/melpa#usage) (if not yet present) to your
    `package-archives` list.
 
    Then you can install ejc-sql with the following command:
 
    <kbd>M-x package-install [RET] ejc-sql [RET]</kbd>
 
-## Install JDBC
+## Install JDBC drivers
 
 If you are familiar with JDBC, please omit this section.
 
 The most common way is to install JDBC drivers to your `~/.m2` directory.
-Here is a list of such installation examples. Anyway __it will become outdated
+Here is a list of such installation examples. Anyway, __it will become outdated
 soon__, so please consult Google to install your database JDBC driver.
 
-First of all install [maven](https://maven.apache.org/), then you can install
+First of all, install [Maven](https://maven.apache.org/), then you can install
 your JDBC driver with one of the following commands.
 
 **Oracle**
@@ -97,16 +97,16 @@ mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgre
 ## Configuration
 
 Setup connections with `ejc-create-connection` function in your `.emacs`.
-It's first arg is your custom database connection name, the rest args
+Its first arg is your custom database connection name, the remaining args
 are the same as database connection structure of
 [clojure/java.jdbc](https://github.com/clojure/java.jdbc) lib.
 
-The configuration of ejs-sql might looks like this:
+The configuration of ejs-sql might look like this:
 
 ```lisp
 (require 'ejc-sql)
 
-;; Create your jdbc database connections configuration:
+;; Create your JDBC database connections configuration:
 
 ;; MySQL example
 (ejc-create-connection
@@ -199,8 +199,8 @@ The configuration of ejs-sql might looks like this:
  :password "secret")
 ```
 
-`ejc-set-rows-limit` set limit for number of records to output (1000 by
-default). Set nil if you want to disable limit.
+`ejc-set-rows-limit` set limit for the number of records to output (1000 by
+default). Set to nil if you want to disable this limit.
 
 ```lisp
 (ejc-set-rows-limit 1000)
@@ -209,13 +209,13 @@ default). Set nil if you want to disable limit.
 ## Usage
 
 First of all, open your SQL buffer file (or any temporary buffer) and connect
-to database
+to your database
 
 `M-x ejc-connect <RET> MySQL-db-connection <RET>`.
 
 and wait until "Connected." message appears.
-Since connection information is buffer-local you should use `ejc-connect`
-for any new buffer. There is handy function to create temporary buffer for
+Since connection information is buffer-local, you should use `ejc-connect`
+for any new buffer. There is a handy function to create temporary buffer for
 playing with SQL: `ejc-switch-to-sql-editor-buffer`.
 
 Then type
@@ -224,23 +224,23 @@ Then type
 select <something> from <mytable>
 ```
 and press <kbd>C-c C-c</kbd> to run it. Use `\` char to separate expressions to
-eval. It's possible to run multiple statements, you can use `;` to separate it.
+evaluate. It's possible to run multiple statements, you can use `;` to separate them.
 
-Have a much fun!
+Have much fun!
 
 ## Use existing nREPL
 
 If you have to restart Emacs multiple times, you can keep the ejc-sql clojure
-backend alive between Emacs restarts by runnig this backend out of Emacs and
+backend alive between Emacs restarts by running this backend out of Emacs, and
 connect to it from Emacs.
 
 To accomplish that, you should `cd` to your ejc-sql project folder (typically
-`~/.emacs.d/elpa/ejc-sql-<version>`) and launch nREPL via `lein run`.
+`~/.emacs.d/elpa/ejc-sql-<version>`) and launch the nREPL via `lein run`.
 
 Then run in Emacs `M-x ejc-connect-existing-repl`, type `Host` and `Port`
 from your `lein run` console output.
 
-Finally, use `M-x ejc-connect` from any SQL buffer to connect to exact database,
+Finally, use `M-x ejc-connect` from any SQL buffer to connect to the exact database,
 as always.
 
 ## List of keybindings & functions
