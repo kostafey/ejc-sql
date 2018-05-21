@@ -1,6 +1,6 @@
 ;;; ejc-format.el -- SQL formatting library (the part of ejc-sql).
 
-;;; Copyright © 2012, 2013 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2018 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -25,6 +25,9 @@
 (defvar ejc-sql-separator "/"
   "The char with purpose to separate the SQL statement both other.")
 
+(defun ejc-sql-separator-re ()
+    (format "^\\s-*%s\\s-*" ejc-sql-separator ejc-sql-separator))
+
 (font-lock-add-keywords
  'sql-mode '(("/" 0 'font-lock-function-name-face t)))
 
@@ -36,12 +39,12 @@ bottom boundary is absent - it returns beginning or end of the
 buffer."
   (save-excursion
     (let* ((beg (progn
-                  (if (search-backward ejc-sql-separator nil t nil)
+                  (if (re-search-backward (ejc-sql-separator-re) nil t nil)
                       (forward-char)
                     (beginning-of-buffer))
                   (point)))
            (end (progn
-                  (if (search-forward ejc-sql-separator nil t nil)
+                  (if (re-search-forward (ejc-sql-separator-re) nil t nil)
                       (backward-char)
                     (end-of-buffer))
                   (point))))
