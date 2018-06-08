@@ -68,6 +68,9 @@
   "Set limit for number of records to output. When nil no limit."
   (reset! rows-limit val))
 
+(defn fmap [f m]
+  (reduce (fn [altered-map [k v]] (assoc altered-map k (f v))) {} m))
+
 (defn print-table
   "Prints a collection of maps in a textual table. Prints table headings
    ks, and then a line of output for each row, corresponding to the keys
@@ -82,6 +85,13 @@
                          (format "Too many rows. Only %s from %s is shown.\n\n"
                                  row-limit (count rows))]
                         [rows ""])
+           rows (map (fn [row]
+                       (fmap (fn [v]
+                               (if (string? v)
+                                 (clojure.string/replace v "\n" " ")
+                                 v))
+                             row))
+                     rows)
            widths (map
                    (fn [k]
                      (apply max (count (name k)) (map #(count (str (get % k))) rows)))
