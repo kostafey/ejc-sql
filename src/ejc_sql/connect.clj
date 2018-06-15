@@ -87,6 +87,7 @@ For debug purpose."
   [& {:keys [db sql]
       :or {db @ejc-sql.connect/db}}]
   (set-db db)
+  (java.util.Locale/setDefault (java.util.Locale. "UK"))
   (let [statement-separator (or (:separator db) ";")]
     (last
      (for [sql-part (seq (.split (handle-special-cases db sql)
