@@ -20,7 +20,6 @@
   (:use [clojure.java.io]
         [ejc-sql.lib])
   (:require [clojure.java.jdbc :as j]
-            [clojure.java.jdbc.deprecated :as jd]
             [clojure.contrib.java-utils]
             [clojure.string :as s]
             [ejc-sql.output])
@@ -129,26 +128,23 @@ For debug purpose."
 
 (defn query-meta [db sql]
   "Get metadata for `sql` result dataset."
-  (jd/with-connection db
-    (let [connect (jd/connection)
-          statement (.createStatement connect)]
-      (try
-        {:success true
-         :result (let [resultSet (.executeQuery
-                                  statement
-                                  (str
-                                   "SELECT nodata.* "
-                                   "FROM (" sql ") nodata "
-                                   "WHERE 0 = 1"))
-                       rsMeta (.getMetaData resultSet)
-                       colCount (.getColumnCount rsMeta)]
-                   (mapv (fn [i]
-                           {:name (.getColumnLabel rsMeta i)
-                            :type (.getColumnTypeName rsMeta i)})
-                         (range 1 (+ 1 colCount))))}
-        (catch SQLException e
-          {:success false
-           :result (str "Error: " (.getMessage e))})))))
+  (try
+    {:success true
+     :result (j/db-query-with-resultset
+              db
+              [(str "SELECT nodata.* "
+                    "FROM (" sql ") nodata "
+                    "WHERE 0 = 1")]
+              (fn [rs]
+                (let [rs-meta (.getMetaData rs)
+                      col-count (.getColumnCount rs-meta)]
+                  (mapv (fn [i]
+                          {:name (.getColumnLabel rs-meta i)
+                           :type (.getColumnTypeName rs-meta i)})
+                        (range 1 (+ 1 col-count))))))}
+    (catch SQLException e
+      {:success false
+       :result (str "Error: " (.getMessage e))})))
 
 (defn table-meta
   [db table-name]

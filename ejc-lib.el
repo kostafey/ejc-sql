@@ -48,6 +48,7 @@
                                         ; informix-sqli, mysql, postgresql,
                                         ; oracle, sqlserver, etc.
   (subprotocol "<sql-kind>")
+  (dbtype "<sql-kind>")
                                         ; db connection path
                                         ; locale, like ru_RU.1251
   (database    "<my-databse>")
@@ -56,8 +57,10 @@
             "<db-server>=<server-name>;"
             "database=<db-name>;"
             "DB_LOCALE=<locale>;"
-            "CLIENT_LOCALE=<locale>;"
-            ))
+            "CLIENT_LOCALE=<locale>;"))
+  (dbname "<db-name>")
+  (host "<db-host>")
+  (port "<db-port>")
   (user "<user-name>")
   (password "<password>")
   (connection-uri "jdbc:<povider>://[serverName[\instanceName][:portNumber]][;property=value[;property=value]]")
@@ -79,6 +82,10 @@
     `(:classname      . ,(ejc-db-conn-classname      conn-struct))
     `(:subprotocol    . ,(ejc-db-conn-subprotocol    conn-struct))
     `(:subname        . ,(ejc-db-conn-subname        conn-struct))
+    `(:dbtype         . ,(ejc-db-conn-dbtype         conn-struct))
+    `(:dbname         . ,(ejc-db-conn-dbname         conn-struct))
+    `(:host           . ,(ejc-db-conn-host           conn-struct))
+    `(:port           . ,(ejc-db-conn-port           conn-struct))
     `(:user           . ,(ejc-db-conn-user           conn-struct))
     `(:password       . ,(ejc-db-conn-password       conn-struct))
     `(:database       . ,(ejc-db-conn-database       conn-struct))

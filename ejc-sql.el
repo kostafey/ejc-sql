@@ -189,7 +189,10 @@
                                  classname
                                  subprotocol
                                  subname
-                                 subname
+                                 dbtype
+                                 dbname
+                                 host
+                                 port
                                  user
                                  password
                                  database
@@ -206,6 +209,10 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
                                 :classname classname
                                 :subprotocol subprotocol
                                 :subname subname
+                                :dbtype dbtype
+                                :dbname dbname
+                                :host host
+                                :port port
                                 :user user
                                 :password password
                                 :database database

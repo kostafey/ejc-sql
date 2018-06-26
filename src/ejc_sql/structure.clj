@@ -209,8 +209,9 @@
   (queries db-type))
 
 (defn get-db-name [db]
-  (let [{:keys [database subname connection-uri]} db]
-    (or database
+  (let [{:keys [database subname connection-uri dbname]} db]
+    (or dbname
+        database
         (if subname
           (let [separator (if (= (first (.split subname "/")) subname)
                             ":" "/")
@@ -249,9 +250,10 @@
                       props-list))) "="))))))
 
 (defn get-db-type [db]
-  (let [{:keys [subprotocol connection-uri]} db]
+  (let [{:keys [subprotocol connection-uri dbtype]} db]
     (keyword
-     (or subprotocol
+     (or dbtype
+         subprotocol
          (let [attrs (.split connection-uri ":")]
            (if (= (second attrs) "jtds")
              ;; jdbc:jtds:sqlserver://...
