@@ -71,6 +71,24 @@
 (defn fmap [f m]
   (reduce (fn [altered-map [k v]] (assoc altered-map k (f v))) {} m))
 
+(defn rotate-table [data]
+  "Rotate result set to show fields list vertically.
+Applied to single-record result set.
+E.g. transtofm from: a | b | c into: a | 1
+                     --+---+--       b | 2
+                     1 | 2 | 3       c | 3"
+  (let [first-row (first data)
+        keys (map #(if (keyword? %) (name %) (str %))
+                  (first first-row))
+        values (rest first-row)]
+    (into [] (map
+              (fn [v]
+                (into {}
+                      (map #(identity
+                             [%1 (if (keyword? %2) (name %2) %2)])
+                           keys v)))
+              values))))
+
 (defn print-table
   "Prints a collection of maps in a textual table. Prints table headings
    ks, and then a line of output for each row, corresponding to the keys
@@ -85,6 +103,10 @@
                          (format "Too many rows. Only %s from %s is shown.\n\n"
                                  row-limit (count rows))]
                         [rows ""])
+           [rows ks rotated] (if (= (count rows) 1)
+                               (let [r (rotate-table rows)]
+                                 [r (keys (first r)) true])
+                               [rows ks false])
            rows (map (fn [row]
                        (fmap (fn [v]
                                (if (string? v)
@@ -110,7 +132,8 @@
            ;; TODO: cahnge to #(println %) when async output ready
            out #(.append result (str % "\n"))]
        (out (fmt-row "" " | " "" (zipmap ks headers)))
-       (out (fmt-row "" "-+-" "" (zipmap ks spacers)))
+       (if (not rotated)
+         (out (fmt-row "" "-+-" "" (zipmap ks spacers))))
        (doseq [row rows]
          (out (fmt-row "" " | " "" row)))
        (str msg (.toString result)))))
