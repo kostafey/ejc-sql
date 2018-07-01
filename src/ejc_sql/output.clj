@@ -103,7 +103,8 @@ E.g. transtofm from: a | b | c into: a | 1
                          (format "Too many rows. Only %s from %s is shown.\n\n"
                                  row-limit (count rows))]
                         [rows ""])
-           [rows ks rotated] (if (= (count rows) 1)
+           [rows ks rotated] (if (and (= (count rows) 1)
+                                      (> (count (first rows)) 1))
                                (let [r (rotate-table rows)]
                                  [r (keys (first r)) true])
                                [rows ks false])
