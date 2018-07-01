@@ -18,7 +18,8 @@
 
 (ns ejc-sql.lib
   (:import (java.io File))
-  (:require [clojure.string :as s]))
+  (:require [clojure.string :as s]
+            [clojure.reflect :refer [resolve-class]]))
 
 (def windows?
   "The value is true if it runs under the os Windows."
@@ -85,3 +86,6 @@
 
 (defn get-absolute-file-path [relative-file-path]
   (-> (java.io.File. relative-file-path) .getAbsolutePath))
+
+(defn class-exists? [c]
+  (resolve-class (.getContextClassLoader (Thread/currentThread)) c))
