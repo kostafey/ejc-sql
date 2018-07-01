@@ -88,8 +88,9 @@ For debug purpose."
     (apply str (line-seq rdr))))
 
 (defn is-clob? [x]
-  (and (class-exists? 'oracle.sql.CLOB)
-       (instance? oracle.sql.CLOB x)))
+  (or (instance? java.sql.Clob x)
+      (and (class-exists? 'oracle.sql.CLOB)
+           (instance? (Class/forName "oracle.sql.CLOB") x))))
 
 (defn clob-to-string-row [row]
   "Check all data in row if it's a CLOB and convert CLOB to string."
