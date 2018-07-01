@@ -82,6 +82,28 @@ For debug purpose."
                sql)
     sql))
 
+(defn clob-to-string [clob]
+  "Turn an Oracle Clob into a String"
+  (with-open [rdr (java.io.BufferedReader. (.getCharacterStream clob))]
+    (apply str (line-seq rdr))))
+
+(defn is-clob? [x]
+  (and (class-exists? 'oracle.sql.CLOB)
+       (instance? oracle.sql.CLOB x)))
+
+(defn clob-to-string-row [row]
+  "Check all data in row if it's a CLOB and convert CLOB to string."
+  (loop [acc {}
+         rest-keys (keys row)]
+    (if rest-keys
+      (let [k (first rest-keys)
+            v (row k)]
+        (recur (assoc acc k (if (is-clob? v)
+                              (clob-to-string v)
+                              v))
+               (next rest-keys)))
+      acc)))
+
 (defn eval-sql-core
   "The core SQL evaluation function."
   [& {:keys [db sql]
@@ -97,7 +119,9 @@ For debug purpose."
            (if (and sql-query-word (or (.equals sql-query-word "SELECT")
                                        (.equals sql-query-word "SHOW")))
              (list :result-set
-                   (j/query db (list sql-part) {:as-arrays? false}))
+                   (j/query db (list sql-part)
+                            {:as-arrays? false
+                             :row-fn clob-to-string-row}))
              (list :message
                    (str "Records affected: "
                         (first (j/execute! db (list sql-part)))))))
