@@ -235,10 +235,10 @@ backend alive between Emacs restarts by running this backend out of Emacs, and
 connect to it from Emacs.
 
 To accomplish that, you should `cd` to your ejc-sql project folder (typically
-`~/.emacs.d/elpa/ejc-sql-<version>`) and launch the nREPL via `lein run`.
+`~/.emacs.d/elpa/ejc-sql-<version>`) and launch the nREPL via `lein repl`.
 
 Then run in Emacs `M-x ejc-connect-existing-repl`, type `Host` and `Port`
-from your `lein run` console output.
+from your `lein repl` console output.
 
 Finally, use `M-x ejc-connect` from any SQL buffer to connect to the exact database,
 as always.
