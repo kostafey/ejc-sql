@@ -1,10 +1,6 @@
 language: emacs-lisp
 sudo: required
 
-cache:
-  - directories:
-      # Cache stable Emacs binaries
-      - "$HOME/emacs/"
 env:
   - EMACS_VERSION=25.3
   - EMACS_VERSION=26.1
