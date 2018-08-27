@@ -329,7 +329,7 @@ check if receiveing process is not running, then start it."
                  (future ((fn [db]
                             (let [sql (select-db-meta-script
                                        db namespace)]
-                              (db->column db sql))) db))))
+                              (sort (db->column db sql)))) db))))
         (get? (get-in @cache [db namespace]) force?))
       (list))))
 
@@ -351,7 +351,7 @@ check if receiveing process is not running, then start it."
                    (future ((fn [db]
                               (let [sql (select-db-meta-script
                                          db :all-tables)]
-                                (db->>column db sql)))
+                                (sort (db->>column db sql))))
                             db))))
           (get? (get-in @cache [db :all-tables]) force?)))))
 
@@ -363,7 +363,7 @@ check if receiveing process is not running, then start it."
            (future ((fn [db table]
                       (let [sql (select-db-meta-script db :columns
                                                        :table table)]
-                        (db->column db sql)))
+                        (sort (db->column db sql))))
                     db table))))
   (get? (get->in @cache [db :colomns table])
         force?))
