@@ -223,7 +223,7 @@ Then type
 ```SQL
 select <something> from <mytable>
 ```
-and press <kbd>C-c C-c</kbd> to run it. Use `\` char to separate expressions to
+and press <kbd>C-c C-c</kbd> to run it. Use `/` char to separate expressions to
 evaluate. It's possible to run multiple statements, you can use `;` to separate them.
 
 Have much fun!
