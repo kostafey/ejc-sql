@@ -18,7 +18,8 @@
 
 (ns ejc-sql.connect
   (:use [clojure.java.io]
-        [ejc-sql.lib])
+        [ejc-sql.lib]
+        [clomacs])
   (:require [clojure.java.jdbc :as j]
             [clojure.contrib.java-utils]
             [clojure.string :as s]
@@ -27,17 +28,27 @@
                      DriverManager
                      PreparedStatement
                      ResultSet
-                     SQLException]))
+            SQLException]
+           [java.io File]))
+
+(def result-file-name
+  "SQL evaluation results file name."
+  "ejc-sql-result.txt")
 
 (def db
   "DataBase connection properties list from the last transaction.
 For debug purpose."
   (atom nil))
 
-;; TODO: running query termination handler
 (def current-query
-  "Current running query."
-  (atom nil))
+  "Current running query data."
+  (atom {}))
+
+(defn get-result-file-path []
+  (.getAbsolutePath
+   (File.
+    (File. (System/getProperty "java.io.tmpdir"))
+    result-file-name)))
 
 (defn set-db [ejc-db]
   (reset! db ejc-db))
@@ -104,6 +115,28 @@ For debug purpose."
                (next rest-keys)))
       acc)))
 
+(defn is-query-running? []
+  (let [stmt (:stmt @current-query)]
+    (and (not (nil? stmt))
+         (not (.isClosed stmt)))))
+
+(defn cancel-query []
+  "Terminate current (long) running query. Aimed to cancel SELECT queries.
+Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
+  (future
+    (if (is-query-running?)
+      (let [conn (:conn @current-query)
+            runner (:runner @current-query)]
+        (try
+          (.rollback conn)
+          (finally
+            (.close conn)))
+        (if (and
+             (not (nil? runner))
+             (not (future-done? runner))
+             (not (future-cancelled? runner)))
+          (future-cancel runner))))))
+
 (defn eval-sql-core
   "The core SQL evaluation function."
   [& {:keys [db sql]
@@ -119,9 +152,14 @@ For debug purpose."
            (if (and sql-query-word (or (.equals sql-query-word "SELECT")
                                        (.equals sql-query-word "SHOW")))
              (list :result-set
-                   (j/query db (list sql-part)
-                            {:as-arrays? false
-                             :row-fn clob-to-string-row}))
+                   (with-open [conn (j/get-connection db)]
+                     (let [stmt (j/prepare-statement conn sql-part)]
+                       (swap! current-query assoc
+                              :stmt stmt
+                              :conn conn)
+                       (j/query db stmt
+                                {:as-arrays? false
+                                 :row-fn clob-to-string-row}))))
              (list :message
                    (str "Records affected: "
                         (first (j/execute! db (list sql-part)))))))
@@ -129,20 +167,30 @@ For debug purpose."
            (list :message
                  (str "Error: "(.getMessage e)))))))))
 
-(defn eval-user-sql [db sql & {:keys [rows-limit]}]
+(clomacs-defn complete-query ejc-complete-query
+              :doc "Show file contents with SQL query evaluation results.")
+
+(defn- eval-user-sql [db sql & {:keys [rows-limit]}]
   (let [clear-sql (.trim sql)]
     (ejc-sql.output/log-sql (str clear-sql "\n"))
     (let [[result-type result] (eval-sql-core
                                 :db  db
-                                :sql clear-sql)]
-      (if (= result-type :result-set)
-        (ejc-sql.output/print-table result rows-limit)
-        result))))
+                                :sql clear-sql)
+          result-file-path (get-result-file-path)]
+      (spit result-file-path
+            (if (= result-type :result-set)
+              (ejc-sql.output/print-table result rows-limit)
+              result))
+      (complete-query
+       (s/replace result-file-path #"\\" "/")))))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
   [db sql & {:keys [rows-limit]}]
-  (print (eval-user-sql db sql :rows-limit rows-limit)))
+  (swap! current-query assoc
+         :runner
+         (future
+           (eval-user-sql db sql :rows-limit rows-limit))))
 
 (defn eval-sql-internal-get-column [db sql]
   (let [[result-type result] (eval-sql-core :db db

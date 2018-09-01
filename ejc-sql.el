@@ -55,6 +55,12 @@
 (defvar ejc-results-buffer-name "*ejc-sql-output*"
   "The results buffer name.")
 
+(defvar ejc-result-file-path nil
+  "The results file path. Refreshed by any finished SQL evaluation.")
+
+(defvar ejc-current-buffer-query nil
+  "Current SQL edit buffer lanched query.")
+
 (defvar ejc-temp-editor-buffer-name "*ejc-sql-editor*"
   "The buffer for conveniently edit ad-hoc SQL scripts.")
 
@@ -81,6 +87,7 @@
 (define-key ejc-sql-mode-keymap (kbd "C-M-S-f") '(lambda() (interactive) (ejc-next-sql t)))
 (define-key ejc-sql-mode-keymap (kbd "C-M-b") 'ejc-previous-sql)
 (define-key ejc-sql-mode-keymap (kbd "C-M-f") 'ejc-next-sql)
+(define-key ejc-sql-mode-keymap (kbd "C-g") 'ejc-cancel-query)
 
 (defvar ejc-command-map
   (let ((map (make-sparse-keymap)))
@@ -345,6 +352,33 @@ any SQL buffer to connect to exact database, as always. "
   (unless (ejc-buffer-connected-p)
     (error "Run M-x ejc-connect first!")))
 
+(cl-defun ejc-eval-sql-and-log (db sql &key call-type callback rows-limit)
+  (when sql
+    (spinner-start 'rotating-line)
+    (setq ejc-current-buffer-query (current-buffer))
+    (let* ((prepared-sql (ejc-get-sql-from-string sql)))
+      (ejc--eval-sql-and-log-print
+       db
+       prepared-sql
+       :rows-limit rows-limit))))
+
+(defun ejc-complete-query (result-file-path)
+  (setq ejc-result-file-path result-file-path)
+  (with-current-buffer ejc-current-buffer-query
+    (spinner-stop))
+  (ejc-show-last-result nil :result-file-path ejc-result-file-path)
+  nil)
+
+(defun ejc-cancel-query ()
+  "Terminate current (long) running query. Aimed to cancel SELECT queries.
+Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
+  (interactive)
+  (if (clomacs-get-connection "ejc-sql")
+      (ejc--cancel-query))
+  (with-current-buffer ejc-current-buffer-query
+    (spinner-stop))
+  (keyboard-quit))
+
 (defun ejc-describe-table (table-name)
   "Describe SQL table TABLE-NAME (default table name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe table"))
@@ -505,17 +539,24 @@ If this buffer is not exists or it was killed - create buffer via
       (setq ejc-show-results-buffer nil)
     (setq ejc-show-results-buffer t)))
 
-(defun ejc-show-last-result (&optional result)
+(cl-defun ejc-show-last-result
+    (&optional result
+               &key
+               (result-file-path ejc-result-file-path))
   "Popup buffer with last SQL execution result output."
   (interactive)
   (if ejc-show-results-buffer
       (let ((output-buffer (ejc-get-output-buffer))
             (old-split split-width-threshold))
         (set-buffer output-buffer)
-        (when result
+        (when (and result (not result-file-path))
           (read-only-mode -1)
           (erase-buffer)
           (insert result))
+        (when result-file-path
+          (read-only-mode -1)
+          (erase-buffer)
+          (insert-file-contents result-file-path))
         (read-only-mode 1)
         (beginning-of-buffer)
         (setq split-width-threshold nil)
