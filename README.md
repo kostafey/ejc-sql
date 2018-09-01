@@ -218,13 +218,28 @@ Since connection information is buffer-local, you should use `ejc-connect`
 for any new buffer. There is a handy function to create temporary buffer for
 playing with SQL: `ejc-switch-to-sql-editor-buffer`.
 
-Then type
+Then type you queries like this:
 
 ```SQL
-select <something> from <mytable>
+select something from my_table
 ```
-and press <kbd>C-c C-c</kbd> to run it. Use `\` char to separate expressions to
-evaluate. It's possible to run multiple statements, you can use `;` to separate them.
+and press <kbd>C-c C-c</kbd> to run it.
+
+Use `/` char to separate expressions to evaluate (actually `\n/`), e.g.:
+```SQL
+select something from my_table
+/
+select other from other_table
+```
+
+It's possible to run multiple statements, you can use `;` to separate them:
+```SQL
+insert into my_table (product, price) values ('socks', 1.25);
+insert into my_table (product, price) values ('sweater', 14.56);
+insert into my_table (product, price) values ('jeans', 25.30);
+/
+select * from my_table
+```
 
 Have much fun!
 
