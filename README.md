@@ -234,9 +234,9 @@ select other from other_table
 
 It's possible to run multiple statements, you can use `;` to separate them:
 ```SQL
-insert into my_table (product, price) values ("socks", 1.25);
-insert into my_table (product, price) values ("sweater", 14.56);
-insert into my_table (product, price) values ("jeans", 25.30);
+insert into my_table (product, price) values ('socks', 1.25);
+insert into my_table (product, price) values ('sweater', 14.56);
+insert into my_table (product, price) values ('jeans', 25.30);
 /
 select * from my_table
 ```
