@@ -23,17 +23,13 @@
   (:require [clojure.java.jdbc :as j]
             [clojure.contrib.java-utils]
             [clojure.string :as s]
-            [ejc-sql.output])
+            [ejc-sql.output :as o])
   (:import [java.sql Connection
                      DriverManager
                      PreparedStatement
                      ResultSet
             SQLException]
            [java.io File]))
-
-(def result-file-name
-  "SQL evaluation results file name."
-  "ejc-sql-result.txt")
 
 (def db
   "DataBase connection properties list from the last transaction.
@@ -43,12 +39,6 @@ For debug purpose."
 (def current-query
   "Current running query data."
   (atom {}))
-
-(defn get-result-file-path []
-  (.getAbsolutePath
-   (File.
-    (File. (System/getProperty "java.io.tmpdir"))
-    result-file-name)))
 
 (defn set-db [ejc-db]
   (reset! db ejc-db))
@@ -170,27 +160,28 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
 (clomacs-defn complete-query ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
 
-(defn- eval-user-sql [db sql & {:keys [rows-limit]}]
+(defn- eval-user-sql [db sql & {:keys [rows-limit append]}]
   (let [clear-sql (.trim sql)]
-    (ejc-sql.output/log-sql (str clear-sql "\n"))
+    (o/log-sql (str clear-sql "\n"))
     (let [[result-type result] (eval-sql-core
                                 :db  db
-                                :sql clear-sql)
-          result-file-path (get-result-file-path)]
-      (spit result-file-path
-            (if (= result-type :result-set)
-              (ejc-sql.output/print-table result rows-limit)
-              result))
+                                :sql clear-sql)]
       (complete-query
-       (s/replace result-file-path #"\\" "/")))))
+       (o/write-result-file (if (= result-type :result-set)
+                              (o/print-table result rows-limit)
+                              result)
+                            :append append)))))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
-  [db sql & {:keys [rows-limit]}]
+  [db sql & {:keys [rows-limit append]
+             :or {append false}}]
   (swap! current-query assoc
          :runner
          (future
-           (eval-user-sql db sql :rows-limit rows-limit))))
+           (eval-user-sql db sql
+                          :rows-limit rows-limit
+                          :append append))))
 
 (defn eval-sql-internal-get-column [db sql]
   (let [[result-type result] (eval-sql-core :db db
@@ -232,8 +223,10 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
         result-data (:result result-map)
         head (str "Table \"" table-name "\" description:\n")
         head-length (dec (.length head))]
-    (if success
-      (str head
-           (ejc-sql.lib/simple-join head-length "-") "\n"
-           (ejc-sql.output/print-table result-data))
-      result-data)))
+    (complete-query
+     (o/write-result-file
+      (if success
+        (str head
+             (ejc-sql.lib/simple-join head-length "-") "\n"
+             (o/print-table result-data))
+        result-data)))))

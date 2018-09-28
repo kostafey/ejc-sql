@@ -19,13 +19,24 @@
 (ns ejc-sql.output
   (:use clojure.java.io
         ejc-sql.lib)
-  (:require clojure.contrib.java-utils)
+  (:require clojure.contrib.java-utils
+            [clojure.string :as s])
   (:import (java.io File)
            (java.lang.reflect Method)
            (java.util.Date)
            (java.text.SimpleDateFormat)
            (org.apache.openjpa.lib.jdbc SQLFormatter)
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl)))
+
+(def result-file-name
+  "SQL evaluation results file name."
+  "ejc-sql-result.txt")
+
+(defn get-result-file-path []
+  (.getAbsolutePath
+   (File.
+    (File. (System/getProperty "java.io.tmpdir"))
+    result-file-name)))
 
 (defn get-log-dir []
   (file (if windows?
@@ -146,3 +157,12 @@ E.g. transtofm from: a | b | c into: a | 1
     (print (.prettyPrint (SQLFormatter.) sql))
     ;; :hibernate
     (print (.format (BasicFormatterImpl.) sql))))
+
+(defn write-result-file [text & {:keys [append]
+                                 :or {append false}}]
+  (let [result-file-path (get-result-file-path)]
+    (spit result-file-path text :append append)
+    (s/replace result-file-path #"\\" "/")))
+
+(defn clear-result-file []
+  (write-result-file ""))

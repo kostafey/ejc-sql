@@ -352,7 +352,8 @@ any SQL buffer to connect to exact database, as always. "
   (unless (ejc-buffer-connected-p)
     (error "Run M-x ejc-connect first!")))
 
-(cl-defun ejc-eval-sql-and-log (db sql &key call-type callback rows-limit)
+(cl-defun ejc-eval-sql-and-log (db sql
+                                   &key call-type callback rows-limit append)
   (when sql
     (spinner-start 'rotating-line)
     (setq ejc-current-buffer-query (current-buffer))
@@ -360,7 +361,8 @@ any SQL buffer to connect to exact database, as always. "
       (ejc--eval-sql-and-log-print
        db
        prepared-sql
-       :rows-limit rows-limit))))
+       :rows-limit rows-limit
+       :append append))))
 
 (defun ejc-complete-query (result-file-path)
   (setq ejc-result-file-path result-file-path)
@@ -388,23 +390,16 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
     (when (not table)
       (setq table owner)
       (setq owner nil))
-    (ejc-show-last-result
-     (concat
-      (ejc-get-table-meta ejc-db table-name)
-      "\n"
-      (let ((sql (ejc-select-db-meta-script ejc-db :constraints
-                                            :owner owner
-                                            :table table)))
-        (if (ejc-not-nil-str sql)
-            (let ((constraints (ejc-eval-sql-and-log ejc-db sql)))
-              (if (and constraints
-                       (not (equal (string-trim constraints) "nil")))
-                  (concat
-                   "Constraints:\n"
-                   "------------\n"
-                   constraints)
-                  ""))
-          ""))))))
+    (ejc-get-table-meta ejc-db table-name)
+    (let ((sql (ejc-select-db-meta-script ejc-db :constraints
+                                          :owner owner
+                                          :table table)))
+      (when (ejc-not-nil-str sql)
+        (ejc-write-result-file (concat "\n"
+                                       "Constraints:\n"
+                                       "------------\n")
+                               :append t)
+        (ejc-eval-sql-and-log ejc-db sql :append t)))))
 
 (defun ejc-describe-entity (entity-name)
   "Describe SQL entity ENTITY-NAME - function, procedure, type or view

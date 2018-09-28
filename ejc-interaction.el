@@ -103,7 +103,7 @@
 
 (defalias 'ejc--eval-get-list 'ejc--eval-sql-get-column)
 
-(clomacs-defun ejc--get-table-meta
+(clomacs-defun ejc-get-table-meta
                ejc-sql.connect/get-table-meta
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect)
@@ -114,8 +114,17 @@
                :return-type :string
                :return-value :stdout)
 
-(defun ejc-get-table-meta (db table-name)
-  (ejc-print (ejc--get-table-meta db table-name)))
+(clomacs-defun ejc-write-result-file
+               write-result-file
+               :namespace ejc-sql.output
+               :lib-name "ejc-sql"
+               :return-type :string)
+
+(clomacs-defun ejc-clear-result-file
+               clear-result-file
+               :namespace ejc-sql.output
+               :lib-name "ejc-sql"
+               :return-type :string)
 
 (clomacs-defun ejc-get-log-file-path
                print-log-file-path
