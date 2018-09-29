@@ -60,9 +60,6 @@
 
 (defvar ejc-temp-editor-file (expand-file-name "~/tmp/ejc-sql-editor.sql"))
 
-(defvar ejc-show-results-buffer t
-  "When t show results in separate buffer, use minibuffer otherwise.")
-
 (defcustom ejc-keymap-prefix (kbd "C-c e")
   "ejc-sql keymap prefix."
   :group 'ejc-sql
@@ -392,21 +389,20 @@ any SQL buffer to connect to exact database, as always. "
   "Evaluate SQL by user: reload and show query results buffer, update log."
   (message "Processing SQL query...")
   (cl-labels ((msg-done (start-time res)
-                        (if ejc-show-results-buffer
-                            (message
-                             "%s SQL query at %s. Exec time %.03f"
-                             (if (not
-                                  (and
-                                   (>= (length res) 5)
-                                   (equal
-                                    (downcase (cl-subseq res 0 5)) "error")))
-                                 (propertize
-                                  "Done" 'face 'font-lock-keyword-face)
-                               (propertize
-                                "Error" 'face 'error))
-                             (format-time-string ejc-date-output-format
-                                                 (current-time))
-                             (float-time (time-since start-time))))))
+                        (message
+                         "%s SQL query at %s. Exec time %.03f"
+                         (if (not
+                              (and
+                               (>= (length res) 5)
+                               (equal
+                                (downcase (cl-subseq res 0 5)) "error")))
+                             (propertize
+                              "Done" 'face 'font-lock-keyword-face)
+                           (propertize
+                            "Error" 'face 'error))
+                         (format-time-string ejc-date-output-format
+                                             (current-time))
+                         (float-time (time-since start-time)))))
     (let ((start-time (current-time)))
       (if sync
           (progn
@@ -492,36 +488,21 @@ If this buffer is not exists or it was killed - create buffer via
       ejc-results-buffer
     (ejc-create-output-buffer)))
 
-(defun ejc-toggle-show-results-buffer ()
-  (interactive)
-  (if ejc-show-results-buffer
-      (setq ejc-show-results-buffer nil)
-    (setq ejc-show-results-buffer t)))
-
 (defun ejc-show-last-result (&optional result)
   "Popup buffer with last SQL execution result output."
   (interactive)
-  (if ejc-show-results-buffer
-      (let ((output-buffer (ejc-get-output-buffer))
-            (old-split split-width-threshold))
-        (set-buffer output-buffer)
-        (when result
-          (read-only-mode -1)
-          (erase-buffer)
-          (insert result))
-        (read-only-mode 1)
-        (beginning-of-buffer)
-        (setq split-width-threshold nil)
-        (display-buffer output-buffer)
-        (setq split-width-threshold old-split))
-    (let ((result-lines (split-string result "\n")))
-      (message "%s"
-               (if (<= (length result-lines) 3)
-                   (apply 'concat (cl-subseq result-lines 0 3))
-                 (concat (apply 'concat (cl-subseq result-lines 0 3))
-                         "... ("
-                         (number-to-string (- (length result-lines) 3))
-                         " more)"))))))
+  (let ((output-buffer (ejc-get-output-buffer))
+        (old-split split-width-threshold))
+    (set-buffer output-buffer)
+    (when result
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert result))
+    (read-only-mode 1)
+    (beginning-of-buffer)
+    (setq split-width-threshold nil)
+    (display-buffer output-buffer)
+    (setq split-width-threshold old-split)))
 
 (defun ejc-switch-to-sql-editor-buffer ()
   "Switch to buffer dedicated to ad-hoc edit and SQL scripts.
