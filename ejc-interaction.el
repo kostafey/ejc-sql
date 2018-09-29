@@ -87,12 +87,19 @@
                :doc "Core function to evaluate SQL queries.
   Prepare SQL string, evaluate SQL script and write them to log file")
 
+(clomacs-defun ejc--is-query-running-p
+               is-query-running?
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect
+               :return-type :boolean)
+
 (clomacs-defun ejc--cancel-query
                cancel-query
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect
                :doc "Cancel current query."
-               :interactive t)
+               :interactive t
+               :return-type :list)
 
 (clomacs-defun ejc--eval-sql-get-column
                eval-sql-internal-get-column

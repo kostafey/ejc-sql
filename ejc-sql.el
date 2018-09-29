@@ -350,7 +350,7 @@ any SQL buffer to connect to exact database, as always. "
     (error "Run M-x ejc-connect first!")))
 
 (cl-defun ejc-eval-sql-and-log (db sql
-                                   &key call-type callback rows-limit append)
+                                   &key start-time rows-limit append)
   (when sql
     (spinner-start 'rotating-line)
     (setq ejc-current-buffer-query (current-buffer))
@@ -358,25 +358,41 @@ any SQL buffer to connect to exact database, as always. "
       (ejc--eval-sql-and-log-print
        db
        prepared-sql
+       :start-time start-time
        :rows-limit rows-limit
        :append append))))
 
-(defun ejc-complete-query (result-file-path)
+(defun ejc-message-query-done (start-time result)
+  (message
+   "%s SQL query at %s. Exec time %.03f"
+   (case result
+     (:done (propertize "Done" 'face 'font-lock-keyword-face))
+     (:error (propertize "Error" 'face 'error))
+     (:terminated (propertize "Terminated" 'face 'font-lock-keyword-face)))
+   (format-time-string ejc-date-output-format
+                       (current-time))
+   (float-time (time-since start-time))))
+
+(cl-defun ejc-complete-query (result-file-path &key start-time result)
   (setq ejc-result-file-path result-file-path)
   (with-current-buffer ejc-current-buffer-query
     (spinner-stop))
   (ejc-show-last-result nil :result-file-path ejc-result-file-path)
+  (if (and start-time result)
+      (ejc-message-query-done start-time result))
   nil)
 
-(defun ejc-cancel-query ()
+(cl-defun ejc-cancel-query (&key start-time)
   "Terminate current (long) running query. Aimed to cancel SELECT queries.
 Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (interactive)
-  (if (clomacs-get-connection "ejc-sql")
-      (ejc--cancel-query))
-  (with-current-buffer ejc-current-buffer-query
-    (spinner-stop))
-  (keyboard-quit))
+  (if (and (clomacs-get-connection "ejc-sql")
+           (ejc--is-query-running-p))
+      (let ((start-time (ejc--cancel-query)))
+        (with-current-buffer ejc-current-buffer-query
+          (spinner-stop))
+        (ejc-message-query-done start-time :terminated))
+    (keyboard-quit)))
 
 (defun ejc-describe-table (table-name)
   "Describe SQL table TABLE-NAME (default table name - word around the point)."
@@ -421,39 +437,13 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
         (ejc-select-db-meta-script ejc-db :view
                                    :entity-name entity-name))))))
 
-(cl-defun ejc-eval-user-sql (sql &key sync rows-limit)
+(cl-defun ejc-eval-user-sql (sql &key rows-limit)
   "Evaluate SQL by user: reload and show query results buffer, update log."
   (message "Processing SQL query...")
-  (cl-labels ((msg-done (start-time res)
-                        (message
-                         "%s SQL query at %s. Exec time %.03f"
-                         (if (not
-                              (and
-                               (>= (length res) 5)
-                               (equal
-                                (downcase (cl-subseq res 0 5)) "error")))
-                             (propertize
-                              "Done" 'face 'font-lock-keyword-face)
-                           (propertize
-                            "Error" 'face 'error))
-                         (format-time-string ejc-date-output-format
-                                             (current-time))
-                         (float-time (time-since start-time)))))
-    (let ((start-time (current-time)))
-      (if sync
-          (progn
-            (let ((res (ejc-eval-sql-and-log ejc-db
-                                             sql
-                                             :rows-limit rows-limit)))
-              (ejc-show-last-result res)
-              (msg-done start-time res)))
-        (ejc-eval-sql-and-log  ejc-db
-                               sql
-                               :call-type :async
-                               :callback (lambda (res)
-                                           (ejc-show-last-result res)
-                                           (msg-done start-time res))
-                               :rows-limit rows-limit)))))
+  (ejc-eval-sql-and-log  ejc-db
+                         sql
+                         :rows-limit rows-limit
+                         :start-time (current-time)))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
@@ -462,13 +452,13 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (let ((sql (buffer-substring beg end)))
     (ejc-eval-user-sql sql)))
 
-(cl-defun ejc-eval-user-sql-at-point (&optional sync)
+(defun ejc-eval-user-sql-at-point ()
   "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer
 boundaries."
   (interactive)
   (ejc-check-connection)
   (ejc-flash-this-sql)
-  (ejc-eval-user-sql (ejc-get-sql-at-point) :sync sync))
+  (ejc-eval-user-sql (ejc-get-sql-at-point)))
 
 (defun ejc-show-tables-list ()
   "Output tables list."
