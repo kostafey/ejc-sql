@@ -350,7 +350,7 @@ any SQL buffer to connect to exact database, as always. "
     (error "Run M-x ejc-connect first!")))
 
 (cl-defun ejc-eval-sql-and-log (db sql
-                                   &key start-time rows-limit append)
+                                   &key start-time rows-limit append sync)
   (when sql
     (spinner-start 'rotating-line)
     (setq ejc-current-buffer-query (current-buffer))
@@ -360,7 +360,8 @@ any SQL buffer to connect to exact database, as always. "
        prepared-sql
        :start-time start-time
        :rows-limit rows-limit
-       :append append))))
+       :append append
+       :sync sync))))
 
 (defun ejc-message-query-done (start-time result)
   (message
@@ -437,13 +438,14 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
         (ejc-select-db-meta-script ejc-db :view
                                    :entity-name entity-name))))))
 
-(cl-defun ejc-eval-user-sql (sql &key rows-limit)
+(cl-defun ejc-eval-user-sql (sql &key rows-limit sync)
   "Evaluate SQL by user: reload and show query results buffer, update log."
   (message "Processing SQL query...")
   (ejc-eval-sql-and-log  ejc-db
                          sql
                          :rows-limit rows-limit
-                         :start-time (current-time)))
+                         :start-time (current-time)
+                         :sync sync))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
@@ -452,13 +454,13 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (let ((sql (buffer-substring beg end)))
     (ejc-eval-user-sql sql)))
 
-(defun ejc-eval-user-sql-at-point ()
+(cl-defun ejc-eval-user-sql-at-point (&key sync)
   "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer
 boundaries."
   (interactive)
   (ejc-check-connection)
   (ejc-flash-this-sql)
-  (ejc-eval-user-sql (ejc-get-sql-at-point)))
+  (ejc-eval-user-sql (ejc-get-sql-at-point) :sync sync))
 
 (defun ejc-show-tables-list ()
   "Output tables list."

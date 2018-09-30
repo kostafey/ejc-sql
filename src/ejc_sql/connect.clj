@@ -185,14 +185,18 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
-  [db sql & {:keys [rows-limit append start-time]
-             :or {append false}}]
-  (swap! current-query assoc
-         :runner (future
-                   (eval-user-sql db sql
-                                  :rows-limit rows-limit
-                                  :append append))
-         :start-time start-time))
+  [db sql & {:keys [rows-limit append start-time sync]
+             :or {append false
+                  sync false}}]
+  (letfn [(run-query []
+            (eval-user-sql db sql
+                           :rows-limit rows-limit
+                           :append append))]
+    (if sync
+      (run-query)
+      (swap! current-query assoc
+             :runner (future (run-query))
+             :start-time start-time))))
 
 (defn eval-sql-internal-get-column [db sql]
   (let [[result-type result] (eval-sql-core :db db
