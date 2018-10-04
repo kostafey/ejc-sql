@@ -1,18 +1,23 @@
 language: emacs-lisp
-sudo: required
+sudo: no
+
+cache:
+  - directories:
+      - "$HOME/.m2/"
+      - "$HOME/.cask/"
 
 env:
-  - EMACS_VERSION=25.3
-  - EMACS_VERSION=26.1
+  - EVM_EMACS=emacs-25.3-travis
+  - EVM_EMACS=emacs-26.1-travis
 
 before_install:
-  # Configure $PATH: Executables are installed to $HOME/bin
+    # Configure $PATH: Executables are installed to $HOME/bin
   - export PATH="$HOME/bin:$PATH"
-  # Download the makefile to emacs-travis.mk
-  - wget 'https://raw.githubusercontent.com/flycheck/emacs-travis/master/emacs-travis.mk'
-  # Install Emacs (according to $EMACS_VERSION) and Cask
-  - make -f emacs-travis.mk install_emacs
-  - make -f emacs-travis.mk install_cask
+  - export PATH="$HOME/.evm/bin:$PATH"
+  - export PATH="$HOME/.cask/bin:$PATH"
+  - git clone https://github.com/rejeep/evm.git /home/travis/.evm
+  - evm config path /tmp
+  - evm install "$EVM_EMACS" --use --skip
 
 install:
   - make elpa
