@@ -525,14 +525,15 @@ If this buffer is not exists or it was killed - create buffer via
   (let ((output-buffer (ejc-get-output-buffer))
         (old-split split-width-threshold))
     (set-buffer output-buffer)
-    (when (and result (not result-file-path))
-      (read-only-mode -1)
-      (erase-buffer)
-      (insert result))
-    (when result-file-path
-      (read-only-mode -1)
-      (erase-buffer)
-      (insert-file-contents result-file-path))
+    (if (or result result-file-path)
+        (progn
+          (read-only-mode -1)
+          (erase-buffer)
+          (if (and result (not result-file-path))
+              ;; result only
+              (insert result)
+            ;; result-file-path only
+            (insert-file-contents result-file-path))))
     (read-only-mode 1)
     (beginning-of-buffer)
     (setq split-width-threshold nil)
