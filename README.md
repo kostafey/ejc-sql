@@ -266,6 +266,7 @@ New keybindings defined in `ejc-sql-mode` minor mode:
  Keyboard shortcut   | Command                         | Description
 ---------------------|---------------------------------|------------------------------------------------------
  <kbd>C-c C-c</kbd>  | `ejc-eval-user-sql-at-point`    | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
+ <kbd>C-g</kbd>      | `ejc-cancel-query`              | Terminate current running query or run `keyboard-quit` if there is no running queries.
  <kbd>C-h t</kbd>    | `ejc-describe-table`            | Describe SQL table.
  <kbd>C-h T</kbd>    | `ejc-describe-entity`           | Describe SQL entity entity - function, procedure or type.
  <kbd>C-c e up</kbd> | `ejc-show-last-result`          | Show last result.
