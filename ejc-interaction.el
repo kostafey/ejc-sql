@@ -37,12 +37,6 @@
                :doc "Define ejc-sql.connect/db var."
                :httpd-starter 'ejc-httpd-start)
 
-(clomacs-defun ejc-jpa-connect
-               ejc-sql.jpa/connect-plain
-               :lib-name "ejc-sql"
-               :namespace ejc-sql.jpa
-               :doc "Define ejc-sql.jpa/em var.")
-
 (clomacs-defun ejc-add-classpath
                add-classpath
                :lib-name "ejc-sql"
@@ -58,20 +52,9 @@
 
 (defun ejc-connect-to-db (conn-struct)
   (ejc-require `'cemerick.pomegranate)
-  (cl-case (ejc-get-connection-type conn-struct)
-    ;;----------------------------------------------------------------------
-    ;; is JDBC/SQL
-    (:sql
-     (ejc-add-classpath (ejc-db-conn-classpath conn-struct))
-     (ejc-import (read (ejc-db-conn-classname conn-struct)))
-     (ejc-sql-set-db (ejc-connection-struct-to-plist conn-struct)))
-    ;;----------------------------------------------------------------------
-    ;; is JPA/JPQL
-    (:jpa
-     (ejc-jpa-connect (ejc-jpa-connection-name    conn-struct)
-                      (ejc-jpa-persistent-xml-url conn-struct)
-                      (ejc-jpa-domain-objects-url conn-struct)
-                      (ejc-jpa-jdbc-driver-url    conn-struct))))
+  (ejc-add-classpath (ejc-db-conn-classpath conn-struct))
+  (ejc-import (read (ejc-db-conn-classname conn-struct)))
+  (ejc-sql-set-db (ejc-connection-struct-to-plist conn-struct))
   (setq-local ejc-connection-struct conn-struct))
 
 (defun ejc-get-sql-from-string (sql)

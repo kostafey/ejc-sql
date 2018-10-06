@@ -31,13 +31,6 @@
   (let ((elength (length ending)))
     (string= (substring s (- 0 elength)) ending)))
 
-(defun ejc-get-connection-type (conn-struct)
-  "JDBC/SQL, JPA/JPQL or Hibernate/HQL connection type."
-  (cond
-   ((ejc-db-conn-p conn-struct) :sql)
-   ((ejc-jpa-p conn-struct) :jpa)
-   (t nil)))
-
 (cl-defstruct ejc-db-conn
   "DB connection information structure"
                                         ; path to jdbc jar file
@@ -65,14 +58,6 @@
   (password "<password>")
   (connection-uri "jdbc:<povider>://[serverName[\instanceName][:portNumber]][;property=value[;property=value]]")
   (separator ";"))
-
-(cl-defstruct ejc-jpa
-  "DB connection information structure for JPA"
-  (type :jpa)
-  (connection-name    "<persistence-unit name=")
-  (persistent-xml-url "path to META-INF/persistence.xml")
-  (domain-objects-url "path to classes/")
-  (jdbc-driver-url    "<path>/<filename>.jar"))
 
 (defun ejc-connection-struct-to-plist (conn-struct)
   (-filter
