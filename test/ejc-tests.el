@@ -97,14 +97,13 @@
     (should
      (equal
       `("H2-test-connection"
-        (:classpath . ,classpath)
         (:classname . "org.h2.Driver")
-        (:subprotocol . "h2")
-        (:subname . ,db-path)
+        (:classpath . ,classpath)
+        (:password . "secret")
         (:user . "a_user")
-        (:password . "secret"))
-      (cons (car (car conn))
-            (ejc-connection-struct-to-plist (cdr (car conn))))))
+        (:subname . ,db-path)
+        (:subprotocol . "h2"))
+      (car conn)))
     ;; Delete previous run temp database files
     (mapcar (lambda (x)
               (let ((path-to-x (expand-file-name x (ejc-test:get-temp-path))))

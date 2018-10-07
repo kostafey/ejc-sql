@@ -189,40 +189,61 @@
 
 (cl-defun ejc-create-connection (connection-name
                                  &key
-                                 classpath
-                                 classname
-                                 subprotocol
-                                 subname
+                                 ;; ----------
+                                 ;; DriverManager (preferred):
                                  dbtype
                                  dbname
                                  host
                                  port
+                                 ;; others (may include :user and :password)
+                                 ;; ----------
+                                 ;; Raw:
+                                 connection-uri
+                                 ;; others (may include :user and :password)
+                                 ;; ----------
+                                 ;; DriverManager (alternative / legacy style):
+                                 subprotocol
+                                 subname
+                                 ;; ----------
+                                 ;; Others:
                                  user
                                  password
-                                 database
-                                 connection-uri
-                                 separator)
-  "Add new connection configuration named CONNECTION-NAME
-to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
-  (setq ejc-connections (-remove (lambda (x) (equal (car x) connection-name))
-                                 ejc-connections))
-  (setq ejc-connections (cons (cons
-                               connection-name
-                               (make-ejc-db-conn
-                                :classpath (file-truename classpath)
-                                :classname classname
-                                :subprotocol subprotocol
-                                :subname subname
-                                :dbtype dbtype
-                                :dbname dbname
-                                :host host
-                                :port port
-                                :user user
-                                :password password
-                                :database database
-                                :connection-uri connection-uri
-                                :separator separator))
-                              ejc-connections)))
+                                 classpath
+                                 separator
+                                 ;; ----------
+                                 ;; Optional:
+                                 classname)
+  "Add new connection configuration named CONNECTION-NAME.
+It adds new connection to `ejc-connections' list or replace existing with the
+same CONNECTION-NAME.
+For more details about parameters see `get-connection' function in jdbc.clj:
+`https://github.com/clojure/java.jdbc/blob/master/src/main/clojure/clojure/java/jdbc.clj'"
+  (setq ejc-connections
+        (-remove (lambda (x) (equal (car x) connection-name))
+                 ejc-connections))
+  (setq ejc-connections
+        (cons (cons
+               connection-name
+               (let ((new-connection nil))
+                 (-map (lambda (arg)
+                         (if (cdr arg)
+                             (setq new-connection
+                                   (cons arg new-connection))))
+                       (list
+                        (cons :dbtype dbtype)
+                        (cons :dbname dbname)
+                        (cons :host host)
+                        (cons :port port)
+                        (cons :connection-uri connection-uri)
+                        (cons :subprotocol subprotocol)
+                        (cons :subname subname)
+                        (cons :user user)
+                        (cons :password password)
+                        (cons :classpath classpath)
+                        (cons :separator separator)
+                        (cons :classname classname)))
+                 new-connection))
+              ejc-connections)))
 
 (defun ejc-find-connection (connection-name)
   "Return pair with name CONNECTION-NAME and db connection structure from
@@ -283,9 +304,10 @@ to `ejc-connections' list or replace existing with the same CONNECTION-NAME."
               conn-list)))))
   (let ((db (cdr (ejc-find-connection connection-name))))
     (ejc-update-conn-statistics connection-name)
-    (ejc-configure-sql-buffer (ejc-db-conn-subprotocol db))
+    (ejc-configure-sql-buffer (or (alist-get :subprotocol db)
+                                  (alist-get :dbtype db)))
     (setq-local ejc-connection-name connection-name)
-    (setq-local ejc-db (ejc-connection-struct-to-plist db))
+    (setq-local ejc-db db)
     (message "Connection started...")
     (ejc-connect-to-db db)
     (setq mode-name (format "%s->[%s]" mode-name connection-name))

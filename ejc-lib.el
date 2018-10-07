@@ -18,8 +18,6 @@
 
 ;;; Code:
 
-(require 'dash)
-
 (defvar-local ejc-connection-name nil
   "Buffer-local connection name created with `ejc-create-connection'.")
 
@@ -30,52 +28,6 @@
   "Return non-nil if string S ends with ENDING."
   (let ((elength (length ending)))
     (string= (substring s (- 0 elength)) ending)))
-
-(cl-defstruct ejc-db-conn
-  "DB connection information structure"
-                                        ; path to jdbc jar file
-  (classpath "<path>/<filename>.jar")
-                                        ; the JDBC driver class
-  (classname "<com.povider.jdbc.DataBaseDriver>")
-                                        ; the kind of database, e.g:
-                                        ; informix-sqli, mysql, postgresql,
-                                        ; oracle, sqlserver, etc.
-  (subprotocol "<sql-kind>")
-  (dbtype "<sql-kind>")
-                                        ; db connection path
-                                        ; locale, like ru_RU.1251
-  (database    "<my-databse>")
-  (subname (concat
-            "://<db-host>:<db-port>:"
-            "<db-server>=<server-name>;"
-            "database=<db-name>;"
-            "DB_LOCALE=<locale>;"
-            "CLIENT_LOCALE=<locale>;"))
-  (dbname "<db-name>")
-  (host "<db-host>")
-  (port "<db-port>")
-  (user "<user-name>")
-  (password "<password>")
-  (connection-uri "jdbc:<povider>://[serverName[\instanceName][:portNumber]][;property=value[;property=value]]")
-  (separator ";"))
-
-(defun ejc-connection-struct-to-plist (conn-struct)
-  (-filter
-   (lambda (x) (cdr x))
-   (list
-    `(:classpath      . ,(ejc-db-conn-classpath      conn-struct))
-    `(:classname      . ,(ejc-db-conn-classname      conn-struct))
-    `(:subprotocol    . ,(ejc-db-conn-subprotocol    conn-struct))
-    `(:subname        . ,(ejc-db-conn-subname        conn-struct))
-    `(:dbtype         . ,(ejc-db-conn-dbtype         conn-struct))
-    `(:dbname         . ,(ejc-db-conn-dbname         conn-struct))
-    `(:host           . ,(ejc-db-conn-host           conn-struct))
-    `(:port           . ,(ejc-db-conn-port           conn-struct))
-    `(:user           . ,(ejc-db-conn-user           conn-struct))
-    `(:password       . ,(ejc-db-conn-password       conn-struct))
-    `(:database       . ,(ejc-db-conn-database       conn-struct))
-    `(:separator      . ,(ejc-db-conn-separator      conn-struct))
-    `(:connection-uri . ,(ejc-db-conn-connection-uri conn-struct)))))
 
 (defun ejc-find-file-in-load-path (search-file-name &optional fail-on-error)
   "Return the full path to `file-name'.
