@@ -53,7 +53,8 @@
 (defun ejc-connect-to-db (conn-struct)
   (ejc-require `'cemerick.pomegranate)
   (ejc-add-classpath (alist-get :classpath conn-struct))
-  (ejc-import (read (alist-get :classname conn-struct)))
+  (if-let ((classname (alist-get :classname conn-struct)))
+      (ejc-import (read classname)))
   (ejc-sql-set-db conn-struct)
   (setq-local ejc-connection-struct conn-struct))
 
