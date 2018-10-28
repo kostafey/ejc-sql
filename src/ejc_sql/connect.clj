@@ -128,6 +128,11 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
           (future-cancel runner)))))
   (:start-time @current-query))
 
+(defn validate-connection [& {:keys [db timeout]
+                              :or {db @ejc-sql.connect/db
+                                   timeout 5}}]
+  (.isValid (j/get-connection db) timeout))
+
 (defn eval-sql-core
   "The core SQL evaluation function."
   [& {:keys [db sql]

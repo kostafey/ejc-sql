@@ -187,6 +187,12 @@
                :doc (concat "Clean your current connection cache "
                             "(database owners and tables list)."))
 
+(clomacs-defun ejc-validate-connection
+               validate-connection
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect
+               :return-type :boolean)
+
 (defun ejc-invalidate-cache ()
   "Clean current connection cache (database owners and tables list)."
   (interactive)

@@ -76,6 +76,11 @@
   :group 'ejc-sql
   :type 'string)
 
+(defcustom ejc-connection-validate-timeout 5
+  "The time in seconds to wait for the database connection validation."
+  :group 'ejc-sql
+  :type 'integer)
+
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
@@ -310,8 +315,10 @@ For more details about parameters see `get-connection' function in jdbc.clj:
     (setq-local ejc-db db)
     (message "Connection started...")
     (ejc-connect-to-db db)
-    (setq mode-name (format "%s->[%s]" mode-name connection-name))
-    (message "Connected.")))
+    (when (ejc-validate-connection :db ejc-db
+                                   :timeout ejc-connection-validate-timeout)
+      (setq mode-name (format "%s->[%s]" mode-name connection-name))
+      (message "Connected."))))
 
 ;;;###autoload
 (defun ejc-connect-existing-repl ()
