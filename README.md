@@ -182,7 +182,7 @@ The configuration of `ejs-sql` might looks like this:
 (ejc-create-connection
  "Oracle-db-connection-sname"
  :classpath (concat "~/.m2/repository/com/oracle/jdbc"
-                    "/oracle/jdbc/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar")
+                    "/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar")
  :dbtype "oracle"
  :dbname "my_service_name"
  :host "localhost"
