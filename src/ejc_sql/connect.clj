@@ -134,7 +134,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (.isValid (j/get-connection db) timeout))
 
 (defn get-separator-re [separator]
-  "Handle cases where separator is a part of SQL query string.
+  "Handle cases where separator is a part of string in SQL query.
 E.g. you can use default separator char `/` in this query:
 SELECT * FROM urls WHERE path like '%http://localhost%'"
   (String/format "%s(?=(([^('|\")]*('|\")){2})*[^('|\")]*$)"
