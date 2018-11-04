@@ -123,6 +123,22 @@
   :group 'ejc-sql
   :type 'string)
 
+(defface ejc-separator-face
+  '((t :inherit font-lock-function-name-face))
+  "Face used to highlight SQL statement separators."
+  :group 'ejc-sql)
+
+(defun ejc-refresh-font-lock ()
+  (funcall (if ejc-sql-mode
+               'font-lock-add-keywords
+             'font-lock-remove-keywords)
+           nil `((,(ejc-sql-separator-re) . 'ejc-separator-face)))
+  (if (fboundp 'font-lock-flush)
+      (font-lock-flush)
+    (when font-lock-mode
+      (with-no-warnings (font-lock-fontify-buffer))))
+  (run-hooks 'ejc-sql-minor-mode-hook))
+
 ;;;###autoload
 (define-minor-mode ejc-sql-mode
   "Toggle ejc-sql mode."
@@ -135,9 +151,10 @@
       (progn
         (ejc-ac-setup)
         (ejc-create-menu)
-        (run-hooks 'ejc-sql-minor-mode-hook))
+        (ejc-refresh-font-lock))
     (progn
       ;; (global-unset-key [menu-bar ejc-menu])
+      (ejc-refresh-font-lock)
       (run-hooks 'ejc-sql-minor-mode-exit-hook))))
 
 ;;;###autoload

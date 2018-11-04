@@ -133,6 +133,13 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
                                    timeout 5}}]
   (.isValid (j/get-connection db) timeout))
 
+(defn get-separator-re [separator]
+  "Handle cases where separator is a part of SQL query string.
+E.g. you can use default separator char `/` in this query:
+SELECT * FROM urls WHERE path like '%http://localhost%'"
+  (String/format "%s(?=(([^('|\")]*('|\")){2})*[^('|\")]*$)"
+                 (into-array separator)))
+
 (defn eval-sql-core
   "The core SQL evaluation function."
   [& {:keys [db sql]
@@ -142,7 +149,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (let [statement-separator (or (:separator db) ";")]
     (last
      (for [sql-part (seq (.split (handle-special-cases db sql)
-                                 statement-separator))]
+                                 (get-separator-re statement-separator)))]
        (try
          (let [sql-query-word (determine-dml sql-part)]
            (if (and sql-query-word (or (.equals sql-query-word "SELECT")

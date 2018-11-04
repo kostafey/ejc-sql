@@ -116,7 +116,7 @@ default). Set to nil if you want to disable this limit.
 ```
 
 Setup connections with `ejc-create-connection` function in your `.emacs`.
-Its first arg is your custom database connection name, the remaining args
+It's first arg is your custom database connection name, the remaining args
 are the same as database connection structure of
 [clojure/java.jdbc](https://github.com/clojure/java.jdbc) lib.
 
