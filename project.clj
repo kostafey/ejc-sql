@@ -5,7 +5,7 @@
             :url "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
-                 [org.clojure/java.jdbc "0.7.7"]
+                 [org.clojure/java.jdbc "0.7.9-SNAPSHOT"]
                  [org.apache.openjpa/openjpa-all "2.2.2"]
                  [org.hibernate/hibernate-core "5.2.3.Final"]
                  [com.cemerick/pomegranate "0.3.0"]

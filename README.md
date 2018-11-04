@@ -16,6 +16,11 @@ formatting of SQL scripts are also available.
 - [Installation](#installation)
 - [Install JDBC Drivers](#install-jdbc-drivers)
 - [Configuration](#configuration)
+  - [MySQL connection](#mysqlconnection)
+  - [MS SQL Server connection](#mssqlserverconnection)
+  - [Oracle connection](#oracleconnection)
+  - [H2 connection](#h2connection)
+  - [PostgreSQL connection](#postgresqlconnection)
 - [Usage](#usage)
 - [Autocomplete](#autocomplete)
 - [Troubleshooting](#troubleshooting)
@@ -98,81 +103,126 @@ mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgre
 
 ## Configuration
 
+First, load `ejc-sql` package:
+```lisp
+(require 'ejc-sql)
+```
+
+`ejc-set-rows-limit` set limit for the number of records to output (1000 by
+default). Set to nil if you want to disable this limit.
+
+```lisp
+(ejc-set-rows-limit 1000)
+```
+
 Setup connections with `ejc-create-connection` function in your `.emacs`.
 Its first arg is your custom database connection name, the remaining args
 are the same as database connection structure of
 [clojure/java.jdbc](https://github.com/clojure/java.jdbc) lib.
 
-The configuration of ejs-sql might look like this:
+The configuration of `ejs-sql` might looks like this:
 
 ```lisp
-(require 'ejc-sql)
-
 ;; Create your JDBC database connections configuration:
+```
 
+<a id="mysqlconnection"></a>
+### MySQL connection
+```lisp
 ;; MySQL example
 (ejc-create-connection
  "MySQL-db-connection"
  :classpath (concat "~/.m2/repository/mysql/mysql-connector-java/5.1.6/"
                      "mysql-connector-java-5.1.6.jar")
- :classname "com.mysql.jdbc.Driver"
  :subprotocol "mysql"
  :subname "//localhost:3306/my_db_name"
  :user "a_user"
  :password "secret")
+```
 
+<a id="mssqlserverconnection"></a>
+### MS SQL Server connection
+```lisp
 ;; MS SQL Server example
 (ejc-create-connection
  "MS-SQL-db-connection"
  :classpath (concat "~/.m2/repository/com/microsoft"
                      "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
- :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
  :subprotocol "sqlserver"
  :subname "//localhost:1433"
  :user "a_user"
  :password "secret"
  :database "my_db_name")
 
-;; MS SQL Server via :connection-uri example
+;; MS SQL Server example (via URI)
 (ejc-create-connection
  "MS-SQL-db-connection-uri"
  :classpath (concat "~/.m2/repository/com/microsoft"
                      "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
- :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
  :connection-uri (concat "jdbc:sqlserver://localhost\\\\instance:1433;"
                          "databaseName=my_db_name;"
                          "user=a_user;"
                          "password=secret;"))
 
-;; MS SQL Server via JTDS example
+;; MS SQL Server example (via JTDS)
 (ejc-create-connection
  "MS-SQL-db-connection-JTDS"
  :classpath (concat "~/.m2/repository/net/sourceforge/jtds"
                      "/jtds/1.3.1/jtds-1.3.1.jar")
- :classname "net.sourceforge.jtds.jdbc.Driver"
  :connection-uri (concat "jdbc:jtds:sqlserver://localhost:1433/dbname;"
                          "instance=instance;"
                          "user=a_user;"
                          "password=secret;"))
+```
 
-;; Oracle example
+<a id="oracleconnection"></a>
+### Oracle connection
+```lisp
+;; Oracle example (via Service Name)
 (ejc-create-connection
- "Oracle-db-connection"
+ "Oracle-db-connection-sname"
  :classpath (concat "~/.m2/repository/com/oracle/jdbc"
-                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
- :classname "oracle.jdbc.driver.OracleDriver"
- :subprotocol "oracle"
- :subname "thin:@localhost:1521:my_db_name"
+                    "/oracle/jdbc/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar")
+ :dbtype "oracle"
+ :dbname "my_service_name"
+ :host "localhost"
+ :port "1521"
  :user "a_user"
  :password "secret"
  :separator "/")
 
+;; Oracle example (via SID)
+(ejc-create-connection
+ "Oracle-db-connection-sid"
+ :classpath (concat "~/.m2/repository/com/oracle/jdbc"
+                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
+ :dbtype "oracle:sid"
+ :dbname "my_sid_name"
+ :host "localhost"
+ :port "1521"
+ :user "a_user"
+ :password "secret"
+ :separator "/")
+
+;; Oracle example (via URI)
+(ejc-create-connection
+ "Oracle-db-connection-uri"
+ :classpath (concat "~/.m2/repository/com/oracle/jdbc"
+                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
+ :connection-uri "jdbc:oracle:thin:@localhist:1521:dbname"
+ :user "a_user"
+ :password "secret"
+ :separator "/")
+```
+
+<a id="h2connection"></a>
+### H2 connection
+```lisp
 ;; H2 example
 (ejc-create-connection
  "H2-db-connection"
  :classpath (file-truename
              "~/.m2/repository/com/h2database/h2/1.4.191/h2-1.4.191.jar")
- :classname "org.h2.Driver"
  :subprotocol "h2"
  :subname "file://~/projects/my_proj/db/database;AUTO_SERVER=TRUE"
  :user "a_user"
@@ -184,28 +234,23 @@ The configuration of ejs-sql might look like this:
 (ejc-create-connection
  "H2-remote-db-connection"
  :classpath "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
- :classname "org.h2.Driver"
  :connection-uri (concat "jdbc:h2:tcp://192.168.0.1:9092/~/db/database;ifexists=true;"
                          "user=a_user;"
                          "password=secret;"))
+```
 
+<a id="postgresqlconnection"></a>
+### PostgreSQL connection
+```lisp
 ;; PostgreSQL example
 (ejc-create-connetion
  "PostgreSQL-db-connection"
  :classpath (concat "~/.m2/repository/postgresql/postgresql/9.3.1102.jdbc41/"
                      "postgresql-9.3-1102.jdbc41.jar")
- :classname "org.postgresql.Driver"
  :subprotocol "postgresql"
  :subname "//localhost:5432/my_db_name"
  :user "a_user"
  :password "secret")
-```
-
-`ejc-set-rows-limit` set limit for the number of records to output (1000 by
-default). Set to nil if you want to disable this limit.
-
-```lisp
-(ejc-set-rows-limit 1000)
 ```
 
 ## Usage
