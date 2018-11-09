@@ -29,10 +29,10 @@
   "Return the word preceding dot before the typing."
   (save-excursion
     (let ((space-dist (or (save-excursion
-                            (re-search-backward "[ \n\t\r]+" nil t))
+                            (re-search-backward "[ \n\t\r(]+" nil t))
                           0))
           (dot (search-backward "." nil t))
-          (space (re-search-backward "[ \n\t\r.]+" nil t)))
+          (space (re-search-backward "[ \n\t\r(.]+" nil t)))
       (if (and dot
                space
                (> dot space)
