@@ -25,6 +25,13 @@
 (require 'ejc-doc)
 (require 'ejc-format)
 
+(defcustom ejc-candidates-uppercase t
+  "Use uppercase candidates or downcase.
+Uppercase by default, set to nil to use downcase candidates."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'ejc-sql)
+
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
   (save-excursion
@@ -95,12 +102,13 @@
       nil)))
 
 (defun ejc-get-ansi-sql-words ()
-  (if (not (or (ejc-return-point) (ejc-get-prefix-word)))
-      (progn
+  (unless (or (ejc-return-point) (ejc-get-prefix-word))
+    (progn
+      (if ejc-candidates-uppercase
+          (append (mapcar 'upcase ejc-ansi-sql-words)
+                  (mapcar 'upcase ejc-auxulary-sql-words))
         (append ejc-ansi-sql-words
-                ejc-auxulary-sql-words
-                (mapcar 'upcase ejc-ansi-sql-words)
-                (mapcar 'upcase ejc-auxulary-sql-words)))
+                ejc-auxulary-sql-words)))
     nil))
 
 (defun ac-ejc-documentation (symbol-name)
