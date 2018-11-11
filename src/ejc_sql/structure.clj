@@ -158,7 +158,11 @@
               (str " SELECT schema_name               \n"
                    " FROM information_schema.schemata \n"))
     :tables  (default-queries :tables)
-    :all-tables (default-queries :all-tables)
+    :all-tables (fn [& _]
+                  (str "SELECT s.schema_name, t.table_name     \n"
+                       "FROM information_schema.schemata AS s, \n"
+                       "     information_schema.tables AS t    \n"
+                       "WHERE t.table_schema = s.schema_name   \n"))
     :columns (default-queries :columns)}
    ;;--------
    :h2
@@ -209,8 +213,9 @@
   (queries db-type))
 
 (defn get-db-name [db]
-  (let [{:keys [database subname connection-uri]} db]
-    (or database
+  (let [{:keys [database subname connection-uri dbname]} db]
+    (or dbname
+        database
         (if subname
           (let [separator (if (= (first (.split subname "/")) subname)
                             ":" "/")
@@ -249,9 +254,10 @@
                       props-list))) "="))))))
 
 (defn get-db-type [db]
-  (let [{:keys [subprotocol connection-uri]} db]
+  (let [{:keys [subprotocol connection-uri dbtype]} db]
     (keyword
-     (or subprotocol
+     (or dbtype
+         subprotocol
          (let [attrs (.split connection-uri ":")]
            (if (= (second attrs) "jtds")
              ;; jdbc:jtds:sqlserver://...
@@ -430,68 +436,73 @@ if `pending` is nil - no request is running, return result immediately."
   ;;
   ;; In any case consider `prefix-1` as table or alias
   ;; and optional `prefix-2` as owner or schema
-  (let [owner prefix-2
-        tables-list (if owner
-                      (get-tables db owner)
-                      ;; In case of queries like
-                      ;; "SELECT u.# FROM custom.Users as u"
-                      ;; when "custom" is not the current
-                      ;; schema, the full DB structure tree
-                      ;; sould be built to obtain overall
-                      ;; tables list for all owners/schemas.
-                      (if (get-namespace db)
-                        ;; Database has namespaces
-                        (if (not (get-owners db))
-                          ;; Not received owners list yet -
-                          ;; pending...
-                          (do
-                            (future (get-all-tables db))
-                            nil)
-                          ;; Owners list is already here -
-                          ;; force tables list receiving!
-                          (get-all-tables db))
-                        ;; Database hasn't namespaces -
-                        ;; no owners needed
-                        (get-tables db)))]
-    (if (and tables-list
-             (not-empty (filter not-empty tables-list)))
-      (if (in? tables-list prefix-1 :case-sensitive false)
-        ;; table.#<colomns-list>
-        (let [table prefix-1
-              ;; force columns-cache obtaining...
-              columns-list (get-colomns db table true)]
-          ;; ok - columns
-          (cons "nil" columns-list))
-        (let [sql (c/clean-sql sql)
-              table-alias (first
-                           (filter
-                            (fn [table]
-                              (match-alias? sql owner table prefix-1))
-                            tables-list))]
-          (if table-alias
-            ;; table-alias.#<colomns-list>
-            (cons "nil" (get-colomns db table-alias true))
-            ;; Check "SELECT t.# FROM (SELECT ... ) AS t" case.
-            (let [pattern (re-pattern (str "\\(.+\\)(\\s|\\s(as)\\s)"
-                                           prefix-1))
-                  complex-alias (first (re-find pattern sql))
-                  complex-alias (if complex-alias
-                                  (subs complex-alias 1
-                                        (.lastIndexOf complex-alias ")")))]
-              (if complex-alias
-                (let [{:keys [success result]} (c/query-meta db complex-alias)]
-                  (if success
-                    ;; complex-alias.#<colomns-list>
-                    (cons "nil" (mapv :name result))
-                    ;; Can't execute "blah blah" to get metadata in
-                    ;; "SELECT t.# FROM (blah blah) AS t" case.
-                    (list "nil")))
-                ;; unknown?.# case
-                ;; nothing to complete
-                (list "nil"))))))
-      ;; no tables yet
-      ;; pending tables...
-      (list "t"))))
+  (if (not prefix-1)
+    ;; TODO: cases for:
+    ;; INSERT INTO table (field1, #) values (123, 'text')
+    ;; UPDATE table SET field1 = 123, # = 'text' WHERE id = 1
+    (list "nil")
+    (let [owner prefix-2
+          tables-list (if owner
+                        (get-tables db owner)
+                        ;; In case of queries like
+                        ;; "SELECT u.# FROM custom.Users as u"
+                        ;; when "custom" is not the current
+                        ;; schema, the full DB structure tree
+                        ;; sould be built to obtain overall
+                        ;; tables list for all owners/schemas.
+                        (if (get-namespace db)
+                          ;; Database has namespaces
+                          (if (not (get-owners db))
+                            ;; Not received owners list yet -
+                            ;; pending...
+                            (do
+                              (future (get-all-tables db))
+                              nil)
+                            ;; Owners list is already here -
+                            ;; force tables list receiving!
+                            (get-all-tables db))
+                          ;; Database hasn't namespaces -
+                          ;; no owners needed
+                          (get-tables db)))]
+      (if (and tables-list
+               (not-empty (filter not-empty tables-list)))
+        (if (in? tables-list prefix-1 :case-sensitive false)
+          ;; table.#<colomns-list>
+          (let [table prefix-1
+                ;; force columns-cache obtaining...
+                columns-list (get-colomns db table true)]
+            ;; ok - columns
+            (cons "nil" columns-list))
+          (let [sql (c/clean-sql sql)
+                table-alias (first
+                             (filter
+                              (fn [table]
+                                (match-alias? sql owner table prefix-1))
+                              tables-list))]
+            (if table-alias
+              ;; table-alias.#<colomns-list>
+              (cons "nil" (get-colomns db table-alias true))
+              ;; Check "SELECT t.# FROM (SELECT ... ) AS t" case.
+              (let [pattern (re-pattern (str "\\(.+\\)(\\s|\\s(as)\\s)"
+                                             prefix-1))
+                    complex-alias (first (re-find pattern sql))
+                    complex-alias (if complex-alias
+                                    (subs complex-alias 1
+                                          (.lastIndexOf complex-alias ")")))]
+                (if complex-alias
+                  (let [{:keys [success result]} (c/query-meta db complex-alias)]
+                    (if success
+                      ;; complex-alias.#<colomns-list>
+                      (cons "nil" (mapv :name result))
+                      ;; Can't execute "blah blah" to get metadata in
+                      ;; "SELECT t.# FROM (blah blah) AS t" case.
+                      (list "nil")))
+                  ;; unknown?.# case
+                  ;; nothing to complete
+                  (list "nil"))))))
+        ;; no tables yet
+        ;; pending tables...
+        (list "t")))))
 
 (defn get-cache []
   "Output actual cache."

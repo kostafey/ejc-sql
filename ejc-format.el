@@ -26,10 +26,7 @@
   "The char with purpose to separate the SQL statement both other.")
 
 (defun ejc-sql-separator-re ()
-    (format "^\\s-*%s\\s-*" ejc-sql-separator ejc-sql-separator))
-
-(font-lock-add-keywords
- 'sql-mode '(("/" 0 'font-lock-function-name-face t)))
+  (format "^\\s-*%s\\s-*" ejc-sql-separator))
 
 (defun ejc-get-sql-boundaries-at-point ()
   "Returns list of the boundaries of the current SQL expression.

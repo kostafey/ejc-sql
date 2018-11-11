@@ -1,5 +1,7 @@
+[![Emacs](https://img.shields.io/badge/Emacs-25-8e44bd.svg)](https://www.gnu.org/software/emacs/)
 [![License GPL 2](https://img.shields.io/badge/license-GPL_2-green.svg)](http://www.gnu.org/licenses/gpl-2.0.txt)
 [![MELPA](https://melpa.org/packages/ejc-sql-badge.svg)](https://melpa.org/#/ejc-sql)
+[![Melpa Stable](https://stable.melpa.org/packages/ejc-sql-badge.svg)](https://stable.melpa.org/#/ejc-sql)
 [![Build Status](https://api.travis-ci.org/kostafey/ejc-sql.svg?branch=master)](https://travis-ci.org/kostafey/ejc-sql#)
 [![Coverage Status](https://coveralls.io/repos/kostafey/ejc-sql/badge.svg?branch=master)](https://coveralls.io/github/kostafey/ejc-sql?branch=master)
 
@@ -14,6 +16,12 @@ formatting of SQL scripts are also available.
 - [Installation](#installation)
 - [Install JDBC Drivers](#install-jdbc-drivers)
 - [Configuration](#configuration)
+  - [Fuzzy matching](#fuzzy-matching)
+  - [MySQL connection](#mysqlconnection)
+  - [MS SQL Server connection](#mssqlserverconnection)
+  - [Oracle connection](#oracleconnection)
+  - [H2 connection](#h2connection)
+  - [PostgreSQL connection](#postgresqlconnection)
 - [Usage](#usage)
 - [Autocomplete](#autocomplete)
 - [Troubleshooting](#troubleshooting)
@@ -96,81 +104,145 @@ mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgre
 
 ## Configuration
 
+First, load `ejc-sql` package:
+```lisp
+(require 'ejc-sql)
+```
+
+`ejc-set-rows-limit` set limit for the number of records to output (1000 by
+default). Set to nil if you want to disable this limit.
+
+```lisp
+(ejc-set-rows-limit 1000)
+```
+
+<a id="fuzzy-matching"></a>
+### Fuzzy matching
+
+Non-nil `ejc-use-flx` enables `flx` fuzzy matching engine for autocompletion.
+[flx-ido](https://github.com/lewang/flx) is required in this case, it can
+be installed by your favorite approach. E.g. by `MEPLA`:
+<kbd>M-x package-install [RET] flx-ido [RET]</kbd>
+
+```lisp
+(setq ejc-use-flx t)
+```
+
+Customize the minimum number of typed chars required to use `flx` for
+autocompletion, 3 by default:
+
+```lisp
+(setq ejc-flx-threshold 3)
+```
+
 Setup connections with `ejc-create-connection` function in your `.emacs`.
-Its first arg is your custom database connection name, the remaining args
+It's first arg is your custom database connection name, the remaining args
 are the same as database connection structure of
 [clojure/java.jdbc](https://github.com/clojure/java.jdbc) lib.
 
-The configuration of ejs-sql might look like this:
+The configuration of `ejs-sql` might looks like this:
 
 ```lisp
-(require 'ejc-sql)
-
 ;; Create your JDBC database connections configuration:
+```
 
+<a id="mysqlconnection"></a>
+### MySQL connection
+```lisp
 ;; MySQL example
 (ejc-create-connection
  "MySQL-db-connection"
  :classpath (concat "~/.m2/repository/mysql/mysql-connector-java/5.1.6/"
                      "mysql-connector-java-5.1.6.jar")
- :classname "com.mysql.jdbc.Driver"
  :subprotocol "mysql"
  :subname "//localhost:3306/my_db_name"
  :user "a_user"
  :password "secret")
+```
 
+<a id="mssqlserverconnection"></a>
+### MS SQL Server connection
+```lisp
 ;; MS SQL Server example
 (ejc-create-connection
  "MS-SQL-db-connection"
  :classpath (concat "~/.m2/repository/com/microsoft"
                      "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
- :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
  :subprotocol "sqlserver"
  :subname "//localhost:1433"
  :user "a_user"
  :password "secret"
  :database "my_db_name")
 
-;; MS SQL Server via :connection-uri example
+;; MS SQL Server example (via URI)
 (ejc-create-connection
  "MS-SQL-db-connection-uri"
  :classpath (concat "~/.m2/repository/com/microsoft"
                      "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
- :classname "com.microsoft.sqlserver.jdbc.SQLServerDriver"
  :connection-uri (concat "jdbc:sqlserver://localhost\\\\instance:1433;"
                          "databaseName=my_db_name;"
                          "user=a_user;"
                          "password=secret;"))
 
-;; MS SQL Server via JTDS example
+;; MS SQL Server example (via JTDS)
 (ejc-create-connection
  "MS-SQL-db-connection-JTDS"
  :classpath (concat "~/.m2/repository/net/sourceforge/jtds"
                      "/jtds/1.3.1/jtds-1.3.1.jar")
- :classname "net.sourceforge.jtds.jdbc.Driver"
  :connection-uri (concat "jdbc:jtds:sqlserver://localhost:1433/dbname;"
                          "instance=instance;"
                          "user=a_user;"
                          "password=secret;"))
+```
 
-;; Oracle example
+<a id="oracleconnection"></a>
+### Oracle connection
+```lisp
+;; Oracle example (via Service Name)
 (ejc-create-connection
- "Oracle-db-connection"
+ "Oracle-db-connection-sname"
  :classpath (concat "~/.m2/repository/com/oracle/jdbc"
-                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
- :classname "oracle.jdbc.driver.OracleDriver"
- :subprotocol "oracle"
- :subname "thin:@localhost:1521:my_db_name"
+                    "/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar")
+ :dbtype "oracle"
+ :dbname "my_service_name"
+ :host "localhost"
+ :port "1521"
  :user "a_user"
  :password "secret"
  :separator "/")
 
+;; Oracle example (via SID)
+(ejc-create-connection
+ "Oracle-db-connection-sid"
+ :classpath (concat "~/.m2/repository/com/oracle/jdbc"
+                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
+ :dbtype "oracle:sid"
+ :dbname "my_sid_name"
+ :host "localhost"
+ :port "1521"
+ :user "a_user"
+ :password "secret"
+ :separator "/")
+
+;; Oracle example (via URI)
+(ejc-create-connection
+ "Oracle-db-connection-uri"
+ :classpath (concat "~/.m2/repository/com/oracle/jdbc"
+                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
+ :connection-uri "jdbc:oracle:thin:@localhist:1521:dbname"
+ :user "a_user"
+ :password "secret"
+ :separator "/")
+```
+
+<a id="h2connection"></a>
+### H2 connection
+```lisp
 ;; H2 example
 (ejc-create-connection
  "H2-db-connection"
  :classpath (file-truename
              "~/.m2/repository/com/h2database/h2/1.4.191/h2-1.4.191.jar")
- :classname "org.h2.Driver"
  :subprotocol "h2"
  :subname "file://~/projects/my_proj/db/database;AUTO_SERVER=TRUE"
  :user "a_user"
@@ -182,28 +254,23 @@ The configuration of ejs-sql might look like this:
 (ejc-create-connection
  "H2-remote-db-connection"
  :classpath "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
- :classname "org.h2.Driver"
  :connection-uri (concat "jdbc:h2:tcp://192.168.0.1:9092/~/db/database;ifexists=true;"
                          "user=a_user;"
                          "password=secret;"))
+```
 
+<a id="postgresqlconnection"></a>
+### PostgreSQL connection
+```lisp
 ;; PostgreSQL example
 (ejc-create-connetion
  "PostgreSQL-db-connection"
  :classpath (concat "~/.m2/repository/postgresql/postgresql/9.3.1102.jdbc41/"
                      "postgresql-9.3-1102.jdbc41.jar")
- :classname "org.postgresql.Driver"
  :subprotocol "postgresql"
  :subname "//localhost:5432/my_db_name"
  :user "a_user"
  :password "secret")
-```
-
-`ejc-set-rows-limit` set limit for the number of records to output (1000 by
-default). Set to nil if you want to disable this limit.
-
-```lisp
-(ejc-set-rows-limit 1000)
 ```
 
 ## Usage
@@ -218,13 +285,28 @@ Since connection information is buffer-local, you should use `ejc-connect`
 for any new buffer. There is a handy function to create temporary buffer for
 playing with SQL: `ejc-switch-to-sql-editor-buffer`.
 
-Then type
+Then type you queries like this:
 
 ```SQL
-select <something> from <mytable>
+select something from my_table
 ```
-and press <kbd>C-c C-c</kbd> to run it. Use `\` char to separate expressions to
-evaluate. It's possible to run multiple statements, you can use `;` to separate them.
+and press <kbd>C-c C-c</kbd> to run it.
+
+Use `/` char to separate expressions to evaluate (actually `\n/`), e.g.:
+```SQL
+select something from my_table
+/
+select other from other_table
+```
+
+It's possible to run multiple statements, you can use `;` to separate them:
+```SQL
+insert into my_table (product, price) values ('socks', 1.25);
+insert into my_table (product, price) values ('sweater', 14.56);
+insert into my_table (product, price) values ('jeans', 25.30);
+/
+select * from my_table
+```
 
 Have much fun!
 
@@ -250,6 +332,7 @@ New keybindings defined in `ejc-sql-mode` minor mode:
  Keyboard shortcut   | Command                         | Description
 ---------------------|---------------------------------|------------------------------------------------------
  <kbd>C-c C-c</kbd>  | `ejc-eval-user-sql-at-point`    | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
+ <kbd>C-g</kbd>      | `ejc-cancel-query`              | Terminate current running query or run `keyboard-quit` if there is no running queries.
  <kbd>C-h t</kbd>    | `ejc-describe-table`            | Describe SQL table.
  <kbd>C-h T</kbd>    | `ejc-describe-entity`           | Describe SQL entity entity - function, procedure or type.
  <kbd>C-c e up</kbd> | `ejc-show-last-result`          | Show last result.
@@ -305,7 +388,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 
 ## Requirements:
 
-* [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 24.
+* [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 25.
 * [Leiningen](http://leiningen.org) 2.x
 * [clomacs](https://github.com/clojure-emacs/clomacs)
 * [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.5.8
@@ -313,10 +396,11 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 * [spinner.el](https://github.com/Malabarba/spinner.el)
 * [direx.el](https://github.com/m2ym/direx-el)
+* [flx-ido](https://github.com/lewang/flx) *(optional)*.
 
 ## License
 
-Copyright © 2012-2017 Kostafey <kostafey@gmail.com> and
+Copyright © 2012-2018 Kostafey <kostafey@gmail.com> and
 [contributors](https://github.com/kostafey/ejc-sql/contributors)
 
 Distributed under the General Public License 2.0+

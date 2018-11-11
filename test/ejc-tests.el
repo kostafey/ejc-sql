@@ -62,24 +62,22 @@
      (file-truename "~/tmp"))))
 
 (cl-defun ejc-test:run-sql (sql &optional connect)
-  (progn
-    ;; Type SQL query and eval it.
-    (with-current-buffer
-        (get-buffer-create ejc-temp-editor-buffer-name)
-      ;; Connect to test database, if bufer just created
-      (when connect
-        (setq cider-boot-parameters "repl -s -H localhost wait")
-        (setq cider-lein-parameters "repl :headless :host localhost")
-        (let ((dir (file-name-directory ejc-conn-statistics-file)))
-          (if (not (file-accessible-directory-p dir))
-              (make-directory dir)))
-        (ejc-connect connect))
-      (end-of-buffer)
-      (insert sql)
-      (ejc-eval-user-sql-at-point t))
-    ;; Get the results.
-    (with-current-buffer ejc-results-buffer
-      (buffer-substring (point-max) (point-min)))))
+  ;; Type SQL query and eval it.
+  (with-current-buffer (get-buffer-create ejc-temp-editor-buffer-name)
+    ;; Connect to test database, if bufer just created
+    (when connect
+      (setq cider-boot-parameters "repl -s -H localhost wait")
+      (setq cider-lein-parameters "repl :headless :host localhost")
+      (let ((dir (file-name-directory ejc-conn-statistics-file)))
+        (if (not (file-accessible-directory-p dir))
+            (make-directory dir)))
+      (ejc-connect connect))
+    (end-of-buffer)
+    (insert sql)
+    (ejc-eval-user-sql-at-point :sync t))
+  ;; Get the results.
+  (with-current-buffer ejc-results-buffer
+    (buffer-substring-no-properties (point-max) (point-min))))
 
 (ert-deftest ejc-test:get-connection ()
   :tags '(el+cl)
@@ -99,14 +97,13 @@
     (should
      (equal
       `("H2-test-connection"
-        (:classpath . ,classpath)
         (:classname . "org.h2.Driver")
-        (:subprotocol . "h2")
-        (:subname . ,db-path)
+        (:classpath . ,classpath)
+        (:password . "secret")
         (:user . "a_user")
-        (:password . "secret"))
-      (cons (car (car conn))
-            (ejc-connection-struct-to-plist (cdr (car conn))))))
+        (:subname . ,db-path)
+        (:subprotocol . "h2"))
+      (car conn)))
     ;; Delete previous run temp database files
     (mapcar (lambda (x)
               (let ((path-to-x (expand-file-name x (ejc-test:get-temp-path))))

@@ -1,6 +1,6 @@
 ;;; ejc-interaction.el -- ejc-sql interact with Clojure. -*- lexical-binding: t -*-
 
-;;; Copyright © 2013-2017 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2018 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -22,17 +22,20 @@
 (require 'ejc-format)
 (require 'clomacs)
 
+(clomacs-create-httpd-start ejc-httpd-start
+                            :lib-prefix "ejc"
+                            :lib-name "ejc-sql")
+
+(clomacs-create-httpd-stop ejc-httpd-stop
+                           :lib-prefix "ejc"
+                           :lib-name "ejc-sql")
+
 (clomacs-defun ejc-sql-set-db
                set-db
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect
-               :doc "Define ejc-sql.connect/db var.")
-
-(clomacs-defun ejc-jpa-connect
-               ejc-sql.jpa/connect-plain
-               :lib-name "ejc-sql"
-               :namespace ejc-sql.jpa
-               :doc "Define ejc-sql.jpa/em var.")
+               :doc "Define ejc-sql.connect/db var."
+               :httpd-starter 'ejc-httpd-start)
 
 (clomacs-defun ejc-add-classpath
                add-classpath
@@ -49,20 +52,10 @@
 
 (defun ejc-connect-to-db (conn-struct)
   (ejc-require `'cemerick.pomegranate)
-  (cl-case (ejc-get-connection-type conn-struct)
-    ;;----------------------------------------------------------------------
-    ;; is JDBC/SQL
-    (:sql
-     (ejc-add-classpath (ejc-db-conn-classpath conn-struct))
-     (ejc-import (read (ejc-db-conn-classname conn-struct)))
-     (ejc-sql-set-db (ejc-connection-struct-to-plist conn-struct)))
-    ;;----------------------------------------------------------------------
-    ;; is JPA/JPQL
-    (:jpa
-     (ejc-jpa-connect (ejc-jpa-connection-name    conn-struct)
-                      (ejc-jpa-persistent-xml-url conn-struct)
-                      (ejc-jpa-domain-objects-url conn-struct)
-                      (ejc-jpa-jdbc-driver-url    conn-struct))))
+  (ejc-add-classpath (alist-get :classpath conn-struct))
+  (if-let ((classname (alist-get :classname conn-struct)))
+      (ejc-import (read classname)))
+  (ejc-sql-set-db conn-struct)
   (setq-local ejc-connection-struct conn-struct))
 
 (defun ejc-get-sql-from-string (sql)
@@ -70,63 +63,30 @@
          (sql (replace-regexp-in-string "\"" "'" sql)))
     sql))
 
-(clomacs-defun ejc--eval-sql-and-log
-               ejc-sql.connect/eval-sql-and-log
-               :lib-name "ejc-sql"
-               :namespace ejc-sql.connect
-               :doc "Evaluate user's SQL scripts and write them to log file.")
-
 (clomacs-defun ejc--eval-sql-and-log-print
                eval-sql-and-log-print
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect
                :return-type :string
-               :return-value :stdout)
+               :doc "Core function to evaluate SQL queries.
+  Prepare SQL string, evaluate SQL script and write them to log file")
 
-(clomacs-defun ejc--eval-jpql
-               ejc-sql.jpa/eval-jpql-print
+(clomacs-defun ejc--is-query-running-p
+               is-query-running?
                :lib-name "ejc-sql"
-               :namespace ejc-sql.jpa
-               :return-type :string
-               :return-value :stdout)
+               :namespace ejc-sql.connect
+               :return-type :boolean)
 
-(cl-defun ejc-eval-sql-and-log (db sql &key call-type callback rows-limit)
-  "Core function to evaluate SQL queries.
-Prepare SQL string, evaluate SQL script and write them to log file"
-  (if sql
-      (let* ((prepared-sql (ejc-get-sql-from-string sql))
-             (result (cl-case (ejc-get-connection-type ejc-connection-struct)
-                       (:sql
-                        (progn
-                          (if (and (equal call-type :async) callback)
-                              (let* ((buf (current-buffer))
-                                     (eval-sql-and-log-async
-                                      (clomacs-defun _
-                                                     eval-sql-and-log-print
-                                                     :lib-name "ejc-sql"
-                                                     :namespace ejc-sql.connect
-                                                     :call-type :async
-                                                     :callback (lambda (res)
-                                                                 (funcall callback res)
-                                                                 (with-current-buffer buf
-                                                                   (spinner-stop)))
-                                                     :return-type :string
-                                                     :return-value :stdout)))
-                                (spinner-start 'rotating-line)
-                                (funcall eval-sql-and-log-async
-                                         db
-                                         prepared-sql
-                                         :rows-limit rows-limit))
-                            (ejc--eval-sql-and-log-print
-                             db
-                             prepared-sql
-                             :rows-limit rows-limit))))
-                       (:jpa (ejc--eval-jpql prepared-sql))
-                       (nil "No database connection."))))
-        result)))
+(clomacs-defun ejc--cancel-query
+               cancel-query
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect
+               :doc "Cancel current query."
+               :interactive t
+               :return-type :list)
 
 (clomacs-defun ejc--eval-sql-get-column
-               ejc-sql.connect/eval-sql-internal-get-column
+               eval-sql-internal-get-column
                :lib-name "ejc-sql"
                :return-type :list
                :namespace ejc-sql.connect
@@ -134,7 +94,7 @@ Prepare SQL string, evaluate SQL script and write them to log file"
 
 (defalias 'ejc--eval-get-list 'ejc--eval-sql-get-column)
 
-(clomacs-defun ejc--get-table-meta
+(clomacs-defun ejc-get-table-meta
                ejc-sql.connect/get-table-meta
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect)
@@ -145,8 +105,17 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :return-type :string
                :return-value :stdout)
 
-(defun ejc-get-table-meta (db table-name)
-  (ejc-print (ejc--get-table-meta db table-name)))
+(clomacs-defun ejc-write-result-file
+               write-result-file
+               :namespace ejc-sql.output
+               :lib-name "ejc-sql"
+               :return-type :string)
+
+(clomacs-defun ejc-clear-result-file
+               clear-result-file
+               :namespace ejc-sql.output
+               :lib-name "ejc-sql"
+               :return-type :string)
 
 (clomacs-defun ejc-get-log-file-path
                print-log-file-path
@@ -218,6 +187,12 @@ Prepare SQL string, evaluate SQL script and write them to log file"
                :doc (concat "Clean your current connection cache "
                             "(database owners and tables list)."))
 
+(clomacs-defun ejc-validate-connection
+               validate-connection
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.connect
+               :return-type :boolean)
+
 (defun ejc-invalidate-cache ()
   "Clean current connection cache (database owners and tables list)."
   (interactive)
@@ -242,6 +217,7 @@ Prepare SQL string, evaluate SQL script and write them to log file"
   "Stop nREPL process, mark ejc-sql-mode buffers disconnected."
   (interactive)
   (when (y-or-n-p  "Are you sure you want to close all jdbc connections?")
+    (ejc-httpd-stop)
     (cider--close-connection (clomacs-get-connection "ejc-sql"))
     ;; Update modeline of ejc-sql-mode buffers - mark as disconnected.
     (let ((buffers (buffer-list)))
