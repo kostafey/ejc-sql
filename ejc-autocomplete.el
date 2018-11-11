@@ -30,6 +30,7 @@
 Uppercase by default, set to nil to use downcase candidates."
   :type 'boolean
   :safe #'booleanp
+  :group 'ejc-sql)
 
 (defcustom ejc-use-flx nil
   "Non-nil enables `flx' fuzzy matching engine autocompletion."
