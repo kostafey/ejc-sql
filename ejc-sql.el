@@ -277,7 +277,8 @@ For more details about parameters see `get-connection' function in jdbc.clj:
   '((sqlserver . ms)))
 
 (defun ejc-configure-sql-buffer (product-name)
-  (sql-mode)
+  (unless (org-src-edit-buffer-p)
+    (sql-mode))
   (sql-set-product (or (cdr (assoc-string product-name ejc-product-assoc))
                        (car (assoc-string product-name sql-product-alist))
                        "ansi"))
