@@ -44,7 +44,6 @@ Uppercase by default, set to nil to use downcase candidates."
 (defface ejc-flx-highlight-face
   '((t :inherit popup-isearch-match))
   "Face used by flx for highlighting flx match characters in `ejc-sql' buffers."
-
   :group 'ejc-sql)
 
 (defun ejc-get-prefix-word ()
