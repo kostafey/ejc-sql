@@ -16,6 +16,7 @@ formatting of SQL scripts are also available.
 - [Installation](#installation)
 - [Install JDBC Drivers](#install-jdbc-drivers)
 - [Configuration](#configuration)
+  - [Fuzzy matching](#fuzzy-matching)
   - [MySQL connection](#mysqlconnection)
   - [MS SQL Server connection](#mssqlserverconnection)
   - [Oracle connection](#oracleconnection)
@@ -113,6 +114,25 @@ default). Set to nil if you want to disable this limit.
 
 ```lisp
 (ejc-set-rows-limit 1000)
+```
+
+<a id="fuzzy-matching"></a>
+### Fuzzy matching
+
+Non-nil `ejc-use-flx` enables `flx` fuzzy matching engine for autocompletion.
+[flx-ido](https://github.com/lewang/flx) is required in this case, it can
+be installed by your favorite approach. E.g. by `MEPLA`:
+<kbd>M-x package-install [RET] flx-ido [RET]</kbd>
+
+```lisp
+(setq ejc-use-flx t)
+```
+
+Customize the minimum number of typed chars required to use `flx` for
+autocompletion, 3 by default:
+
+```lisp
+(setq ejc-flx-threshold 3)
 ```
 
 Setup connections with `ejc-create-connection` function in your `.emacs`.
@@ -376,6 +396,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 * [spinner.el](https://github.com/Malabarba/spinner.el)
 * [direx.el](https://github.com/m2ym/direx-el)
+* [flx-ido](https://github.com/lewang/flx) *(optional)*.
 
 ## License
 
