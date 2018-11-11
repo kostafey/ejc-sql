@@ -190,7 +190,7 @@ something#"
   (delq 'ac-source-abbrev ac-sources)
   (delq 'ac-source-words-in-same-mode-buffers ac-sources))
 
-(add-hook 'ejc-sql-minor-mode-hook #'ejc-ac-hook)
+(add-hook 'ejc-sql-minor-mode-hook 'ejc-ac-hook)
 
 (defun ejc-flx-propertize (obj score &optional add-score)
   "Return propertized copy of obj according to score.
