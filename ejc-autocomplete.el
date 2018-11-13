@@ -118,13 +118,11 @@ Uppercase by default, set to nil to use downcase candidates."
 
 (defun ejc-get-ansi-sql-words ()
   (unless (or (ejc-return-point) (ejc-get-prefix-word))
-    (progn
-      (if ejc-candidates-uppercase
-          (append (mapcar 'upcase ejc-ansi-sql-words)
-                  (mapcar 'upcase ejc-auxulary-sql-words))
-        (append ejc-ansi-sql-words
-                ejc-auxulary-sql-words)))
-    nil))
+    (if ejc-candidates-uppercase
+        (append (mapcar 'upcase ejc-ansi-sql-words)
+                (mapcar 'upcase ejc-auxulary-sql-words))
+      (append ejc-ansi-sql-words
+              ejc-auxulary-sql-words))))
 
 (defun ac-ejc-documentation (symbol-name)
   "Return a documentation string for SYMBOL-NAME."
