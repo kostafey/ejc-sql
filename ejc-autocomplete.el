@@ -24,6 +24,7 @@
 (require 'ejc-interaction)
 (require 'ejc-doc)
 (require 'ejc-format)
+(require 'ejc-flx)
 
 (defcustom ejc-candidates-uppercase t
   "Use uppercase candidates or downcase.
