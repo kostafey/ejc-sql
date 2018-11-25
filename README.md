@@ -24,6 +24,7 @@ formatting of SQL scripts are also available.
   - [PostgreSQL connection](#postgresqlconnection)
 - [Usage](#usage)
 - [Autocomplete](#autocomplete)
+- [Yasnippet](#yasnippet)
 - [Troubleshooting](#troubleshooting)
 - [Requirements](#requirements)
 - [License](#license)
@@ -374,6 +375,15 @@ Autocompletion is available for the following databases:
 * Informix
 * H2
 
+## Yasnippet
+
+List of snippets:
+
+* select
+* insert
+* update
+* begin
+
 ## Troubleshooting
 
 ```
@@ -397,6 +407,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 * [spinner.el](https://github.com/Malabarba/spinner.el)
 * [direx.el](https://github.com/m2ym/direx-el)
 * [flx-ido](https://github.com/lewang/flx) *(optional)*.
+* [yasnippet](https://github.com/joaotavora/yasnippet) *(optional)*.
 
 ## License
 

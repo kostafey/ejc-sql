@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: select
+# key: select
+# --
+SELECT `(if (eq sql-product 'sqlserver) "first 20 ")`*
+FROM ${1:table_name}
+WHERE `(if (eq sql-product 'oracle) "rownum < 20\n  AND ")`${2:where_stmt}

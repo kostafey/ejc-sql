@@ -176,7 +176,7 @@ something#"
 
 (defun ejc-ac-hook ()
   (if ejc-use-flx
-      (if (functionp 'flx-flex-match)
+      (if (require 'flx-ido nil 'noerror)
           (setq-local ac-match-function 'ejc-flx-match-internal)
         (error (concat "Please install flx.el and flx-ido.el "
                        "if you use fuzzy completion"))))
@@ -185,6 +185,18 @@ something#"
   (delq 'ac-source-words-in-same-mode-buffers ac-sources))
 
 (add-hook 'ejc-sql-minor-mode-hook 'ejc-ac-hook)
+
+(when (require 'yasnippet nil 'noerror)
+  (setq yas-snippet-dirs
+        (cons (expand-file-name "snippets"
+                                (file-name-directory
+                                 (locate-library "ejc-sql")))
+              yas-snippet-dirs))
+  (defun ejc-yas-downcase-key (args)
+    (if ejc-sql-mode
+        (cl-callf downcase (nth 1 args)))
+    args)
+  (advice-add 'yas--fetch :filter-args #'ejc-yas-downcase-key))
 
 (provide 'ejc-autocomplete)
 
