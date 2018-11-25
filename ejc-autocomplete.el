@@ -32,21 +32,6 @@ Uppercase by default, set to nil to use downcase candidates."
   :safe #'booleanp
   :group 'ejc-sql)
 
-(defcustom ejc-use-flx nil
-  "Non-nil enables `flx' fuzzy matching engine autocompletion."
-  :group 'ejc-sql
-  :type 'boolean)
-
-(defcustom ejc-flx-threshold 3
-  "The minimum number of typed chars required to use `flx' for autocompletion."
-  :group 'ejc-sql
-  :type 'integer)
-
-(defface ejc-flx-highlight-face
-  '((t :inherit popup-isearch-match))
-  "Face used by flx for highlighting flx match characters in `ejc-sql' buffers."
-  :group 'ejc-sql)
-
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
   (save-excursion
@@ -78,8 +63,8 @@ Uppercase by default, set to nil to use downcase candidates."
   `(if (ejc-buffer-connected-p)
        (let* ((prefix-1 (ejc-get-prefix-word))
               (prefix-2 (save-excursion
-                           (search-backward "." nil t)
-                           (ejc-get-prefix-word)))
+                          (search-backward "." nil t)
+                          (ejc-get-prefix-word)))
               (result (funcall ,cand-fn
                                ejc-db
                                (apply
@@ -90,7 +75,9 @@ Uppercase by default, set to nil to use downcase candidates."
               (pending (car result))
               (candidates-cache (cdr result)))
          (if (ejc-not-nil-str pending)
-             (message "Receiving database structure...")
+             (progn
+               (message "Receiving database structure...")
+               (list))
            candidates-cache))))
 
 ;;;###autoload
@@ -197,70 +184,6 @@ something#"
   (delq 'ac-source-words-in-same-mode-buffers ac-sources))
 
 (add-hook 'ejc-sql-minor-mode-hook 'ejc-ac-hook)
-
-(defun ejc-flx-propertize (obj score &optional add-score)
-  "Return propertized copy of obj according to score.
-
-SCORE of nil means to clear the properties."
-  (let ((block-started (cadr score))
-        (last-char nil)
-        (str (if (consp obj)
-                 (substring-no-properties (car obj))
-               (substring-no-properties obj))))
-
-    (when score
-      (dolist (char (cdr score))
-        (when (and last-char
-                   (not (= (1+ last-char) char)))
-          (put-text-property block-started (1+ last-char) 'face 'ejc-flx-highlight-face str)
-          (setq block-started char))
-        (setq last-char char))
-      (put-text-property block-started  (1+ last-char) 'face 'ejc-flx-highlight-face str)
-      (when add-score
-        (setq str (format "%s [%s]" str (car score)))))
-    (if (consp obj)
-        (cons str (cdr obj))
-      str)))
-
-(defun ejc-flx-decorate (things &optional clear)
-  "Add ido text properties to THINGS.
-If CLEAR is specified, clear them instead."
-  (if flx-ido-use-faces
-      (let ((decorate-count (min ido-max-prospects
-                                 (length things))))
-        (nconc
-         (cl-loop for thing in things
-               for i from 0 below decorate-count
-               collect (if clear
-                           (ejc-flx-propertize thing nil)
-                         (ejc-flx-propertize (car thing) (cdr thing))))
-         (if clear
-             (nthcdr decorate-count things)
-           (mapcar 'car (nthcdr decorate-count things)))))
-    (if clear
-        things
-      (mapcar 'car things))))
-
-(defun ejc-flx-match-internal (query items)
-  "Match QUERY against ITEMS using flx scores.
-
-If filtered item count is still greater than `flx-ido-threshold', then use flex."
-  (if (< (length query) ejc-flx-threshold)
-      (all-completions query items)
-    (let ((flex-result (flx-flex-match query items)))
-      (if (< (length flex-result) flx-ido-threshold)
-          (let* ((matches (cl-loop for item in flex-result
-                                   for string = (ido-name item)
-                                   for score = (flx-score string query flx-file-cache)
-                                   if score
-                                   collect (cons item score)
-                                   into matches
-                                   finally return matches)))
-            (ejc-flx-decorate (delete-consecutive-dups
-                               (sort matches
-                                     (lambda (x y) (> (cadr x) (cadr y))))
-                               t)))
-        flex-result))))
 
 (provide 'ejc-autocomplete)
 

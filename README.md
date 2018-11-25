@@ -129,10 +129,10 @@ be installed by your favorite approach. E.g. by `MEPLA`:
 ```
 
 Customize the minimum number of typed chars required to use `flx` for
-autocompletion, 3 by default:
+autocompletion, 2 by default:
 
 ```lisp
-(setq ejc-flx-threshold 3)
+(setq ejc-flx-threshold 2)
 ```
 
 Setup connections with `ejc-create-connection` function in your `.emacs`.
