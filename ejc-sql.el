@@ -274,7 +274,8 @@ For more details about parameters see `get-connection' function in jdbc.clj:
          ejc-connections))
 
 (defvar ejc-product-assoc
-  '((sqlserver . ms)))
+  '((sqlserver . ms)
+    (oracle:sid . oracle)))
 
 (defun ejc-configure-sql-buffer (product-name)
   (unless (org-src-edit-buffer-p)

@@ -253,17 +253,19 @@
                          (.toLowerCase (first (.split prop "=")))))
                       props-list))) "="))))))
 
+(def product-assoc {"oracle:sid" "oracle"})
+
 (defn get-db-type [db]
-  (let [{:keys [subprotocol connection-uri dbtype]} db]
-    (keyword
-     (or dbtype
-         subprotocol
-         (let [attrs (.split connection-uri ":")]
-           (if (= (second attrs) "jtds")
-             ;; jdbc:jtds:sqlserver://...
-             (nth attrs 2)
-             ;; jdbc:sqlserver://localhost\instance:1433;
-             (second attrs)))))))
+  (let [{:keys [subprotocol connection-uri dbtype]} db
+        result (or dbtype
+                   subprotocol
+                   (let [attrs (.split connection-uri ":")]
+                     (if (= (second attrs) "jtds")
+                       ;; jdbc:jtds:sqlserver://...
+                       (nth attrs 2)
+                       ;; jdbc:sqlserver://localhost\instance:1433;
+                       (second attrs))))]
+    (keyword (or (product-assoc result) result))))
 
 (defn- get? [obj & [force?]]
   (if (and obj (or force? (realized? obj)))
