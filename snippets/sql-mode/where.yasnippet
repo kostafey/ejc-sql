@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: where
+# key: where
+# --
+WHERE `(if (eq sql-product 'oracle) "rownum < 20\n  AND ")`${2:where_stmt}
