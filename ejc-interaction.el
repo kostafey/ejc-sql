@@ -23,11 +23,9 @@
 (require 'clomacs)
 
 (clomacs-create-httpd-start ejc-httpd-start
-                            :lib-prefix "ejc"
                             :lib-name "ejc-sql")
 
 (clomacs-create-httpd-stop ejc-httpd-stop
-                           :lib-prefix "ejc"
                            :lib-name "ejc-sql")
 
 (clomacs-defun ejc-sql-set-db
