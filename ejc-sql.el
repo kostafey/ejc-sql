@@ -261,7 +261,7 @@ For more details about parameters see `get-connection' function in jdbc.clj:
                         (cons :subname subname)
                         (cons :user user)
                         (cons :password password)
-                        (cons :classpath classpath)
+                        (cons :classpath (file-truename classpath))
                         (cons :separator separator)
                         (cons :classname classname)))
                  new-connection))
