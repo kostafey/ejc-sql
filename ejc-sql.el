@@ -608,6 +608,14 @@ Buffer can be saved to file with `ejc-temp-editor-file' path."
   (find-file-read-only (ejc-get-log-file-path))
   (end-of-buffer))
 
+;;;###autoload
+(defun ejc-version ()
+  "Get the ejc-sql version as string."
+  (interactive)
+  (if (require 'pkg-info nil t)
+      (message "ejc-sql %s" (pkg-info-version-info 'ejc-sql))
+    (error "Cannot determine version without package pkg-info")))
+
 (provide 'ejc-sql)
 
 ;;; ejc-sql.el ends here
