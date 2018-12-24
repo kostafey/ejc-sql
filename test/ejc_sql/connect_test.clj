@@ -14,6 +14,18 @@
 
 (deftest sql-statement-separators-test
   (testing "get-separator-re fn test."
+    (is (= '("USE testdb; "
+             "CREATE TABLE customer (id INT);")
+           (seq (.split "USE testdb; /CREATE TABLE customer (id INT);"
+                        (get-separator-re "/")))))
+    (is (= '("USE testdb "
+             "CREATE TABLE customer (id INT)")
+           (seq (.split "USE testdb ;CREATE TABLE customer (id INT);"
+                        (get-separator-re ";")))))
+    (is (= '("SELECT * FROM some_table "
+             "SELECT * FROM other_table")
+           (seq (.split "SELECT * FROM some_table ;SELECT * FROM other_table"
+                        (get-separator-re ";")))))
     (is (= '("SELECT * FROM some_table "
              "SELECT * FROM other_table")
            (seq (.split "SELECT * FROM some_table /SELECT * FROM other_table"

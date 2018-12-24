@@ -137,8 +137,9 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   "Handle cases where separator is a part of string in SQL query.
 E.g. you can use default separator char `/` in this query:
 SELECT * FROM urls WHERE path like '%http://localhost%'"
-  (String/format "%s(?=(([^('|\")]*('|\")){2})*[^('|\")]*$)"
-                 (into-array separator)))
+  (String/format
+   "%s(?=(([^\"']*[\"']){2})*[^\"']*$)"
+   (into-array separator)))
 
 (defn eval-sql-core
   "The core SQL evaluation function."
