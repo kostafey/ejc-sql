@@ -278,14 +278,13 @@ For more details about parameters see `get-connection' function in jdbc.clj:
     (oracle:sid . oracle)))
 
 (defun ejc-configure-sql-buffer (product-name)
-  (unless (org-src-edit-buffer-p)
+  (unless (or (derived-mode-p 'org-mode) (org-src-edit-buffer-p))
     (sql-mode))
   (sql-set-product (or (cdr (assoc-string product-name ejc-product-assoc))
                        (car (assoc-string product-name sql-product-alist))
                        "ansi"))
   (auto-complete-mode t)
   (auto-fill-mode t)
-  (ejc-sql-mode)
   (ejc-sql-mode t))
 
 (defun ejc-load-conn-statistics ()
@@ -313,6 +312,20 @@ For more details about parameters see `get-connection' function in jdbc.clj:
     (prin1 ejc-conn-statistics (current-buffer))
     (insert ")")))
 
+(defun ejc-set-mode-name (connection-name)
+  "Show CONNECTION-NAME as part of `mode-name' in `mode-line'."
+  (setq mode-name (format "%s->[%s]"
+                          (car (split-string mode-name "->\\[.+\\]"))
+                          connection-name)))
+
+(defun ejc-add-connection (product-name connection-name db)
+  "Add ejc connection information to current buffer.
+Prepare buffer to operate as `ejc-sql-mode' buffer."
+  (ejc-configure-sql-buffer product-name)
+  (setq-local ejc-connection-name connection-name)
+  (setq-local ejc-db db)
+  (ejc-set-mode-name connection-name))
+
 ;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."
@@ -326,17 +339,21 @@ For more details about parameters see `get-connection' function in jdbc.clj:
                 (> (or (lax-plist-get conn-statistics c1) 0)
                    (or (lax-plist-get conn-statistics c2) 0)))
               conn-list)))))
-  (let ((db (cdr (ejc-find-connection connection-name))))
+  (let* ((db (cdr (ejc-find-connection connection-name)))
+         (product-name (or (alist-get :subprotocol db)
+                           (alist-get :dbtype db))))
     (ejc-update-conn-statistics connection-name)
-    (ejc-configure-sql-buffer (or (alist-get :subprotocol db)
-                                  (alist-get :dbtype db)))
+    (ejc-configure-sql-buffer product-name)
+    (if (derived-mode-p 'org-mode)
+        (add-hook 'org-src-mode-hook
+                  (lambda () (ejc-add-connection product-name connection-name db))))
     (setq-local ejc-connection-name connection-name)
     (setq-local ejc-db db)
     (message "Connection started...")
     (ejc-connect-to-db db)
     (when (ejc-validate-connection :db ejc-db
                                    :timeout ejc-connection-validate-timeout)
-      (setq mode-name (format "%s->[%s]" mode-name connection-name))
+      (ejc-set-mode-name connection-name)
       (message "Connected."))))
 
 ;;;###autoload

@@ -23,6 +23,9 @@ formatting of SQL scripts are also available.
   - [H2 connection](#h2connection)
   - [PostgreSQL connection](#postgresqlconnection)
 - [Usage](#usage)
+  - [Basic use case](#basic-use-case)
+  - [Use with org-mode](#use-with-org-mode)
+  - [Use existing nREPL](#use-existing-nrepl)
 - [Autocomplete](#autocomplete)
 - [Yasnippet](#yasnippet)
 - [Troubleshooting](#troubleshooting)
@@ -276,6 +279,9 @@ The configuration of `ejs-sql` might looks like this:
 
 ## Usage
 
+<a id="basic-use-case"></a>
+### Basic use case
+
 First of all, open your SQL buffer file (or any temporary buffer) and connect
 to your database
 
@@ -311,7 +317,54 @@ select * from my_table
 
 Have much fun!
 
-## Use existing nREPL
+<a id="use-with-org-mode"></a>
+### Use with org-mode
+
+You can run `M-x ejc-connect <RET> my-db-connection <RET>` in `org-mode`
+buffers. In this case, `major-mode` will persists as `org-mode`, but all
+connection-relatead data will be added to the buffer.
+
+```markdown
+* Create DB
+** Product table
+*** Create
+#+begin_src sql :eval no
+CREATE TABLE product (
+  id    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  name  VARCHAR(30)   NOT NULL,
+  price DECIMAL(7,2)
+);
+#+end_src
+
+*** Fill
+#+begin_src sql :eval no
+INSERT INTO product (name, price) VALUES ('socks', 1.25);
+INSERT INTO product (name, price) VALUES ('sweater', 14.56);
+INSERT INTO product (name, price) VALUES ('jeans', 25.30);
+#+end_src
+
+*** Select
+#+begin_src sql :eval no
+SELECT * FROM product;
+/
+SELECT * FROM product WHERE name = 'jeans';
+#+end_src
+```
+
+Place point (cursor) into code snippet and run SQL statements via
+<kbd>C-c C-c</kbd> as always. For `org-mode` buffers code snippets borders
+considered as batch of SQL statement(s) boundaries.
+Furthermore, you can use `ejc-sql-separator` (`/` by default) to divide
+batch of SQL statement(s) inside code block as in `sql-mode` buffers.
+
+If your `org-mode` buffer connected via `ejc-connect`, any time you run
+<kbd>C-c '</kbd> (`org-edit-special`) for code snippets, you will get new
+buffer with this minor-mode (`ejc-sql-mode`) and all connection-related data.
+So, you can operate inside it like in ordinary `sql-mode` buffer, witch is
+already connected to database.
+
+<a id="use-existing-nrepl"></a>
+### Use existing nREPL
 
 If you have to restart Emacs multiple times, you can keep the ejc-sql clojure
 backend alive between Emacs restarts by running this backend out of Emacs, and

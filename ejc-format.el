@@ -28,24 +28,54 @@
 (defun ejc-sql-separator-re ()
   (format "^\\s-*%s\\s-*" ejc-sql-separator))
 
+(defun ejc-get-org-begin ()
+  "Obtain position for begin of code snippet in `org-mode' buffers."
+  (save-excursion
+    (if (and (derived-mode-p 'org-mode)
+             (re-search-backward "^\\s-*#\\+begin_[(src)(example)].*" nil t nil))
+        (line-end-position)
+      (point-min))))
+
+(defun ejc-get-org-end ()
+  "Obtain position for end of code snippet in `org-mode' buffers."
+  (save-excursion
+    (if (and (derived-mode-p 'org-mode)
+             (re-search-forward "^\\s-*#\\+end_[(src)(example)]" nil t nil))
+        (line-beginning-position)
+      (point-max))))
+
+(defun ejc-get-border-top ()
+  "Get top position of batch statement(s) seperator `ejc-sql-separator'.
+Upper position of this batch statement(s)."
+  (save-excursion
+    (if (re-search-backward (ejc-sql-separator-re) nil t nil)
+        (forward-char)
+      (beginning-of-buffer))
+    (point)))
+
+(defun ejc-get-border-bottom ()
+  "Get bottom position of batch statements seperator `ejc-sql-separator'
+Bottom position of this batch statement(s)."
+  (save-excursion
+    (if (re-search-forward (ejc-sql-separator-re) nil t nil)
+        (backward-char)
+      (end-of-buffer))
+    (point)))
+
 (defun ejc-get-sql-boundaries-at-point ()
   "Returns list of the boundaries of the current SQL expression.
 The current SQL expression is the expression under the point.
 The boundaries are marked by `ejc-sql-separator's. If the top or
 bottom boundary is absent - it returns beginning or end of the
-buffer."
-  (save-excursion
-    (let* ((beg (progn
-                  (if (re-search-backward (ejc-sql-separator-re) nil t nil)
-                      (forward-char)
-                    (beginning-of-buffer))
-                  (point)))
-           (end (progn
-                  (if (re-search-forward (ejc-sql-separator-re) nil t nil)
-                      (backward-char)
-                    (end-of-buffer))
-                  (point))))
-      (list beg end))))
+buffer. For `org-mode' buffers code snippets borders can be used
+as batch of SQL statement(s) boundaries: #+begin_src and #+end_src."
+  (let* ((beg (max
+               (ejc-get-org-begin)
+               (ejc-get-border-top)))
+         (end (min
+               (ejc-get-org-end)
+               (ejc-get-border-bottom))))
+    (list beg end)))
 
 (defmacro ejc--in-sql-boundaries (beg end &rest body)
   "Inject `beg' and `end' local variables to the `body' scope.
