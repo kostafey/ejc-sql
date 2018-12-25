@@ -14,6 +14,46 @@
 
 (deftest sql-statement-separators-test
   (testing "get-separator-re fn test."
+    (is (= (list
+            (str """
+select * from table""")
+            (str """
+select * from urls where id=1""")
+            (str """ -- http://localhost:8080
+select * from urls"""))
+           (seq (.split
+                 (str """
+select * from table;
+select * from urls where id=1; -- http://localhost:8080
+select * from urls;""")
+                 (get-separator-re ";")))))
+
+    (is (= (list
+            (str """
+select * from table; """)
+            (str """
+select * from urls where id=1; -- http://localhost:8080
+select * from urls;"""))
+           (seq
+            (.split
+             (str """
+select * from table; /
+select * from urls where id=1; -- http://localhost:8080
+select * from urls;""")
+             (get-separator-re "/")))))
+
+    (is (= (list
+            (str "  -- http://localhost:8080\n"
+                 "select * from urls"))
+           (seq (.split (str "  -- http://localhost:8080\n"
+                             "select * from urls")
+                        (get-separator-re "/")))))
+    (is (= (list
+            (str "-- http://localhost:8080\n"
+                 "select * from urls"))
+           (seq (.split (str "-- http://localhost:8080\n"
+                             "select * from urls")
+                        (get-separator-re "/")))))
     (is (= '("USE testdb; "
              "CREATE TABLE customer (id INT);")
            (seq (.split "USE testdb; /CREATE TABLE customer (id INT);"

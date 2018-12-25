@@ -138,7 +138,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
 E.g. you can use default separator char `/` in this query:
 SELECT * FROM urls WHERE path like '%http://localhost%'"
   (String/format
-   "%s(?=(([^\"']*[\"']){2})*[^\"']*$)"
+   "%s(?<!\\s{0,1000}--.{0,1000})(?=(([^\"']*[\"']){2})*[^\"']*$)"
    (into-array separator)))
 
 (defn eval-sql-core
