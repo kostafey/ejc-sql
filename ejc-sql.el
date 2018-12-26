@@ -81,6 +81,13 @@
   :group 'ejc-sql
   :type 'integer)
 
+(defcustom ejc-org-mode-show-results t
+  "When t show SQL query results of `org-mode' code snippet in the same buffer.
+An expected behaviour for `org-mode' users. Disable popup window with SQL
+results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
+  :group 'ejc-sql
+  :type 'boolean)
+
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
@@ -285,7 +292,8 @@ For more details about parameters see `get-connection' function in jdbc.clj:
                        "ansi"))
   (auto-complete-mode t)
   (auto-fill-mode t)
-  (ejc-sql-mode t))
+  (unless (derived-mode-p 'org-mode)
+    (ejc-sql-mode t)))
 
 (defun ejc-load-conn-statistics ()
   "Load connection usage statistics to `ejc-conn-statistics' var."
@@ -326,6 +334,24 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
   (setq-local ejc-db db)
   (ejc-set-mode-name connection-name))
 
+(defun ejc-eval-org-snippet (body params)
+  "Used to eval SQL code in `org-mode' code snippets."
+  (let* ((beg (save-excursion
+                (goto-char (nth 5 (org-babel-get-src-block-info)))
+                (end-of-line)
+                (right-char 1)
+                (point)))
+         (end (+ beg (length body))))
+    (ejc-eval-user-sql-at-point
+     :beg beg
+     :end end
+     :sync ejc-org-mode-show-results
+     :show-last-result (not ejc-org-mode-show-results))
+    (if ejc-org-mode-show-results
+        (with-temp-buffer
+          (insert-file-contents ejc-result-file-path)
+          (buffer-string)))))
+
 ;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."
@@ -344,9 +370,10 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
                            (alist-get :dbtype db))))
     (ejc-update-conn-statistics connection-name)
     (ejc-configure-sql-buffer product-name)
-    (if (derived-mode-p 'org-mode)
-        (add-hook 'org-src-mode-hook
-                  (lambda () (ejc-add-connection product-name connection-name db))))
+    (when (derived-mode-p 'org-mode)
+      (defalias 'org-babel-execute:sql 'ejc-eval-org-snippet)
+      (add-hook 'org-src-mode-hook
+                (lambda () (ejc-add-connection product-name connection-name db))))
     (setq-local ejc-connection-name connection-name)
     (setq-local ejc-db db)
     (message "Connection started...")
@@ -414,8 +441,14 @@ any SQL buffer to connect to exact database, as always. "
   (unless (ejc-buffer-connected-p)
     (error "Run M-x ejc-connect first!")))
 
-(cl-defun ejc-eval-sql-and-log (db sql
-                                   &key start-time rows-limit append sync)
+(cl-defun ejc-eval-sql-and-log (db
+                                sql
+                                &key
+                                start-time
+                                rows-limit
+                                append
+                                sync
+                                show-last-result)
   (when sql
     (spinner-start 'rotating-line)
     (setq ejc-current-buffer-query (current-buffer))
@@ -426,7 +459,8 @@ any SQL buffer to connect to exact database, as always. "
        :start-time start-time
        :rows-limit rows-limit
        :append append
-       :sync sync))))
+       :sync sync
+       :show-last-result show-last-result))))
 
 (defun ejc-message-query-done (start-time result)
   (message
@@ -439,11 +473,16 @@ any SQL buffer to connect to exact database, as always. "
                        (current-time))
    (float-time (time-since start-time))))
 
-(cl-defun ejc-complete-query (result-file-path &key start-time result)
+(cl-defun ejc-complete-query (result-file-path
+                              &key
+                              start-time
+                              result
+                              show-last-result)
   (setq ejc-result-file-path result-file-path)
   (with-current-buffer ejc-current-buffer-query
     (spinner-stop))
-  (ejc-show-last-result nil :result-file-path ejc-result-file-path)
+  (if show-last-result
+      (ejc-show-last-result nil :result-file-path ejc-result-file-path))
   (if (and start-time result)
       (ejc-message-query-done start-time result))
   nil)
@@ -503,14 +542,15 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
         (ejc-select-db-meta-script ejc-db :view
                                    :entity-name entity-name))))))
 
-(cl-defun ejc-eval-user-sql (sql &key rows-limit sync)
+(cl-defun ejc-eval-user-sql (sql &key rows-limit sync show-last-result)
   "Evaluate SQL by user: reload and show query results buffer, update log."
   (message "Processing SQL query...")
   (ejc-eval-sql-and-log  ejc-db
                          sql
                          :rows-limit rows-limit
                          :start-time (current-time)
-                         :sync sync))
+                         :sync sync
+                         :show-last-result show-last-result))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
@@ -519,13 +559,20 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (let ((sql (buffer-substring beg end)))
     (ejc-eval-user-sql sql)))
 
-(cl-defun ejc-eval-user-sql-at-point (&key sync)
+(cl-defun ejc-eval-user-sql-at-point (&key
+                                      sync
+                                      beg
+                                      end
+                                      (show-last-result t))
   "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer
 boundaries."
   (interactive)
   (ejc-check-connection)
-  (ejc-flash-this-sql)
-  (ejc-eval-user-sql (ejc-get-sql-at-point) :sync sync))
+  (ejc-flash-this-sql :beg beg
+                      :end end)
+  (ejc-eval-user-sql (ejc-get-sql-at-point :beg beg :end end)
+                     :sync sync
+                     :show-last-result show-last-result))
 
 (defun ejc-show-tables-list ()
   "Output tables list."

@@ -325,10 +325,10 @@ buffers. In this case, `major-mode` will persists as `org-mode`, but all
 connection-relatead data will be added to the buffer.
 
 ```markdown
-* Create DB
-** Product table
-*** Create
-#+begin_src sql :eval no
+#+TITLE: Create DB
+* Product table
+** Create
+#+begin_src sql
 CREATE TABLE product (
   id    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   name  VARCHAR(30)   NOT NULL,
@@ -336,19 +336,26 @@ CREATE TABLE product (
 );
 #+end_src
 
-*** Fill
-#+begin_src sql :eval no
+** Fill
+#+begin_src sql
 INSERT INTO product (name, price) VALUES ('socks', 1.25);
 INSERT INTO product (name, price) VALUES ('sweater', 14.56);
 INSERT INTO product (name, price) VALUES ('jeans', 25.30);
 #+end_src
 
-*** Select
-#+begin_src sql :eval no
+** Select
+#+begin_src sql
 SELECT * FROM product;
 /
 SELECT * FROM product WHERE name = 'jeans';
 #+end_src
+
+#+RESULTS:
+: id | name    | price
+: ---+---------+------
+: 1  | socks   | 1.25
+: 2  | sweater | 14.56
+: 3  | jeans   | 25.30
 ```
 
 Place point (cursor) into code snippet and run SQL statements via
@@ -356,6 +363,17 @@ Place point (cursor) into code snippet and run SQL statements via
 considered as batch of SQL statement(s) boundaries.
 Furthermore, you can use `ejc-sql-separator` (`/` by default) to divide
 batch of SQL statement(s) inside code block as in `sql-mode` buffers.
+
+The SQL query evaluation result will be added to this `org-mode` buffer in
+`#+RESULTS:` section - an expected behaviour for `org-mode` users by default
+(see example above).
+
+To avoid this behaviour and get results in popup window - as `ejc-sql` users
+expected, add to your `.emacs`:
+
+```lisp
+(setq ejc-org-mode-show-results nil)
+```
 
 If your `org-mode` buffer connected via `ejc-connect`, any time you run
 <kbd>C-c '</kbd> (`org-edit-special`) for code snippets, you will get new
