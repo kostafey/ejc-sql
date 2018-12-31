@@ -74,7 +74,7 @@
       (ejc-connect connect))
     (end-of-buffer)
     (insert sql)
-    (ejc-eval-user-sql-at-point :sync t))
+    (ejc-eval-user-sql-at-point :sync t :display-result t))
   ;; Get the results.
   (with-current-buffer ejc-results-buffer
     (buffer-substring-no-properties (point-max) (point-min))))

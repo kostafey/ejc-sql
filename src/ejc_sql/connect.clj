@@ -174,7 +174,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 (clomacs-defn complete-query ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
 
-(defn- eval-user-sql [db sql & {:keys [rows-limit append show-last-result]}]
+(defn- eval-user-sql [db sql & {:keys [rows-limit append display-result]}]
   (let [clear-sql (.trim sql)]
     (o/log-sql (str clear-sql "\n"))
     (let [[result-type result] (eval-sql-core
@@ -195,19 +195,19 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                    :terminated
                    :error)
                  :done)
-       :show-last-result (if show-last-result "t")))))
+       :display-result display-result))))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
-  [db sql & {:keys [rows-limit append start-time sync show-last-result]
+  [db sql & {:keys [rows-limit append start-time sync display-result]
              :or {append false
                   sync false
-                  show-last-result true}}]
+                  display-result true}}]
   (letfn [(run-query []
             (eval-user-sql db sql
                            :rows-limit rows-limit
                            :append append
-                           :show-last-result show-last-result))]
+                           :display-result display-result))]
     (if sync
       (run-query)
       (swap! current-query assoc

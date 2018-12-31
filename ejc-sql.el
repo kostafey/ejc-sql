@@ -346,7 +346,7 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
      :beg beg
      :end end
      :sync ejc-org-mode-show-results
-     :show-last-result (not ejc-org-mode-show-results))
+     :display-result (not ejc-org-mode-show-results))
     (if ejc-org-mode-show-results
         (with-temp-buffer
           (insert-file-contents ejc-result-file-path)
@@ -448,7 +448,7 @@ any SQL buffer to connect to exact database, as always. "
                                 rows-limit
                                 append
                                 sync
-                                show-last-result)
+                                display-result)
   (when sql
     (spinner-start 'rotating-line)
     (setq ejc-current-buffer-query (current-buffer))
@@ -460,7 +460,7 @@ any SQL buffer to connect to exact database, as always. "
        :rows-limit rows-limit
        :append append
        :sync sync
-       :show-last-result show-last-result))))
+       :display-result display-result))))
 
 (defun ejc-message-query-done (start-time result)
   (message
@@ -477,11 +477,11 @@ any SQL buffer to connect to exact database, as always. "
                               &key
                               start-time
                               result
-                              show-last-result)
+                              display-result)
   (setq ejc-result-file-path result-file-path)
   (with-current-buffer ejc-current-buffer-query
     (spinner-stop))
-  (if show-last-result
+  (if display-result
       (ejc-show-last-result nil :result-file-path ejc-result-file-path))
   (if (and start-time result)
       (ejc-message-query-done start-time result))
@@ -542,7 +542,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
         (ejc-select-db-meta-script ejc-db :view
                                    :entity-name entity-name))))))
 
-(cl-defun ejc-eval-user-sql (sql &key rows-limit sync show-last-result)
+(cl-defun ejc-eval-user-sql (sql &key rows-limit sync display-result)
   "Evaluate SQL by user: reload and show query results buffer, update log."
   (message "Processing SQL query...")
   (ejc-eval-sql-and-log  ejc-db
@@ -550,7 +550,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
                          :rows-limit rows-limit
                          :start-time (current-time)
                          :sync sync
-                         :show-last-result show-last-result))
+                         :display-result display-result))
 
 (defun ejc-eval-user-sql-region (beg end)
   "Evaluate SQL bounded by the selection area."
@@ -563,7 +563,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
                                       sync
                                       beg
                                       end
-                                      (show-last-result t))
+                                      (display-result t))
   "Evaluate SQL bounded by the `ejc-sql-separator' or/and buffer
 boundaries."
   (interactive)
@@ -572,7 +572,7 @@ boundaries."
                       :end end)
   (ejc-eval-user-sql (ejc-get-sql-at-point :beg beg :end end)
                      :sync sync
-                     :show-last-result show-last-result))
+                     :display-result display-result))
 
 (defun ejc-show-tables-list ()
   "Output tables list."
