@@ -44,7 +44,31 @@ Bottom position of this batch statement(s)."
     (if (re-search-forward (ejc-sql-separator-re) nil t nil)
         (backward-char)
       (end-of-buffer))
+    (if (equal (string (preceding-char)) "\n")
+        (backward-char 1))
+    (let ((sep-len (length ejc-sql-separator)))
+      (if (equal (buffer-substring (- (point) sep-len) (point))
+                 ejc-sql-separator)
+          (backward-char sep-len)))
     (point)))
+
+(defun ejc-get-org-begin ()
+  "Obtain position for begin of code snippet in `org-mode' buffers."
+  (save-excursion
+    (if (and (derived-mode-p 'org-mode)
+             (re-search-backward "^\\s-*#\\+begin_[(src)(example)].*"
+                                 nil t nil))
+        (line-end-position)
+      (point-min))))
+
+(defun ejc-get-org-end ()
+  "Obtain position for end of code snippet in `org-mode' buffers."
+  (save-excursion
+    (if (and (derived-mode-p 'org-mode)
+             (re-search-forward "^\\s-*#\\+end_[(src)(example)]"
+                                nil t nil))
+        (line-beginning-position)
+      (point-max))))
 
 (cl-defun ejc-get-sql-boundaries-at-point (&optional beg end)
   "Returns list of the boundaries of the current SQL expression.
@@ -52,12 +76,12 @@ The current SQL expression is the expression under the point.
 The boundaries are marked by `ejc-sql-separator's. If the top or
 bottom boundary is absent - it returns beginning or end of the
 buffer. Set BEG and END parameters to add manual boundaries restrictions."
-  (let* ((beg (if beg
-                  (max beg (ejc-get-border-top))
-                (ejc-get-border-top)))
-         (end (if end
-                  (min end (ejc-get-border-bottom))
-                (ejc-get-border-bottom))))
+  (let* ((beg (max (or beg (point-min))
+                   (ejc-get-border-top)
+                   (ejc-get-org-begin)))
+         (end (min (or end (point-max))
+                   (ejc-get-border-bottom)
+                   (ejc-get-org-end))))
     (list beg end)))
 
 (defmacro ejc--in-sql-boundaries (beg end &rest body)

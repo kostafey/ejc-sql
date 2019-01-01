@@ -325,9 +325,9 @@ buffers. In this case, `major-mode` will persists as `org-mode`, but all
 connection-relatead data will be added to the buffer.
 
 ```markdown
-#+TITLE: Create DB
-* Product table
-** Create
+* Create DB
+** Product table
+*** Create
 #+begin_src sql
 CREATE TABLE product (
   id    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -336,14 +336,14 @@ CREATE TABLE product (
 );
 #+end_src
 
-** Fill
+*** Fill
 #+begin_src sql
 INSERT INTO product (name, price) VALUES ('socks', 1.25);
 INSERT INTO product (name, price) VALUES ('sweater', 14.56);
 INSERT INTO product (name, price) VALUES ('jeans', 25.30);
 #+end_src
 
-** Select
+*** Select
 #+begin_src sql
 SELECT * FROM product;
 /
@@ -482,7 +482,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 
 ## License
 
-Copyright © 2012-2018 Kostafey <kostafey@gmail.com> and
+Copyright © 2012-2019 Kostafey <kostafey@gmail.com> and
 [contributors](https://github.com/kostafey/ejc-sql/contributors)
 
 Distributed under the General Public License 2.0+

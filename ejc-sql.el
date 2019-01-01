@@ -1,6 +1,6 @@
 ;;; ejc-sql.el --- Emacs SQL client uses Clojure JDBC. -*- lexical-binding: t -*-
 
-;;; Copyright © 2012-2018 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2019 - Kostafey <kostafey@gmail.com>
 
 ;; Author: Kostafey <kostafey@gmail.com>
 ;; URL: https://github.com/kostafey/ejc-sql
@@ -341,7 +341,9 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
                 (end-of-line)
                 (right-char 1)
                 (point)))
-         (end (+ beg (length body))))
+         (end (save-excursion
+                (goto-char beg)
+                (+ beg (length body) (skip-chars-forward "\t ")))))
     (ejc-eval-user-sql-at-point
      :beg beg
      :end end
