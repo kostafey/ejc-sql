@@ -1,6 +1,6 @@
 ;;; ejc-format.el -- SQL formatting library (the part of ejc-sql).
 
-;;; Copyright © 2012-2018 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -87,7 +87,9 @@ buffer. Set BEG and END parameters to add manual boundaries restrictions."
 (defmacro ejc--in-sql-boundaries (beg end &rest body)
   "Inject `beg' and `end' local variables to the `body' scope.
 `beg' and `end' are the boundaries of the current sql expression."
-  `(let* ((boundaries (ejc-get-sql-boundaries-at-point ,beg ,end))
+  `(let* ((boundaries (if (and (boundp ',beg) (boundp ',end))
+                          (ejc-get-sql-boundaries-at-point ,beg ,end)
+                        (ejc-get-sql-boundaries-at-point)))
           (,beg (car boundaries))
           (,end (car (cdr boundaries))))
      ,@body))
