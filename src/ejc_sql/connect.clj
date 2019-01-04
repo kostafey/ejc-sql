@@ -204,10 +204,19 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                   sync false
                   display-result true}}]
   (letfn [(run-query []
-            (eval-user-sql db sql
-                           :rows-limit rows-limit
-                           :append append
-                           :display-result display-result))]
+            (try
+              (eval-user-sql db sql
+                             :rows-limit rows-limit
+                             :append append
+                             :display-result display-result)
+              (catch Exception e
+                (complete-query
+                 (o/write-result-file
+                  (str (.getMessage e) "\n"
+                       (s/join "\n" (.getStackTrace e))))
+                 :start-time (:start-time @current-query)
+                 :result :error
+                 :display-result true))))]
     (if sync
       (run-query)
       (swap! current-query assoc
