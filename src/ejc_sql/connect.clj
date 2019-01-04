@@ -268,7 +268,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
   (query-meta db (str "SELECT * FROM " table-name)))
 
 (defn get-table-meta
-  "Discribe table."
+  "Describe table."
   [db table-name]
   (let [result-map (table-meta db table-name)
         success (:success result-map)
@@ -281,4 +281,5 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
         (str head
              (ejc-sql.lib/simple-join head-length "-") "\n"
              (o/print-table result-data))
-        result-data)))))
+        result-data))
+     :display-result true)))
