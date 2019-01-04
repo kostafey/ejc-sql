@@ -475,14 +475,18 @@ any SQL buffer to connect to exact database, as always. "
                        (current-time))
    (float-time (time-since start-time))))
 
+(defun ejc-spinner-stop ()
+  "Stop spinner indicating current running query."
+  (with-current-buffer ejc-current-buffer-query
+    (spinner-stop)))
+
 (cl-defun ejc-complete-query (result-file-path
                               &key
                               start-time
                               result
                               display-result)
   (setq ejc-result-file-path result-file-path)
-  (with-current-buffer ejc-current-buffer-query
-    (spinner-stop))
+  (ejc-spinner-stop)
   (if display-result
       (ejc-show-last-result nil :result-file-path ejc-result-file-path))
   (if (and start-time result)
@@ -496,8 +500,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (if (and (clomacs-get-connection "ejc-sql")
            (ejc--is-query-running-p))
       (let ((start-time (ejc--cancel-query)))
-        (with-current-buffer ejc-current-buffer-query
-          (spinner-stop))
+        (ejc-spinner-stop)
         (ejc-message-query-done start-time :terminated))
     (keyboard-quit)))
 

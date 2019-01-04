@@ -174,28 +174,36 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 (clomacs-defn complete-query ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
 
+(clomacs-defn spinner-stop ejc-spinner-stop
+              :doc "Stop spinner indicating current running query.")
+
 (defn- eval-user-sql [db sql & {:keys [rows-limit append display-result]}]
   (let [clear-sql (.trim sql)]
     (o/log-sql (str clear-sql "\n"))
     (let [[result-type result] (eval-sql-core
                                 :db  db
-                                :sql clear-sql)]
-      (complete-query
-       (o/write-result-file (if (= result-type :result-set)
-                              (o/print-table result rows-limit)
-                              result)
-                            :append append)
-       :start-time (:start-time @current-query)
-       :result (if (and
-                    (not (= result-type :result-set))
-                    (= (s/lower-case (subs result 0 (min 5 (count result))))
-                       "error"))
-                 (if (.contains (s/lower-case result)
-                                "closed connection")
-                   :terminated
-                   :error)
-                 :done)
-       :display-result display-result))))
+                                :sql clear-sql)
+          complete-output
+          (complete-query
+           (o/write-result-file (if (= result-type :result-set)
+                                  (o/print-table result rows-limit)
+                                  result)
+                                :append append)
+           :start-time (:start-time @current-query)
+           :result (if (and
+                        (not (= result-type :result-set))
+                        (= (s/lower-case (subs result 0
+                                               (min 5 (count result))))
+                           "error"))
+                     (if (.contains (s/lower-case result)
+                                    "closed connection")
+                       :terminated
+                       :error)
+                     :done)
+           :display-result display-result)]
+      (if-not (empty? complete-output)
+        ;; Elisp unexpected result
+        (spinner-stop)))))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
@@ -210,13 +218,17 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                              :append append
                              :display-result display-result)
               (catch Exception e
-                (complete-query
-                 (o/write-result-file
-                  (str (.getMessage e) "\n"
-                       (s/join "\n" (.getStackTrace e))))
-                 :start-time (:start-time @current-query)
-                 :result :error
-                 :display-result true))))]
+                (let [complete-output
+                      (complete-query
+                       (o/write-result-file
+                        (str (.getMessage e) "\n"
+                             (s/join "\n" (.getStackTrace e))))
+                       :start-time (:start-time @current-query)
+                       :result :error
+                       :display-result true)]
+                  (if-not (empty? complete-output)
+                    ;; Elisp unexpected result
+                    (spinner-stop))))))]
     (if sync
       (run-query)
       (swap! current-query assoc
