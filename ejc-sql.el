@@ -334,6 +334,11 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
   (setq-local ejc-db db)
   (ejc-set-mode-name connection-name))
 
+(defun ejc-get-result-file-path ()
+  (or ejc-result-file-path
+      (setq ejc-result-file-path
+            (ejc--get-result-file-path))))
+
 (defun ejc-eval-org-snippet (body params)
   "Used to eval SQL code in `org-mode' code snippets."
   (let* ((beg (save-excursion
@@ -351,7 +356,7 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
      :display-result (not ejc-org-mode-show-results))
     (if ejc-org-mode-show-results
         (with-temp-buffer
-          (insert-file-contents ejc-result-file-path)
+          (insert-file-contents (ejc-get-result-file-path))
           (buffer-string)))))
 
 ;;;###autoload
@@ -485,10 +490,11 @@ any SQL buffer to connect to exact database, as always. "
                               start-time
                               result
                               display-result)
-  (setq ejc-result-file-path result-file-path)
+  (if result-file-path
+      (setq ejc-result-file-path result-file-path))
   (ejc-spinner-stop)
   (if display-result
-      (ejc-show-last-result nil :result-file-path ejc-result-file-path))
+      (ejc-show-last-result))
   (if (and start-time result)
       (ejc-message-query-done start-time result))
   nil)
@@ -633,24 +639,17 @@ If this buffer is not exists or it was killed - create buffer via
       ejc-results-buffer
     (ejc-create-output-buffer)))
 
-(cl-defun ejc-show-last-result
-    (&optional result
-               &key
-               (result-file-path ejc-result-file-path))
+(cl-defun ejc-show-last-result (&optional result)
   "Popup buffer with last SQL execution result output."
   (interactive)
   (let ((output-buffer (ejc-get-output-buffer))
         (old-split split-width-threshold))
     (set-buffer output-buffer)
-    (if (or result result-file-path)
-        (progn
-          (read-only-mode -1)
-          (erase-buffer)
-          (if (and result (not result-file-path))
-              ;; result only
-              (insert result)
-            ;; result-file-path only
-            (insert-file-contents result-file-path))))
+    (read-only-mode -1)
+    (erase-buffer)
+    (if result
+        (insert result)
+      (insert-file-contents (ejc-get-result-file-path)))
     (read-only-mode 1)
     (beginning-of-buffer)
     (setq split-width-threshold nil)

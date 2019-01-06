@@ -33,10 +33,12 @@
   "ejc-sql-result.txt")
 
 (defn get-result-file-path []
-  (.getAbsolutePath
-   (File.
-    (File. (System/getProperty "java.io.tmpdir"))
-    result-file-name)))
+  (s/replace
+   (.getAbsolutePath
+    (File.
+     (File. (System/getProperty "java.io.tmpdir"))
+     result-file-name))
+   #"\\" "/"))
 
 (defn get-log-dir []
   (file (if windows?
@@ -162,7 +164,7 @@ E.g. transtofm from: a | b | c into: a | 1
                                  :or {append false}}]
   (let [result-file-path (get-result-file-path)]
     (spit result-file-path text :append append)
-    (s/replace result-file-path #"\\" "/")))
+    result-file-path))
 
 (defn clear-result-file []
   (write-result-file ""))

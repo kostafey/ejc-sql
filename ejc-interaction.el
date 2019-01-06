@@ -97,6 +97,11 @@
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect)
 
+(clomacs-defun ejc--get-result-file-path
+               get-result-file-path
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.output)
+
 (clomacs-defun ejc-print
                clojure.core/print
                :lib-name "ejc-sql"
