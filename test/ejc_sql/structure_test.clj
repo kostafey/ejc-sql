@@ -74,5 +74,29 @@
               (get-colomns-candidates nil sql "a")))
          ;; Table alias: spaces + tabs near to "AS"
          (= '("nil" "id" "name")
-            (let [sql "SELECT a. FROM users  AS 	a"]
+            (let [sql "SELECT a. FROM users  AS     a"]
               (get-colomns-candidates nil sql "a"))))))))
+
+(deftest check-if-insert-sql-test
+  (testing "insert-sql? fn test."
+    (is (= "product"
+           (insert-sql?
+            "INSERT INTO product (name, price) VALUES ('socks', 1.25);")))
+    (is (= nil
+           (insert-sql?
+            "UPDATE product SET price = 1.26 WHERE product = 'socks'")))
+    (is (= nil
+           (insert-sql?
+            "SELECT * FROM product")))))
+
+(deftest check-if-update-sql-test
+  (testing "update-sql? fn test."
+    (is (= nil
+           (update-sql?
+            "INSERT INTO product (name, price) VALUES ('socks', 1.25);")))
+    (is (= "product"
+           (update-sql?
+            "UPDATE product SET price = 1.26 WHERE product = 'socks'")))
+    (is (= nil
+           (update-sql?
+            "SELECT * FROM product")))))

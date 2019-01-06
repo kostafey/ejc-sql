@@ -1,6 +1,6 @@
 ;;; structure.clj -- Receive database stucture and keep it in cache.
 
-;;; Copyright © 2016-2018 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2016-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -377,6 +377,18 @@ check if receiveing process is not running, then start it."
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
 
+(defn autocomplete-loading []
+  "Not loaded tables yet. Output pending db structure data..."
+  (list "t"))
+
+(defn autocomplete-result [result]
+  "Output autocomplete result."
+  (cons "nil" result))
+
+(defn autocomplete-nothing []
+  "Output autocomplete nothing."
+  (list "nil"))
+
 (defn get-owners-candidates [db sql prefix-1 & _]
   "Return owners candidates autocomplete list from the database structure
 cache, async request to fill it, if not yet.
@@ -388,11 +400,11 @@ if `pending` is nil - no request is running, return result immediately."
     (if prefix-1
       ;; Assume schema|table.#<schemas-list> is not applicable.
       ;; So, return empty list.
-      (list "nil")
+      (autocomplete-nothing)
       (if owners
-        (cons "nil" owners)
+        (autocomplete-result owners)
         ;; pending owners...
-        (list "t")))))
+        (autocomplete-loading)))))
 
 (defn get-tables-candidates [db sql prefix-1 & _]
   "Return tables candidates autocomplete list."
@@ -406,9 +418,9 @@ if `pending` is nil - no request is running, return result immediately."
                    ;; unknown?.# case
                    (list)))]
     (if tables
-      (cons "nil" tables)
+      (autocomplete-result tables)
       ;; pending tables...
-      (list "t"))))
+      (autocomplete-loading))))
 
 (defn match-alias? [sql owner table probable-alias]
   "Check if prefix (`probable-alias`) is alias for `table` in this `sql`."
@@ -429,52 +441,84 @@ if `pending` is nil - no request is running, return result immediately."
    (mapv #(get-tables db % true)
          (get-owners db true))))
 
+(def insert-re
+  (re-pattern (str "(?i)\\s*INSERT\\s+INTO\\s+(\\S+)\\s+")))
+
+(defn insert-sql? [sql]
+  "If `sql` is INSERT query, return a table name used to insert new records.
+Otherwise return nil."
+  (second (re-find insert-re sql)))
+
+(def update-re
+  (re-pattern (str "(?i)\\s*UPDATE\\s(\\S+)\\s+\n*SET.*")))
+
+(defn update-sql? [sql]
+  "If `sql` is UPDATE query, return a table name used to modify the existing
+records. Otherwise return nil."
+  (second (re-find update-re sql)))
+
 (defn get-colomns-candidates [db sql prefix-1 & [prefix-2]]
   "Return colomns candidates autocomplete list."
   ;; Possible cases:
   ;; 1. [owner|schema.]table.#<colomns-list>
   ;; 2. SELECT alias.#<colomns-list> FROM [owner|schema.]table AS alias
   ;; 3. SELECT complex-alias.#<colomns-list> FROM (SELECT...) AS complex-alias
+  ;; 4. INSERT INTO table (field1, .#) values (123, 'text')
+  ;; 5. UPDATE table SET field1 = 123, .# = 'text' WHERE id = 1
   ;;
-  ;; In any case consider `prefix-1` as table or alias
-  ;; and optional `prefix-2` as owner or schema
-  (if (not prefix-1)
-    ;; TODO: cases for:
-    ;; INSERT INTO table (field1, #) values (123, 'text')
-    ;; UPDATE table SET field1 = 123, # = 'text' WHERE id = 1
-    (list "nil")
-    (let [owner prefix-2
-          tables-list (if owner
-                        (get-tables db owner)
-                        ;; In case of queries like
-                        ;; "SELECT u.# FROM custom.Users as u"
-                        ;; when "custom" is not the current
-                        ;; schema, the full DB structure tree
-                        ;; sould be built to obtain overall
-                        ;; tables list for all owners/schemas.
-                        (if (get-namespace db)
-                          ;; Database has namespaces
-                          (if (not (get-owners db))
-                            ;; Not received owners list yet -
-                            ;; pending...
-                            (do
-                              (future (get-all-tables db))
-                              nil)
-                            ;; Owners list is already here -
-                            ;; force tables list receiving!
-                            (get-all-tables db))
-                          ;; Database hasn't namespaces -
-                          ;; no owners needed
-                          (get-tables db)))]
-      (if (and tables-list
-               (not-empty (filter not-empty tables-list)))
+  ;; In any case, consider `prefix-1` as table or alias
+  ;; and optional `prefix-2` as owner or schema.
+  ;; When no any prefix at all, check for 4 (INSERT) or 5 (UPDATE) case.
+  (let [owner prefix-2
+        tables-list (if owner
+                      (get-tables db owner)
+                      ;; In case of queries like
+                      ;; "SELECT u.# FROM custom.Users as u"
+                      ;; when "custom" is not the current
+                      ;; schema, the full DB structure tree
+                      ;; sould be built to obtain overall
+                      ;; tables list for all owners/schemas.
+                      (if (get-namespace db)
+                        ;; Database has namespaces
+                        (if (not (get-owners db))
+                          ;; Not received owners list yet -
+                          ;; pending...
+                          (do
+                            (future (get-all-tables db))
+                            nil)
+                          ;; Owners list is already here -
+                          ;; force tables list receiving!
+                          (get-all-tables db))
+                        ;; Database hasn't namespaces -
+                        ;; no owners needed
+                        (get-tables db)))]
+    (if (not (and tables-list
+                  (not-empty (filter not-empty tables-list))))
+      ;; no tables yet
+      ;; pending tables...
+      (autocomplete-loading)
+      ;; Tables list loaded:
+      (if (not prefix-1)
+        (let [insert-or-update-table (or (insert-sql? sql)
+                                         (update-sql? sql))]
+          (cond
+            (and (not-empty insert-or-update-table)
+                 (in? tables-list insert-or-update-table
+                      :case-sensitive false))
+            ;; INSERT INTO table (field1, .#) values (123, 'text')
+            ;; or
+            ;; UPDATE table SET field1 = 123, .# = 'text' WHERE id = 1
+            (autocomplete-result
+             (get-colomns db insert-or-update-table true))
+            ;; SELECT or other queries types
+            :else (autocomplete-nothing)))
         (if (in? tables-list prefix-1 :case-sensitive false)
           ;; table.#<colomns-list>
           (let [table prefix-1
                 ;; force columns-cache obtaining...
                 columns-list (get-colomns db table true)]
             ;; ok - columns
-            (cons "nil" columns-list))
+            (autocomplete-result columns-list))
           (let [sql (c/clean-sql sql)
                 table-alias (first
                              (filter
@@ -483,7 +527,7 @@ if `pending` is nil - no request is running, return result immediately."
                               tables-list))]
             (if table-alias
               ;; table-alias.#<colomns-list>
-              (cons "nil" (get-colomns db table-alias true))
+              (autocomplete-result (get-colomns db table-alias true))
               ;; Check "SELECT t.# FROM (SELECT ... ) AS t" case.
               (let [pattern (re-pattern (str "\\(.+\\)(\\s|\\s(as)\\s)"
                                              prefix-1))
@@ -495,16 +539,13 @@ if `pending` is nil - no request is running, return result immediately."
                   (let [{:keys [success result]} (c/query-meta db complex-alias)]
                     (if success
                       ;; complex-alias.#<colomns-list>
-                      (cons "nil" (mapv :name result))
+                      (autocomplete-result (mapv :name result))
                       ;; Can't execute "blah blah" to get metadata in
                       ;; "SELECT t.# FROM (blah blah) AS t" case.
-                      (list "nil")))
+                      (autocomplete-nothing)))
                   ;; unknown?.# case
                   ;; nothing to complete
-                  (list "nil"))))))
-        ;; no tables yet
-        ;; pending tables...
-        (list "t")))))
+                  (autocomplete-nothing))))))))))
 
 (defn get-cache []
   "Output actual cache."
