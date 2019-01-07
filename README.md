@@ -267,7 +267,7 @@ The configuration of `ejs-sql` might looks like this:
 ### PostgreSQL connection
 ```lisp
 ;; PostgreSQL example
-(ejc-create-connetion
+(ejc-create-connection
  "PostgreSQL-db-connection"
  :classpath (concat "~/.m2/repository/postgresql/postgresql/9.3.1102.jdbc41/"
                      "postgresql-9.3-1102.jdbc41.jar")
