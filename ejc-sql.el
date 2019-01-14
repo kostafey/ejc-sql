@@ -359,6 +359,21 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
           (insert-file-contents (ejc-get-result-file-path))
           (buffer-string)))))
 
+(defun ejc-get-product-name (db)
+  (or (alist-get :subprotocol db)
+      (alist-get :dbtype db)))
+
+(defun ejc-org-edit-special (orig-fun &rest args)
+  (if (and (equal "sql" (car (org-babel-get-src-block-info)))
+           (boundp 'ejc-db) ejc-db
+           (boundp 'ejc-connection-name) ejc-connection-name)
+      (let* ((db ejc-db)
+             (connection-name ejc-connection-name)
+             (product-name (ejc-get-product-name db)))
+        (apply orig-fun args)
+        (ejc-add-connection product-name connection-name db))
+    (apply orig-fun args)))
+
 ;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."
@@ -373,14 +388,12 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
                    (or (lax-plist-get conn-statistics c2) 0)))
               conn-list)))))
   (let* ((db (cdr (ejc-find-connection connection-name)))
-         (product-name (or (alist-get :subprotocol db)
-                           (alist-get :dbtype db))))
+         (product-name (ejc-get-product-name db)))
     (ejc-update-conn-statistics connection-name)
     (ejc-configure-sql-buffer product-name)
     (when (derived-mode-p 'org-mode)
       (defalias 'org-babel-execute:sql 'ejc-eval-org-snippet)
-      (add-hook 'org-src-mode-hook
-                (lambda () (ejc-add-connection product-name connection-name db))))
+      (advice-add 'org-edit-special :around #'ejc-org-edit-special))
     (setq-local ejc-connection-name connection-name)
     (setq-local ejc-db db)
     (message "Connection started...")
