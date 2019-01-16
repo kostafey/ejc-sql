@@ -604,7 +604,8 @@ boundaries."
   (ejc-check-connection)
   (ejc-eval-user-sql
    (ejc-select-db-meta-script ejc-db :all-tables)
-   :rows-limit 0))
+   :rows-limit 0
+   :display-result t))
 
 (defun ejc-show-user-types-list (&optional owner)
   "Output user types list."
