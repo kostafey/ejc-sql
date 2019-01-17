@@ -23,6 +23,7 @@
 (require 'ejc-lib)
 (require 'ejc-interaction)
 (require 'ejc-doc)
+(require 'ejc-keywords)
 (require 'ejc-format)
 (require 'ejc-flx)
 
@@ -112,11 +113,22 @@ Uppercase by default, set to nil to use downcase candidates."
       (append ejc-ansi-sql-words
               ejc-auxulary-sql-words))))
 
+(defun ejc-get-keywords ()
+  (unless (or (ejc-return-point) (ejc-get-prefix-word))
+    (if ejc-candidates-uppercase
+        (mapcar 'upcase (ejc-get-db-keywords
+                         (ejc-get-product-name ejc-db)
+                         nil))
+      (mapcar 'lowercase (ejc-get-db-keywords
+                          (ejc-get-product-name ejc-db)
+                          nil)))))
+
 (defun ac-ejc-documentation (symbol-name)
   "Return a documentation string for SYMBOL-NAME."
   (if (not ejc-doc-created-p)
       (ejc-create-doc))
-  (gethash (intern (downcase symbol-name)) ejc-sql-doc))
+  (or (gethash (intern (downcase symbol-name)) ejc-sql-doc)
+      (gethash (intern symbol-name) ejc-mysql-doc)))
 
 (defvar ac-source-ejc-owners
   '((candidates . ejc-owners-candidates)
@@ -157,6 +169,13 @@ Uppercase by default, set to nil to use downcase candidates."
     (requires . 1)
     (cache . t)))
 
+(defvar ac-source-ejc-keywords
+  '((candidates . ejc-get-keywords)
+    (symbol . "s")
+    (document . ac-ejc-documentation)
+    (requires . 1)
+    (cache . t)))
+
 ;;;###autoload
 (defun ejc-ac-setup ()
   "Add the completion sources to the front of `ac-sources'.
@@ -168,6 +187,7 @@ prefix-1.#
 something#"
   (interactive)
   (add-to-list 'ac-sources 'ac-source-ejc-ansi-sql)
+  (add-to-list 'ac-sources 'ac-source-ejc-keywords)
   (add-to-list 'ac-sources 'ac-source-ejc-owners)
   (add-to-list 'ac-sources 'ac-source-ejc-tables)
   (add-to-list 'ac-sources 'ac-source-ejc-tables-point)

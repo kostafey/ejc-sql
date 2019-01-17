@@ -43,7 +43,19 @@
 
 (defun ejc-strip-text-properties (txt)
   (set-text-properties 0 (length txt) nil txt)
-      txt)
+  txt)
+
+(defvar ejc-product-assoc
+  '((sqlserver . ms)
+    (oracle:sid . oracle)))
+
+(defun ejc-get-product-name (db)
+  "Get database type from db connection info."
+  (let ((product-name (or (alist-get :subprotocol db)
+                          (alist-get :dbtype db))))
+    (or (cdr (assoc-string product-name ejc-product-assoc))
+        (car (assoc-string product-name sql-product-alist))
+        'ansi)))
 
 (provide 'ejc-lib)
 

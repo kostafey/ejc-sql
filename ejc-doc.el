@@ -1,7 +1,20 @@
-;;; ejc-doc.el -- SQL quick hints documentation.
+;;; ejc-doc.el -- SQL quick hints documentation (the part of ejc-sql).
 
-;; Copyright © wikipedia.org
-;; Creative Commons Attribution-ShareAlike license
+;;; Copyright © 2018-2019 - Kostafey <kostafey@gmail.com>
+
+;;; This program is free software; you can redistribute it and/or modify
+;;; it under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation; either version 2, or (at your option)
+;;; any later version.
+;;;
+;;; This program is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;; GNU General Public License for more details.
+;;;
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program; if not, write to the Free Software Foundation,
+;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 ;;; Code:
 
@@ -9,15 +22,16 @@
 
 (defconst ejc-sql-doc (make-hash-table :test 'eq))
 
-(defun ejc-fill-doc (&rest args)
- (-reduce (lambda (key val)
-            (puthash key val ejc-sql-doc))
-          args))
+(defun ejc-fill-doc (hash-const &rest args)
+  (-reduce (lambda (key val)
+             (puthash key val hash-const))
+           args))
 
 (defvar ejc-doc-created-p nil)
 
 (defun ejc-create-doc ()
   (ejc-fill-doc
+   ejc-sql-doc
    'select
    "The SQL SELECT statement returns a result
 set of records from one or more tables.
@@ -67,7 +81,9 @@ ALTER TABLE <table_name> { DROP        } [ COLUMN ]
 ALTER TABLE <table_name> { ADD | ALTER } CONSTRAINT
             <constraint_name> <constraint_definition>;
 ALTER TABLE <table_name> { DROP        } CONSTRAINT
-            <constraint_name>;")
+            <constraint_name>;"
+   'distinct
+   "Return different values")
  (setq ejc-doc-created-p t))
 
 (provide 'ejc-doc)

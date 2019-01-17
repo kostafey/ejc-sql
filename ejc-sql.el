@@ -280,16 +280,10 @@ For more details about parameters see `get-connection' function in jdbc.clj:
   (-find (lambda (x) (equal (car x) connection-name))
          ejc-connections))
 
-(defvar ejc-product-assoc
-  '((sqlserver . ms)
-    (oracle:sid . oracle)))
-
 (defun ejc-configure-sql-buffer (product-name)
   (unless (or (derived-mode-p 'org-mode) (org-src-edit-buffer-p))
     (sql-mode))
-  (sql-set-product (or (cdr (assoc-string product-name ejc-product-assoc))
-                       (car (assoc-string product-name sql-product-alist))
-                       "ansi"))
+  (sql-set-product product-name)
   (auto-complete-mode t)
   (auto-fill-mode t)
   (unless (derived-mode-p 'org-mode)
@@ -358,10 +352,6 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
         (with-temp-buffer
           (insert-file-contents (ejc-get-result-file-path))
           (buffer-string)))))
-
-(defun ejc-get-product-name (db)
-  (or (alist-get :subprotocol db)
-      (alist-get :dbtype db)))
 
 (defun ejc-org-edit-special (orig-fun &rest args)
   (if (and (equal "sql" (car (org-babel-get-src-block-info)))
