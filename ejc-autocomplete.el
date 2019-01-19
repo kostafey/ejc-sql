@@ -188,10 +188,10 @@ something#"
 
 (when (require 'yasnippet nil 'noerror)
   (setq yas-snippet-dirs
-        (cons (expand-file-name "snippets"
-                                (file-name-directory
-                                 (locate-library "ejc-sql")))
-              yas-snippet-dirs))
+        (nconc yas-snippet-dirs
+               (list (expand-file-name "snippets"
+                                       (file-name-directory
+                                        (locate-library "ejc-sql"))))))
   (defun ejc-yas-downcase-key (args)
     (if ejc-sql-mode
         (cl-callf downcase (nth 1 args)))
