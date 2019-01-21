@@ -295,7 +295,7 @@ Since connection information is buffer-local, you should use `ejc-connect`
 for any new buffer. There is a handy function to create temporary buffer for
 playing with SQL: `ejc-switch-to-sql-editor-buffer`.
 
-Then type you queries like this:
+Then type your queries like this:
 
 ```SQL
 select something from my_table
