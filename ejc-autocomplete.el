@@ -1,6 +1,6 @@
 ;;; ejc-autocomplete.el -- SQL completitions at point (the part of ejc-sql).
 
-;;; Copyright © 2013-2018 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -116,12 +116,8 @@ Uppercase by default, set to nil to use downcase candidates."
 (defun ejc-get-keywords ()
   (unless (or (ejc-return-point) (ejc-get-prefix-word))
     (if ejc-candidates-uppercase
-        (mapcar 'upcase (ejc-get-db-keywords
-                         (ejc-get-product-name ejc-db)
-                         nil))
-      (mapcar 'lowercase (ejc-get-db-keywords
-                          (ejc-get-product-name ejc-db)
-                          nil)))))
+        (mapcar 'upcase (ejc-get-keywords-inner ejc-db nil))
+      (mapcar 'lowercase (ejc-get-keywords-inner ejc-db nil)))))
 
 (defun ac-ejc-documentation (symbol-name)
   "Return a documentation string for SYMBOL-NAME."

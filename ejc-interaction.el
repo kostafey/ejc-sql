@@ -1,6 +1,6 @@
 ;;; ejc-interaction.el -- ejc-sql interact with Clojure. -*- lexical-binding: t -*-
 
-;;; Copyright © 2013-2018 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -179,6 +179,12 @@
 
 (clomacs-defun ejc-get-cached-colomns-list
                get-colomns
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
+(clomacs-defun ejc-get-keywords-inner
+               get-keywords
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure
                :return-type :list)

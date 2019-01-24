@@ -132,7 +132,9 @@
                           "")))
     :objects     (fn [& _]
                    (str "SELECT * FROM all_objects WHERE object_type IN "
-                        "('FUNCTION','PROCEDURE','PACKAGE')"))}
+                        "('FUNCTION','PROCEDURE','PACKAGE')"))
+    :keywords    (fn [& _]
+                   (str "SELECT * FROM V$RESERVED_WORDS ORDER BY keyword"))}
    ;;--------
    :informix
    ;;--------
@@ -373,6 +375,20 @@ check if receiveing process is not running, then start it."
                     db table))))
   (get? (get->in @cache [db :colomns table])
         force?))
+
+(defn get-keywords [db force?]
+  "Return keywords list for this database type from cache if already received
+from DB, check if receiveing process is not running, then start it."
+  (when (get-in queries [(get-db-type db) :keywords])
+    (if (not (get->in @cache [db :keywords]))
+      (swap! cache assoc-in [db :keywords]
+             (future ((fn [db]
+                        (let [sql (select-db-meta-script db :keywords)]
+                          (sort
+                           (filter #(not (nil? %))
+                                   (db->column db sql)))))
+                      db))))
+    (get? (get->in @cache [db :keywords]) force?)))
 
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
