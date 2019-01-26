@@ -182,7 +182,9 @@
                        "     information_schema.tables AS t                \n"
                        "WHERE t.table_schema = s.schema_name               \n"
                        "  AND LCASE(s.schema_name) != 'information_schema' \n"))
-    :columns (default-queries :columns)}
+    :columns (default-queries :columns)
+    :keywords (fn [& _]
+                "SELECT topic FROM information_schema.help")}
    ;;-------
    :sqlserver ; ms sql server
    ;;-------
