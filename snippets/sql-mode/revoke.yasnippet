@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: revoke
+# key: revoke
+# --
+REVOKE ALL PRIVILEGES
+  ON ${1:object_type}
+  FROM ${2:user};

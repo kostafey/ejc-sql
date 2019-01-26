@@ -25,12 +25,16 @@
 
 (def cache (atom {}))
 
+(defn- safe-query [db sql]
+  "Return `sql` query result or nil in case of error."
+  (try
+    (j/query db (list sql) {:as-arrays? true})
+    (catch Exception _)))
+
 (defn- db->column [db sql]
   "Execute `sql`, return first column of result set as result list."
   (if sql
-    (rest
-     (map first
-          (j/query db (list sql) {:as-arrays? true})))))
+    (rest (map first (safe-query db sql)))))
 
 (defn- db->>column [db sql]
   "Execute `sql`, return last column of result set as result list."
@@ -165,7 +169,9 @@
                        "FROM information_schema.schemata AS s, \n"
                        "     information_schema.tables AS t    \n"
                        "WHERE t.table_schema = s.schema_name   \n"))
-    :columns (default-queries :columns)}
+    :columns (default-queries :columns)
+    :keywords    (fn [& _]
+                   (str "SELECT name FROM mysql.help_keyword"))}
    ;;--------
    :h2
    ;;--------
