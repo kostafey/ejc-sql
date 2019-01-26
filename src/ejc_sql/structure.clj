@@ -138,7 +138,7 @@
                    (str "SELECT * FROM all_objects WHERE object_type IN "
                         "('FUNCTION','PROCEDURE','PACKAGE')"))
     :keywords    (fn [& _]
-                   (str "SELECT * FROM V$RESERVED_WORDS ORDER BY keyword"))}
+                   "SELECT * FROM V$RESERVED_WORDS ORDER BY keyword")}
    ;;--------
    :informix
    ;;--------
@@ -170,8 +170,8 @@
                        "     information_schema.tables AS t    \n"
                        "WHERE t.table_schema = s.schema_name   \n"))
     :columns (default-queries :columns)
-    :keywords    (fn [& _]
-                   (str "SELECT name FROM mysql.help_keyword"))}
+    :keywords (fn [& _]
+                "SELECT name FROM mysql.help_keyword")}
    ;;--------
    :h2
    ;;--------
@@ -215,7 +215,9 @@
    {:owners  (default-queries :owners)
     :tables  (default-queries :tables)
     :all-tables (default-queries :all-tables)
-    :columns (default-queries :columns)}})
+    :columns (default-queries :columns)
+    :keywords (fn [& _]
+                "SELECT word FROM pg_get_keywords()")}})
 
 (defn autocomplete-available-for-db? [db-type]
   (queries db-type))
