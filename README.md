@@ -24,6 +24,7 @@ formatting of SQL scripts are also available.
   - [MS SQL Server connection](#mssqlserverconnection)
   - [Oracle connection](#oracleconnection)
   - [H2 connection](#h2connection)
+  - [SQLite connection](#sqliteconnection)
   - [PostgreSQL connection](#postgresqlconnection)
 - [Usage](#usage)
   - [Basic use case](#basic-use-case)
@@ -271,6 +272,22 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
  :connection-uri (concat "jdbc:h2:tcp://192.168.0.1:9092/~/db/database;ifexists=true;"
                          "user=a_user;"
                          "password=secret;"))
+```
+
+<a id="sqliteconnection"></a>
+### SQLite connection
+```lisp
+;; SQLite example
+(ejc-create-connection
+ "SQLite-conn"
+ :classpath (concat "~/.m2/repository/org/xerial/sqlite-jdbc/"
+                    "3.23.1/sqlite-jdbc-3.23.1.jar")
+ :subprotocol "sqlite"
+ ;; Use absolute path, e.g.:
+ ;; "file:///home/user/projects/my_proj/db/sqdb.db"
+ ;; or expand it by file-truename:
+ :subname (concat "file://"
+                  (file-truename "~/projects/my_proj/db/sqdb.db")))
 ```
 
 <a id="postgresqlconnection"></a>
