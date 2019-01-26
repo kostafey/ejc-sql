@@ -23,7 +23,6 @@
 (require 'ejc-lib)
 (require 'ejc-interaction)
 (require 'ejc-doc)
-(require 'ejc-keywords)
 (require 'ejc-format)
 (require 'ejc-flx)
 
@@ -123,8 +122,7 @@ Uppercase by default, set to nil to use downcase candidates."
   "Return a documentation string for SYMBOL-NAME."
   (if (not ejc-doc-created-p)
       (ejc-create-doc))
-  (or (gethash (intern (downcase symbol-name)) ejc-sql-doc)
-      (gethash (intern symbol-name) ejc-mysql-doc)))
+  (gethash (intern (downcase symbol-name)) ejc-sql-doc))
 
 (defvar ac-source-ejc-owners
   '((candidates . ejc-owners-candidates)
