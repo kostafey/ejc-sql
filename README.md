@@ -167,6 +167,13 @@ The configuration of `ejs-sql` might looks like this:
  :password "secret")
 ```
 
+If you want to see MySQL-specific keywords in autocompletion
+list, please provide access to `mysql.help_keyword` table
+for your user, e.g.:
+```sql
+GRANT SELECT ON mysql.help_keyword TO a_user;
+```
+
 <a id="mssqlserverconnection"></a>
 ### MS SQL Server connection
 ```lisp

@@ -1,6 +1,6 @@
 ;;; ejc-autocomplete.el -- SQL completitions at point (the part of ejc-sql).
 
-;;; Copyright © 2013-2018 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -112,6 +112,12 @@ Uppercase by default, set to nil to use downcase candidates."
       (append ejc-ansi-sql-words
               ejc-auxulary-sql-words))))
 
+(defun ejc-get-keywords ()
+  (unless (or (ejc-return-point) (ejc-get-prefix-word))
+    (if ejc-candidates-uppercase
+        (mapcar 'upcase (ejc-get-keywords-inner ejc-db nil))
+      (mapcar 'lowercase (ejc-get-keywords-inner ejc-db nil)))))
+
 (defun ac-ejc-documentation (symbol-name)
   "Return a documentation string for SYMBOL-NAME."
   (if (not ejc-doc-created-p)
@@ -157,6 +163,13 @@ Uppercase by default, set to nil to use downcase candidates."
     (requires . 1)
     (cache . t)))
 
+(defvar ac-source-ejc-keywords
+  '((candidates . ejc-get-keywords)
+    (symbol . "s")
+    (document . ac-ejc-documentation)
+    (requires . 1)
+    (cache . t)))
+
 ;;;###autoload
 (defun ejc-ac-setup ()
   "Add the completion sources to the front of `ac-sources'.
@@ -168,6 +181,7 @@ prefix-1.#
 something#"
   (interactive)
   (add-to-list 'ac-sources 'ac-source-ejc-ansi-sql)
+  (add-to-list 'ac-sources 'ac-source-ejc-keywords)
   (add-to-list 'ac-sources 'ac-source-ejc-owners)
   (add-to-list 'ac-sources 'ac-source-ejc-tables)
   (add-to-list 'ac-sources 'ac-source-ejc-tables-point)

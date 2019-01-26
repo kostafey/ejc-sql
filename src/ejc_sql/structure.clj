@@ -25,12 +25,16 @@
 
 (def cache (atom {}))
 
+(defn- safe-query [db sql]
+  "Return `sql` query result or nil in case of error."
+  (try
+    (j/query db (list sql) {:as-arrays? true})
+    (catch Exception _)))
+
 (defn- db->column [db sql]
   "Execute `sql`, return first column of result set as result list."
   (if sql
-    (rest
-     (map first
-          (j/query db (list sql) {:as-arrays? true})))))
+    (rest (map first (safe-query db sql)))))
 
 (defn- db->>column [db sql]
   "Execute `sql`, return last column of result set as result list."
@@ -132,7 +136,9 @@
                           "")))
     :objects     (fn [& _]
                    (str "SELECT * FROM all_objects WHERE object_type IN "
-                        "('FUNCTION','PROCEDURE','PACKAGE')"))}
+                        "('FUNCTION','PROCEDURE','PACKAGE')"))
+    :keywords    (fn [& _]
+                   "SELECT * FROM V$RESERVED_WORDS ORDER BY keyword")}
    ;;--------
    :informix
    ;;--------
@@ -163,7 +169,9 @@
                        "FROM information_schema.schemata AS s, \n"
                        "     information_schema.tables AS t    \n"
                        "WHERE t.table_schema = s.schema_name   \n"))
-    :columns (default-queries :columns)}
+    :columns (default-queries :columns)
+    :keywords (fn [& _]
+                "SELECT name FROM mysql.help_keyword")}
    ;;--------
    :h2
    ;;--------
@@ -174,7 +182,9 @@
                        "     information_schema.tables AS t                \n"
                        "WHERE t.table_schema = s.schema_name               \n"
                        "  AND LCASE(s.schema_name) != 'information_schema' \n"))
-    :columns (default-queries :columns)}
+    :columns (default-queries :columns)
+    :keywords (fn [& _]
+                "SELECT topic FROM information_schema.help")}
    ;;-------
    :sqlserver ; ms sql server
    ;;-------
@@ -207,7 +217,9 @@
    {:owners  (default-queries :owners)
     :tables  (default-queries :tables)
     :all-tables (default-queries :all-tables)
-    :columns (default-queries :columns)}})
+    :columns (default-queries :columns)
+    :keywords (fn [& _]
+                "SELECT word FROM pg_get_keywords()")}})
 
 (defn autocomplete-available-for-db? [db-type]
   (queries db-type))
@@ -373,6 +385,20 @@ check if receiveing process is not running, then start it."
                     db table))))
   (get? (get->in @cache [db :colomns table])
         force?))
+
+(defn get-keywords [db force?]
+  "Return keywords list for this database type from cache if already received
+from DB, check if receiveing process is not running, then start it."
+  (when (get-in queries [(get-db-type db) :keywords])
+    (if (not (get->in @cache [db :keywords]))
+      (swap! cache assoc-in [db :keywords]
+             (future ((fn [db]
+                        (let [sql (select-db-meta-script db :keywords)]
+                          (sort
+                           (filter #(not (nil? %))
+                                   (db->column db sql)))))
+                      db))))
+    (get? (get->in @cache [db :keywords]) force?)))
 
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
