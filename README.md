@@ -284,8 +284,11 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
                     "3.23.1/sqlite-jdbc-3.23.1.jar")
  :subprotocol "sqlite"
  ;; Use absolute path, e.g.:
- ;; "file:///home/user/projects/my_proj/db/sqdb.db"
- ;; or expand it by file-truename:
+ ;;   "file:///home/user/projects/my_proj/db/sqdb.db"
+ ;;   "/home/user/projects/my_proj/db/sqdb.db"
+ ;;   "file:///C:/Projects/my_proj/db/sqdb.db"
+ ;;   "C:/Projects/my_proj/db/sqdb.db"
+ ;; or expand it by file-truename (not applicable for Windows paths):
  :subname (concat "file://"
                   (file-truename "~/projects/my_proj/db/sqdb.db")))
 ```
