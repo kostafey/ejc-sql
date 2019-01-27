@@ -21,7 +21,8 @@
   (:require
    [clojure.java.jdbc :as j]
    [clojure.string :as s]
-   [ejc-sql.connect :as c]))
+   [ejc-sql.connect :as c]
+   [ejc-sql.keywords :as k]))
 
 (def cache (atom {}))
 
@@ -185,6 +186,20 @@
     :columns (default-queries :columns)
     :keywords (fn [& _]
                 "SELECT topic FROM information_schema.help")}
+
+   ;;--------
+   :sqlite
+   ;;--------
+   {:tables     (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
+    :all-tables (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
+    :columns    (fn [& {:keys [table]}]
+                  (str "SELECT p.name as columnName                   \n"
+                       "FROM sqlite_master m                          \n"
+                       "LEFT OUTER JOIN pragma_table_info((m.name)) p \n"
+                       "     ON m.name <> p.name                      \n"
+                       "WHERE m.name = '" table "'                    \n"
+                       "ORDER BY columnName                           \n"))
+    :keywords   (:sqlite k/keywords)}
    ;;-------
    :sqlserver ; ms sql server
    ;;-------
@@ -255,15 +270,17 @@
    (:user db)
    (let [{:keys [user connection-uri]} db]
      (or user
-         (second (.split
-                  (let [props-list (.split connection-uri ";")]
-                    (first
-                     (filter
-                      (fn [prop]
-                        (=
-                         "user"
-                         (.toLowerCase (first (.split prop "=")))))
-                      props-list))) "="))))))
+         (if connection-uri
+           (second (.split
+                    (let [props-list (.split connection-uri ";")]
+                      (first
+                       (filter
+                        (fn [prop]
+                          (=
+                           "user"
+                           (.toLowerCase (first (.split prop "=")))))
+                        props-list))) "="))
+           :undefined-user)))))
 
 (def product-assoc {"oracle:sid" "oracle"})
 
@@ -389,16 +406,18 @@ check if receiveing process is not running, then start it."
 (defn get-keywords [db force?]
   "Return keywords list for this database type from cache if already received
 from DB, check if receiveing process is not running, then start it."
-  (when (get-in queries [(get-db-type db) :keywords])
+  (if-let [keywords-query (get-in queries [(get-db-type db) :keywords])]
     (if (not (get->in @cache [db :keywords]))
       (swap! cache assoc-in [db :keywords]
-             (future ((fn [db]
-                        (let [sql (select-db-meta-script db :keywords)]
-                          (sort
-                           (filter #(not (nil? %))
-                                   (db->column db sql)))))
-                      db))))
-    (get? (get->in @cache [db :keywords]) force?)))
+             (if (vector? keywords-query)
+               (future (identity keywords-query))
+               (future ((fn [db]
+                          (let [sql (select-db-meta-script db :keywords)]
+                            (sort
+                             (filter #(not (nil? %))
+                                     (db->column db sql)))))
+                        db))))))
+  (get? (get->in @cache [db :keywords]) force?))
 
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
