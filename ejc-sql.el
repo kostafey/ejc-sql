@@ -81,6 +81,12 @@
   :group 'ejc-sql
   :type 'integer)
 
+(defcustom ejc-org-mode-babel-wrapper t
+  "Add wrapper around org-mode default `org-babel-execute:sql'."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'ejc-sql)
+
 (defcustom ejc-org-mode-show-results t
   "When t show SQL query results of `org-mode' code snippet in the same buffer.
 An expected behaviour for `org-mode' users. Disable popup window with SQL
@@ -333,25 +339,28 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
       (setq ejc-result-file-path
             (ejc--get-result-file-path))))
 
-(defun ejc-eval-org-snippet (body params)
+(defun ejc-eval-org-snippet (&optional orig-fun body params)
   "Used to eval SQL code in `org-mode' code snippets."
-  (let* ((beg (save-excursion
-                (goto-char (nth 5 (org-babel-get-src-block-info)))
-                (end-of-line)
-                (right-char 1)
-                (point)))
-         (end (save-excursion
-                (goto-char beg)
-                (+ beg (length body) (skip-chars-forward "\t ")))))
-    (ejc-eval-user-sql-at-point
-     :beg beg
-     :end end
-     :sync ejc-org-mode-show-results
-     :display-result (not ejc-org-mode-show-results))
-    (if ejc-org-mode-show-results
-        (with-temp-buffer
-          (insert-file-contents (ejc-get-result-file-path))
-          (buffer-string)))))
+  (if (or (not ejc-org-mode-babel-wrapper)
+          (cdr (assq :engine params)))
+      (funcall orig-fun body params)
+    (let* ((beg (save-excursion
+                  (goto-char (nth 5 (org-babel-get-src-block-info)))
+                  (end-of-line)
+                  (right-char 1)
+                  (point)))
+           (end (save-excursion
+                  (goto-char beg)
+                  (+ beg (length body) (skip-chars-forward "\t ")))))
+      (ejc-eval-user-sql-at-point
+       :beg beg
+       :end end
+       :sync ejc-org-mode-show-results
+       :display-result (not ejc-org-mode-show-results))
+      (if ejc-org-mode-show-results
+          (with-temp-buffer
+            (insert-file-contents (ejc-get-result-file-path))
+            (buffer-string))))))
 
 (defun ejc-org-edit-special (orig-fun &rest args)
   (if (and (equal "sql" (car (org-babel-get-src-block-info)))
@@ -382,7 +391,7 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
     (ejc-update-conn-statistics connection-name)
     (ejc-configure-sql-buffer product-name)
     (when (derived-mode-p 'org-mode)
-      (defalias 'org-babel-execute:sql 'ejc-eval-org-snippet)
+      (advice-add 'org-babel-execute:sql :around 'ejc-eval-org-snippet)
       (advice-add 'org-edit-special :around #'ejc-org-edit-special))
     (setq-local ejc-connection-name connection-name)
     (setq-local ejc-db db)
