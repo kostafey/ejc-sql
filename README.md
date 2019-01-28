@@ -427,6 +427,18 @@ from your `lein repl` console output.
 Finally, use `M-x ejc-connect` from any SQL buffer to connect to the exact database,
 as always.
 
+### Mix ejc-sql with Org Mode default ob-sql engine together in one buffer
+
+You can use both `ejc-sql` and original `org-babel` execution simultaneously.
+
+To disable `ejc-sql` wrapper around Org Mode SQL source code blocks, set
+`ejc-org-mode-babel-wrapper` to `nil` (enabled by default).
+
+If `ejc-org-mode-babel-wrapper` is enabled and the current SQL source code block
+has a connection header arguments, you will be asked for confirmation.
+
+Reference this [discussion](https://github.com/kostafey/ejc-sql/pull/74).
+
 ## List of keybindings & functions
 
 New keybindings defined in `ejc-sql-mode` minor mode:
