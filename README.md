@@ -475,15 +475,18 @@ Autocompletion is available for the following databases:
 * MySQL
 * Informix
 * H2
+* SQLite
 
 ## Yasnippet
 
 List of snippets:
 
-* select
-* insert
-* update
-* begin
+__select__ | __where__
+-----------|------------
+__insert__ | __begin__
+__update__ | __grant__
+__delete__ | __revoke__
+
 
 ## Troubleshooting
 
