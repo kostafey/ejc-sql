@@ -9,6 +9,6 @@
                  [org.apache.openjpa/openjpa-all "2.2.2"]
                  [org.hibernate/hibernate-core "5.2.3.Final"]
                  [com.cemerick/pomegranate "0.3.0"]
-                 [org.apache.commons/commons-lang3 "3.2.1"]
+                 [org.apache.commons/commons-lang3 "3.5"]
                  [org.apache.httpcomponents/httpclient "4.5.5"]
                  [clomacs "0.0.3-SNAPSHOT"]])
