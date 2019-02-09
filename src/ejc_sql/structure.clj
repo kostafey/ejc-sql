@@ -592,6 +592,32 @@ records. Otherwise return nil."
                   ;; nothing to complete
                   (autocomplete-nothing))))))))))
 
+(defn get-entity-description [db entity-name]
+  "Get DB entity or view creation SQL."
+  (let [entity-sql (select-db-meta-script
+                    db :entity
+                    :entity-name entity-name)
+        view-sql (select-db-meta-script
+                  db :view
+                  :entity-name entity-name)]
+    (if (not (or entity-sql view-sql))
+      (c/complete (str "DB entity or view SELECT scripts was not "
+                       "added for this database type."))
+      (let [;; Try to get entity source code.
+            entity (db->value db entity-sql)
+            result (or
+                    ;; Show entity text.
+                    ;; Assume there is no entity and view with the same names.
+                    entity
+                    ;; No entity with such name.
+                    ;; Try to get view source code.
+                    (db->value db view-sql))]
+        (if result
+          (c/complete result :mode 'sql-mode)
+          (c/complete (format
+                       "Can't find any entity or view named %s."
+                       entity-name)))))))
+
 (defn get-cache []
   "Output actual cache."
   @cache)

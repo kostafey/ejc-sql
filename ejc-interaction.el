@@ -93,9 +93,14 @@
 (defalias 'ejc--eval-get-list 'ejc--eval-sql-get-column)
 
 (clomacs-defun ejc-get-table-meta
-               ejc-sql.connect/get-table-meta
+               get-table-meta
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect)
+
+(clomacs-defun ejc-get-entity-description
+               get-entity-description
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure)
 
 (clomacs-defun ejc--get-result-file-path
                get-result-file-path

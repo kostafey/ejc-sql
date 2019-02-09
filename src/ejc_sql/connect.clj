@@ -177,33 +177,47 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 (clomacs-defn spinner-stop ejc-spinner-stop
               :doc "Stop spinner indicating current running query.")
 
+(defn complete [text & {:keys [display-result
+                               append
+                               mode
+                               start-time
+                               status]
+                        :or {display-result true
+                             append false
+                             mode 'ejc-result-mode}}]
+  "Complete query and display `text` as a result."
+  (let [complete-output (complete-query
+                         (o/write-result-file text :append append)
+                         :start-time start-time
+                         :status status
+                         :display-result display-result
+                         :mode mode)]
+    (spinner-stop)
+    complete-output))
+
 (defn- eval-user-sql [db sql & {:keys [rows-limit append display-result]}]
   (let [clear-sql (.trim sql)]
     (o/log-sql (str clear-sql "\n"))
     (let [[result-type result] (eval-sql-core
                                 :db  db
-                                :sql clear-sql)
-          complete-output
-          (complete-query
-           (o/write-result-file (if (= result-type :result-set)
-                                  (o/print-table result rows-limit)
-                                  result)
-                                :append append)
-           :start-time (:start-time @current-query)
-           :result (if (and
-                        (not (= result-type :result-set))
-                        (= (s/lower-case (subs result 0
-                                               (min 5 (count result))))
-                           "error"))
-                     (if (.contains (s/lower-case result)
-                                    "closed connection")
-                       :terminated
-                       :error)
-                     :done)
-           :display-result display-result)]
-      (if-not (empty? complete-output)
-        ;; Elisp unexpected result
-        (spinner-stop)))))
+                                :sql clear-sql)]
+      (complete
+       (if (= result-type :result-set)
+         (o/print-table result rows-limit)
+         result)
+       :append append
+       :start-time (:start-time @current-query)
+       :status (if (and
+                    (not (= result-type :result-set))
+                    (= (s/lower-case (subs result 0
+                                           (min 5 (count result))))
+                       "error"))
+                 (if (.contains (s/lower-case result)
+                                "closed connection")
+                   :terminated
+                   :error)
+                 :done)
+       :display-result display-result))))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
@@ -218,17 +232,12 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                              :append append
                              :display-result display-result)
               (catch Exception e
-                (let [complete-output
-                      (complete-query
-                       (o/write-result-file
-                        (str (.getMessage e) "\n"
-                             (s/join "\n" (.getStackTrace e))))
-                       :start-time (:start-time @current-query)
-                       :result :error
-                       :display-result true)]
-                  (if-not (empty? complete-output)
-                    ;; Elisp unexpected result
-                    (spinner-stop))))))]
+                (complete
+                 (str (.getMessage e) "\n"
+                      (s/join "\n" (.getStackTrace e)))
+                 :start-time (:start-time @current-query)
+                 :status :error
+                 :display-result true))))]
     (if sync
       (run-query)
       (swap! current-query assoc
@@ -275,11 +284,10 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
         result-data (:result result-map)
         head (str "Table \"" table-name "\" description:\n")
         head-length (dec (.length head))]
-    (complete-query
-     (o/write-result-file
-      (if success
-        (str head
-             (ejc-sql.lib/simple-join head-length "-") "\n"
-             (o/print-table result-data))
-        result-data))
+    (complete
+     (if success
+       (str head
+            (ejc-sql.lib/simple-join head-length "-") "\n"
+            (o/print-table result-data))
+       result-data)
      :display-result true)))

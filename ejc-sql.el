@@ -472,10 +472,10 @@ any SQL buffer to connect to exact database, as always. "
        :sync sync
        :display-result display-result))))
 
-(defun ejc-message-query-done (start-time result)
+(defun ejc-message-query-done (start-time status)
   (message
    "%s SQL query at %s. Exec time %.03f"
-   (case result
+   (case status
      (:done (propertize "Done" 'face 'font-lock-keyword-face))
      (:error (propertize "Error" 'face 'error))
      (:terminated (propertize "Terminated" 'face 'font-lock-keyword-face)))
@@ -485,21 +485,23 @@ any SQL buffer to connect to exact database, as always. "
 
 (defun ejc-spinner-stop ()
   "Stop spinner indicating current running query."
-  (with-current-buffer ejc-current-buffer-query
-    (spinner-stop)))
+  (if ejc-current-buffer-query
+   (with-current-buffer ejc-current-buffer-query
+     (spinner-stop))))
 
 (cl-defun ejc-complete-query (result-file-path
                               &key
                               start-time
-                              result
-                              display-result)
+                              status
+                              display-result
+                              mode)
   (if result-file-path
       (setq ejc-result-file-path result-file-path))
   (ejc-spinner-stop)
   (if display-result
-      (ejc-show-last-result))
-  (if (and start-time result)
-      (ejc-message-query-done start-time result))
+      (ejc-show-last-result :mode mode))
+  (if (and start-time status)
+      (ejc-message-query-done start-time status))
   nil)
 
 (cl-defun ejc-cancel-query (&key start-time)
@@ -537,24 +539,8 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   "Describe SQL entity ENTITY-NAME - function, procedure, type or view
    (default entity name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe entity"))
-  (ejc-check-connection)
-  (ejc-show-last-result
-   (let ((entity-result
-          ;; Try to get entity source code.
-          (ejc-eval-sql-and-log
-           ejc-db
-           (ejc-select-db-meta-script ejc-db :entity
-                                      :entity-name entity-name))))
-     (if (not (equal entity-result "nil"))
-         ;; Show entity text.
-         ;; Assume there is no entity and view with the same names.
-         entity-result
-       ;; No entity with such name.
-       ;; Try to get view source code.
-       (ejc-eval-sql-and-log
-        ejc-db
-        (ejc-select-db-meta-script ejc-db :view
-                                   :entity-name entity-name))))))
+  (ejc-get-entity-description ejc-db entity-name)
+  (ejc-check-connection))
 
 (cl-defun ejc-eval-user-sql (sql &key rows-limit sync display-result)
   "Evaluate SQL by user: reload and show query results buffer, update log."
@@ -643,7 +629,7 @@ If this buffer is not exists or it was killed - create buffer via
       ejc-results-buffer
     (ejc-create-output-buffer)))
 
-(cl-defun ejc-show-last-result (&optional result)
+(cl-defun ejc-show-last-result (&key result mode)
   "Popup buffer with last SQL execution result output."
   (interactive)
   (let ((output-buffer (ejc-get-output-buffer))
@@ -651,6 +637,8 @@ If this buffer is not exists or it was killed - create buffer via
     (set-buffer output-buffer)
     (read-only-mode -1)
     (erase-buffer)
+    (if mode
+        (funcall mode))
     (if result
         (insert result)
       (insert-file-contents (ejc-get-result-file-path)))
