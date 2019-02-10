@@ -388,10 +388,12 @@ Prepare buffer to operate as `ejc-sql-mode' buffer."
     (setq-local ejc-db db)
     (message "Connection started...")
     (ejc-connect-to-db db)
-    (when (ejc-validate-connection :db ejc-db
-                                   :timeout ejc-connection-validate-timeout)
-      (ejc-set-mode-name connection-name)
-      (message "Connected."))))
+    (let ((validation-result
+           (ejc-validate-connection :db ejc-db
+                                    :timeout ejc-connection-validate-timeout)))
+      (when (alist-get :status validation-result)
+        (ejc-set-mode-name connection-name)
+        (message (alist-get :message validation-result))))))
 
 ;;;###autoload
 (defun ejc-connect-existing-repl ()

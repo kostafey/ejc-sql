@@ -205,7 +205,7 @@
                validate-connection
                :lib-name "ejc-sql"
                :namespace ejc-sql.connect
-               :return-type :boolean)
+               :return-type :eval)
 
 (defun ejc-invalidate-cache ()
   "Clean current connection cache (database owners and tables list)."

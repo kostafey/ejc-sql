@@ -1,6 +1,6 @@
 ;;; connect.clj -- Core clojure functions for ejc-sql emacs extension.
 
-;;; Copyright © 2013-2018 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -131,7 +131,14 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
 (defn validate-connection [& {:keys [db timeout]
                               :or {db @ejc-sql.connect/db
                                    timeout 5}}]
-  (.isValid (j/get-connection db) timeout))
+  (try
+    (clomacs/format-result
+     {:status (.isValid (j/get-connection db) timeout)
+      :message "Connected."})
+    (catch AbstractMethodError e
+      (clomacs/format-result
+       {:status true
+        :message "Warning: cannot validate connection."}))))
 
 (defn get-separator-re [separator]
   "Handle cases where separator is a part of string in SQL query.
