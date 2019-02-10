@@ -131,14 +131,21 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
 (defn validate-connection [& {:keys [db timeout]
                               :or {db @ejc-sql.connect/db
                                    timeout 5}}]
-  (try
-    (clomacs/format-result
-     {:status (.isValid (j/get-connection db) timeout)
-      :message "Connected."})
-    (catch AbstractMethodError e
+  (letfn [(abstract-is-valid [msg]
+            (clomacs/format-result
+             {:status true
+              :message (str "Warning: can't validate connection. "
+                            "Please, update your JDBC driver and "
+                            "restart the REPL.\n"
+                            msg)}))]
+    (try
       (clomacs/format-result
-       {:status true
-        :message "Warning: cannot validate connection."}))))
+       {:status (.isValid (j/get-connection db) timeout)
+        :message "Connected."})
+      (catch AbstractMethodError e
+        (abstract-is-valid (.getMessage e)))
+      (catch java.sql.SQLFeatureNotSupportedException e
+        (abstract-is-valid (.getMessage e))))))
 
 (defn get-separator-re [separator]
   "Handle cases where separator is a part of string in SQL query.
