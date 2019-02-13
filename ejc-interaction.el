@@ -227,6 +227,12 @@
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure)
 
+(defun ejc-unset-mode-name ()
+  (if (derived-mode-p 'org-mode)
+      (setq mode-name "Org")
+    (if (derived-mode-p 'sql-mode)
+        (setq mode-name "SQL"))))
+
 (defun ejc-quit-connection ()
   "Stop nREPL process, mark ejc-sql-mode buffers disconnected."
   (interactive)
@@ -238,7 +244,7 @@
       (while buffers
         (with-current-buffer (car buffers)
           (when (member 'ejc-sql-mode minor-mode-list)
-            (sql-highlight-product)
+            (ejc-unset-mode-name)
             (spinner-stop)))
         (setq buffers (cdr buffers)))))
   (unless (cider-connected-p)

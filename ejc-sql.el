@@ -284,10 +284,10 @@ For more details about parameters see `get-connection' function in jdbc.clj:
   (unless (or (derived-mode-p 'org-mode) (org-src-edit-buffer-p))
     (sql-mode))
   (sql-set-product product-name)
-  (auto-complete-mode t)
   (auto-fill-mode t)
   (unless (derived-mode-p 'org-mode)
-    (ejc-sql-mode t)))
+    (ejc-sql-mode t)
+    (auto-complete-mode t)))
 
 (defun ejc-load-conn-statistics ()
   "Load connection usage statistics to `ejc-conn-statistics' var."
