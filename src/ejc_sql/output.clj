@@ -1,6 +1,6 @@
 ;;; output.clj -- Output & formatting clojure functions for ejc-sql.
 
-;;; Copyright © 2013, 2016 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
            (java.lang.reflect Method)
            (java.util.Date)
            (java.text.SimpleDateFormat)
-           (org.apache.openjpa.lib.jdbc SQLFormatter)
+           (org.apache.commons.lang3 StringUtils)
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl)))
 
 (def result-file-name
@@ -150,15 +150,24 @@ E.g. transtofm from: a | b | c into: a | 1
          (out (fmt-row "" "-+-" "" (zipmap ks spacers))))
        (doseq [row rows]
          (out (fmt-row "" " | " "" row)))
-       (str msg (.toString result)))))
+       (str msg
+            (if rotated
+              (String/join "\n"
+                           (mapv #(.trim %) (.split (.toString result) "\n")))
+              (.toString result))))))
   ([rows limit] (print-table (keys (first rows)) rows limit))
   ([rows] (print-table (keys (first rows)) rows @rows-limit)))
 
-(defn pretty-print [sql formatter]
-  (if (= formatter :jpa)
-    (print (.prettyPrint (SQLFormatter.) sql))
-    ;; :hibernate
-    (print (.format (BasicFormatterImpl.) sql))))
+(defn format-sql [sql]
+  (s/trim (.format (BasicFormatterImpl.) sql)))
+
+(defn pretty-print [sql]
+  (print (format-sql sql)))
+
+(defn format-sql-if-required [sql]
+  (if (> (StringUtils/countMatches sql "\n") 1)
+    sql
+    (format-sql sql)))
 
 (defn write-result-file [text & {:keys [append]
                                  :or {append false}}]

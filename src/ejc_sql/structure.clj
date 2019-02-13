@@ -22,20 +22,23 @@
    [clojure.java.jdbc :as j]
    [clojure.string :as s]
    [ejc-sql.connect :as c]
+   [ejc-sql.output :as o]
    [ejc-sql.keywords :as k]))
 
 (def cache (atom {}))
 
-(defn- safe-query [db sql]
+(defn- safe-query [db sql & {:keys [row-fn]}]
   "Return `sql` query result or nil in case of error."
   (try
-    (j/query db (list sql) {:as-arrays? true})
+    (j/query db (list sql) {:as-arrays? true
+                            :row-fn row-fn})
     (catch Exception _)))
 
-(defn- db->column [db sql]
+(defn- db->column [db sql & {:keys [row-fn]
+                             :or {row-fn identity}}]
   "Execute `sql`, return first column of result set as result list."
   (if sql
-    (rest (map first (safe-query db sql)))))
+    (rest (map first (safe-query db sql :row-fn row-fn)))))
 
 (defn- db->>column [db sql]
   "Execute `sql`, return last column of result set as result list."
@@ -44,9 +47,10 @@
      (map last
           (j/query db (list sql) {:as-arrays? true})))))
 
-(defn- db->value [db sql]
+(defn- db->value [db sql & {:keys [row-fn]
+                            :or {row-fn identity}}]
   "Execute `sql`, return first value of first column of result set as result."
-  (first (db->column db sql)))
+  (first (db->column db sql :row-fn row-fn)))
 
 (defn get-ms-sql-server-version [db]
   (->
@@ -92,11 +96,18 @@
                         " FROM all_source                \n"
                         " WHERE UPPER(name) = '"
                         (s/upper-case entity-name) "' \n"))
+    :entity-type (fn [& {:keys [entity-name]}]
+                   (format
+                    "
+                    SELECT object_type
+                    FROM all_objects
+                    WHERE UPPER(OBJECT_NAME) = '%s'
+                    "
+                    (s/upper-case entity-name)))
     :view        (fn [& {:keys [entity-name]}]
-                   (str "SELECT text                         \n"
-                        "FROM all_views                      \n"
-                        "WHERE UPPER(view_name) = '"
-                        (s/upper-case entity-name) "' \n"))
+                   (format
+                    "SELECT DBMS_METADATA.GET_DDL('VIEW', '%s') FROM DUAL"
+                    (s/upper-case entity-name)))
     :types       (fn [& _] "SELECT * FROM USER_TYPES")
     :owners      (fn [& _] (str " SELECT DISTINCT(owner) \n"
                                 " FROM ALL_OBJECTS       \n"
@@ -185,8 +196,23 @@
                        "  AND LCASE(s.schema_name) != 'information_schema' \n"))
     :columns (default-queries :columns)
     :keywords (fn [& _]
-                "SELECT topic FROM information_schema.help")}
-
+                "SELECT topic FROM information_schema.help")
+    :entity-type (fn [& {:keys [entity-name]}]
+                   (format
+                    "
+                    SELECT t.table_type
+                    FROM information_schema.tables AS t
+                    WHERE t.table_name = '%s'
+                    "
+                    (s/upper-case entity-name)))
+    :view        (fn [& {:keys [entity-name]}]
+                   (format
+                    "
+                    SELECT v.view_definition
+                    FROM information_schema.views AS v
+                    WHERE v.table_name = '%s'
+                    "
+                    (s/upper-case entity-name)))}
    ;;--------
    :sqlite
    ;;--------
@@ -592,31 +618,38 @@ records. Otherwise return nil."
                   ;; nothing to complete
                   (autocomplete-nothing))))))))))
 
+(defn get-entity-type [db entity-name]
+  "Determine DB entity type, whether id `:view`, `:type` or `:procedure`."
+  (if-let [sql (select-db-meta-script db :entity-type
+                                      :entity-name entity-name)]
+    (if-let [found-type (db->value db sql)]
+      (-> found-type
+          s/lower-case
+          keyword))))
+
 (defn get-entity-description [db entity-name]
   "Get DB entity or view creation SQL."
-  (let [entity-sql (select-db-meta-script
-                    db :entity
-                    :entity-name entity-name)
-        view-sql (select-db-meta-script
-                  db :view
-                  :entity-name entity-name)]
-    (if (not (or entity-sql view-sql))
-      (c/complete (str "DB entity or view SELECT scripts was not "
-                       "added for this database type."))
-      (let [;; Try to get entity source code.
-            entity (db->value db entity-sql)
-            result (or
-                    ;; Show entity text.
-                    ;; Assume there is no entity and view with the same names.
-                    entity
-                    ;; No entity with such name.
-                    ;; Try to get view source code.
-                    (db->value db view-sql))]
-        (if result
-          (c/complete result :mode 'sql-mode)
-          (c/complete (format
-                       "Can't find any entity or view named %s."
-                       entity-name)))))))
+  (if-let [type (get-entity-type db entity-name)]
+    (if-let [entity-obtainig-sql (select-db-meta-script
+                                  db
+                                  type
+                                  :entity-name entity-name)]
+      (if-let [entity-sql (db->value
+                           db
+                           entity-obtainig-sql
+                           :row-fn (fn [row]
+                                     (mapv #(if (is-clob? %)
+                                              (clob-to-string %)
+                                              %)
+                                           row)))]
+        (c/complete (o/format-sql-if-required entity-sql)
+                    :mode 'sql-mode)
+        (c/complete (format "Can't find %s named %s."
+                            (name type) entity-name)))
+      (c/complete (format (str "Script for obtaining DB entity of type %s "
+                               "was not added for this database type.")
+                          (name type))))
+    (c/complete (format "Can't determine type of %s." entity-name))))
 
 (defn get-cache []
   "Output actual cache."

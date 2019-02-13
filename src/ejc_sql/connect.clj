@@ -82,29 +82,6 @@ For debug purpose."
                sql)
     sql))
 
-(defn clob-to-string [clob]
-  "Turn an Oracle Clob into a String"
-  (with-open [rdr (java.io.BufferedReader. (.getCharacterStream clob))]
-    (apply str (line-seq rdr))))
-
-(defn is-clob? [x]
-  (or (instance? java.sql.Clob x)
-      (and (class-exists? 'oracle.sql.CLOB)
-           (instance? (Class/forName "oracle.sql.CLOB") x))))
-
-(defn clob-to-string-row [row]
-  "Check all data in row if it's a CLOB and convert CLOB to string."
-  (loop [acc {}
-         rest-keys (keys row)]
-    (if rest-keys
-      (let [k (first rest-keys)
-            v (row k)]
-        (recur (assoc acc k (if (is-clob? v)
-                              (clob-to-string v)
-                              v))
-               (next rest-keys)))
-      acc)))
-
 (defn is-query-running? []
   (let [stmt (:stmt @current-query)]
     (and (not (nil? stmt))
