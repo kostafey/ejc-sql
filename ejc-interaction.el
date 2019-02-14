@@ -162,6 +162,12 @@
                :namespace ejc-sql.structure
                :return-type :list)
 
+(clomacs-defun ejc-get-views-candidates
+               get-views-candidates
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
 (clomacs-defun ejc-get-colomns-candidates
                get-colomns-candidates
                :lib-name "ejc-sql"

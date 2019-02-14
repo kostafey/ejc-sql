@@ -202,15 +202,21 @@
                     "
                     SELECT t.table_type
                     FROM information_schema.tables AS t
-                    WHERE t.table_name = '%s'
+                    WHERE UPPER(t.table_name) = '%s'
                     "
                     (s/upper-case entity-name)))
+    :views       (fn [& _]
+                   (format
+                    "
+                    SELECT v.table_name
+                    FROM information_schema.views AS v
+                    "))
     :view        (fn [& {:keys [entity-name]}]
                    (format
                     "
                     SELECT v.view_definition
                     FROM information_schema.views AS v
-                    WHERE v.table_name = '%s'
+                    WHERE UPPER(v.table_name = '%s'
                     "
                     (s/upper-case entity-name)))}
    ;;--------
@@ -416,6 +422,16 @@ check if receiveing process is not running, then start it."
                             db))))
           (get? (get-in @cache [db :all-tables]) force?)))))
 
+(defn get-views [db & [force?]]
+  "Return views list from cache if already received from DB,
+check if receiveing process is not running, then start it."
+  (if (not (get-in @cache [db :views]))
+    (swap! cache assoc-in [db :views]
+           (future ((fn [db]
+                      (let [sql (select-db-meta-script db :views)]
+                        (sort (db->column db sql)))) db))))
+  (get? (get-in @cache [db :views]) force?))
+
 (defn get-colomns [db table force?]
   "Return colomns list for this table from cache if already received from DB,
 check if receiveing process is not running, then start it."
@@ -493,6 +509,13 @@ if `pending` is nil - no request is running, return result immediately."
       ;; pending tables...
       (autocomplete-loading))))
 
+(defn get-views-candidates [db sql & _]
+  "Return views candidates autocomplete list."
+  (if-let [views (get-views db)]
+    (autocomplete-result views)
+    ;; pending views...
+    (autocomplete-loading)))
+
 (defn match-alias? [sql owner table probable-alias]
   "Check if prefix (`probable-alias`) is alias for `table` in this `sql`."
   (let [sql (s/lower-case sql)
@@ -541,28 +564,30 @@ records. Otherwise return nil."
   ;; and optional `prefix-2` as owner or schema.
   ;; When no any prefix at all, check for 4 (INSERT) or 5 (UPDATE) case.
   (let [owner prefix-2
-        tables-list (if owner
-                      (get-tables db owner)
-                      ;; In case of queries like
-                      ;; "SELECT u.# FROM custom.Users as u"
-                      ;; when "custom" is not the current
-                      ;; schema, the full DB structure tree
-                      ;; sould be built to obtain overall
-                      ;; tables list for all owners/schemas.
-                      (if (get-namespace db)
-                        ;; Database has namespaces
-                        (if (not (get-owners db))
-                          ;; Not received owners list yet -
-                          ;; pending...
-                          (do
-                            (future (get-all-tables db))
-                            nil)
-                          ;; Owners list is already here -
-                          ;; force tables list receiving!
-                          (get-all-tables db))
-                        ;; Database hasn't namespaces -
-                        ;; no owners needed
-                        (get-tables db)))]
+        tables-list (concat
+                     (if owner
+                       (get-tables db owner)
+                       ;; In case of queries like
+                       ;; "SELECT u.# FROM custom.Users as u"
+                       ;; when "custom" is not the current
+                       ;; schema, the full DB structure tree
+                       ;; sould be built to obtain overall
+                       ;; tables list for all owners/schemas.
+                       (if (get-namespace db)
+                         ;; Database has namespaces
+                         (if (not (get-owners db))
+                           ;; Not received owners list yet -
+                           ;; pending...
+                           (do
+                             (future (get-all-tables db))
+                             nil)
+                           ;; Owners list is already here -
+                           ;; force tables list receiving!
+                           (get-all-tables db))
+                         ;; Database hasn't namespaces -
+                         ;; no owners needed
+                         (get-tables db)))
+                     (get-views db))]
     (if (not (and tables-list
                   (not-empty (filter not-empty tables-list))))
       ;; no tables yet
