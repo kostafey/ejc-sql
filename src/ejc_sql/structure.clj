@@ -75,6 +75,9 @@
                      (str " WHERE table_schema = '" schema "'")
                      "")
                    " ORDER BY table_name              \n"))
+   :views   (fn [& _] "
+              SELECT table_name
+              FROM information_schema.views ")
    :all-tables (fn [& _]
                  (str "SELECT s.schema_owner, s.schema_name, t.table_name \n"
                       "FROM information_schema.schemata AS s,             \n"
@@ -84,7 +87,13 @@
               (str " SELECT column_name               \n"
                    " FROM information_schema.columns  \n"
                    " WHERE table_name = '" table "'   \n"
-                   " ORDER BY column_name             \n"))})
+                   " ORDER BY column_name             \n"))
+   :view    (fn [& {:keys [entity-name]}]
+                   (format "
+                    SELECT v.view_definition
+                    FROM information_schema.views AS v
+                    WHERE UPPER(v.table_name) = '%s' "
+                    (s/upper-case entity-name)))})
 
 (def queries
   {
@@ -188,6 +197,7 @@
    :h2
    ;;--------
    {:tables  (fn [& _] ((default-queries :tables) :schema "PUBLIC"))
+    :views   (fn [& _] ((default-queries :views)))
     :all-tables (fn [& _]
                   (str "SELECT s.schema_owner, s.schema_name, t.table_name \n"
                        "FROM information_schema.schemata AS s,             \n"
@@ -198,31 +208,18 @@
     :keywords (fn [& _]
                 "SELECT topic FROM information_schema.help")
     :entity-type (fn [& {:keys [entity-name]}]
-                   (format
-                    "
+                   (format "
                     SELECT t.table_type
                     FROM information_schema.tables AS t
-                    WHERE UPPER(t.table_name) = '%s'
-                    "
+                    WHERE UPPER(t.table_name) = '%s' "
                     (s/upper-case entity-name)))
-    :views       (fn [& _]
-                   (format
-                    "
-                    SELECT v.table_name
-                    FROM information_schema.views AS v
-                    "))
-    :view        (fn [& {:keys [entity-name]}]
-                   (format
-                    "
-                    SELECT v.view_definition
-                    FROM information_schema.views AS v
-                    WHERE UPPER(v.table_name = '%s'
-                    "
-                    (s/upper-case entity-name)))}
+    :view    (fn [& {:keys [entity-name]}]
+               ((default-queries :view) :entity-name entity-name))}
    ;;--------
    :sqlite
    ;;--------
    {:tables     (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
+    :views      (fn [& _] "SELECT name FROM sqlite_master WHERE type='view'")
     :all-tables (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
     :columns    (fn [& {:keys [table]}]
                   (str "SELECT p.name as columnName                   \n"
@@ -231,7 +228,17 @@
                        "     ON m.name <> p.name                      \n"
                        "WHERE m.name = '" table "'                    \n"
                        "ORDER BY columnName                           \n"))
-    :keywords   (:sqlite k/keywords)}
+    :keywords    (:sqlite k/keywords)
+    :entity-type (fn [& {:keys [entity-name]}]
+                   (format "
+                    SELECT type FROM sqlite_master
+                    WHERE UPPER(name) = '%s' "
+                           (s/upper-case entity-name)))
+    :view        (fn [& {:keys [entity-name]}]
+                   (format "
+                    SELECT sql FROM sqlite_master
+                    WHERE UPPER(name) = '%s' "
+                    (s/upper-case entity-name)))}
    ;;-------
    :sqlserver ; ms sql server
    ;;-------
