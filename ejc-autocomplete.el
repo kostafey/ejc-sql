@@ -94,6 +94,10 @@ Uppercase by default, set to nil to use downcase candidates."
   (ejc-candidates 'ejc-get-views-candidates))
 
 ;;;###autoload
+(defun ejc-packages-candidates ()
+  (ejc-candidates 'ejc-get-packages-candidates))
+
+;;;###autoload
 (defun ejc-colomns-candidates ()
   (ejc-candidates 'ejc-get-colomns-candidates))
 
@@ -146,6 +150,12 @@ Uppercase by default, set to nil to use downcase candidates."
     (requires . 1)
     (cache . t)))
 
+(defvar ac-source-ejc-packages
+  '((candidates . ejc-packages-candidates)
+    (symbol . "p")
+    (requires . 1)
+    (cache . t)))
+
 (defvar ac-source-ejc-tables-point
   '((candidates . ejc-tables-candidates)
     (symbol . "t")
@@ -195,6 +205,7 @@ something#"
   (add-to-list 'ac-sources 'ac-source-ejc-owners)
   (add-to-list 'ac-sources 'ac-source-ejc-tables)
   (add-to-list 'ac-sources 'ac-source-ejc-views)
+  (add-to-list 'ac-sources 'ac-source-ejc-packages)
   (add-to-list 'ac-sources 'ac-source-ejc-tables-point)
   (add-to-list 'ac-sources 'ac-source-ejc-colomns)
   (add-to-list 'ac-sources 'ac-source-ejc-colomns-point))

@@ -168,6 +168,12 @@
                :namespace ejc-sql.structure
                :return-type :list)
 
+(clomacs-defun ejc-get-packages-candidates
+               get-packages-candidates
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
 (clomacs-defun ejc-get-colomns-candidates
                get-colomns-candidates
                :lib-name "ejc-sql"

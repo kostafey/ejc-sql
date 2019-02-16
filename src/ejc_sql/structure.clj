@@ -493,6 +493,19 @@ from DB, check if receiveing process is not running, then start it."
                         db))))))
   (get? (get->in @cache [db :keywords]) force?))
 
+(defn get-packages [db & [owner_ force?]]
+  "Return packages list for this owner from cache if already received from DB,
+check if receiveing process is not running, then start it."
+  (let [owner (get-this-owner db owner_)]
+    (if (not (get->in @cache [db :packages owner]))
+      (swap! cache assoc-in [db :packages owner]
+             (future ((fn [db owner]
+                        (let [sql (select-db-meta-script db :procedures
+                                                         :owner owner)]
+                          (db->column db sql)))
+                      db owner))))
+    (get? (get->in @cache [db :packages owner]) force?)))
+
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
 
@@ -546,6 +559,13 @@ if `pending` is nil - no request is running, return result immediately."
   (if-let [views (get-views db)]
     (autocomplete-result views)
     ;; pending views...
+    (autocomplete-loading)))
+
+(defn get-packages-candidates [db sql & _]
+  "Return packages candidates autocomplete list."
+  (if-let [packages (get-packages db)]
+    (autocomplete-result packages)
+    ;; pending packages...
     (autocomplete-loading)))
 
 (defn match-alias? [sql owner table probable-alias]
