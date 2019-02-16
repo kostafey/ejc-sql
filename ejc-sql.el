@@ -109,6 +109,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
     (define-key map (kbd "<up>") #'ejc-show-last-result)
     (define-key map (kbd "t") #'ejc-show-tables-list)
     (define-key map (kbd "v") #'ejc-show-views-list)
+    (define-key map (kbd "f") #'ejc-show-procedures-list)
     (define-key map (kbd "T") #'ejc-show-user-types-list)
     (define-key map (kbd "s") #'ejc-strinp-sql-at-point)
     (define-key map (kbd "S") #'ejc-dress-sql-at-point)
@@ -624,11 +625,15 @@ boundaries."
                                                 :owner owner
                                                 :table table)))
 
-(defun ejc-show-procedures-list (&optional owner)
+(defun ejc-show-procedures-list ()
   "Output procedures list."
   (interactive)
-  (ejc-eval-user-sql (ejc-select-db-meta-script ejc-db :procedures
-                                                :owner owner)))
+  (ejc-check-connection)
+  (ejc-eval-user-sql
+   (ejc-select-db-meta-script ejc-db :procedures
+                              :owner (ejc-get-this-owner ejc-db))
+   :rows-limit 0
+   :display-result t))
 
 ;;-----------------------------------------------------------------------------
 ;; results buffer

@@ -233,6 +233,11 @@
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure)
 
+(clomacs-defun ejc-get-this-owner
+               get-this-owner
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure)
+
 (defun ejc-unset-mode-name ()
   (if (derived-mode-p 'org-mode)
       (setq mode-name "Org")

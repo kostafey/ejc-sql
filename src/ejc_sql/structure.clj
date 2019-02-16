@@ -62,38 +62,42 @@
    Integer/parseInt))
 
 (def default-queries
-  {:owners  (fn [& _]
-              (str " SELECT schema_owner              \n"
-                   " FROM information_schema.schemata \n"))
-   :schemas (fn [& _]
-              (str " SELECT schema_name               \n"
-                   " FROM information_schema.schemata \n"))
+  {:owners  (fn [& _] "
+              SELECT schema_owner
+              FROM information_schema.schemata ")
+   :schemas (fn [& _] "
+              SELECT schema_name
+              FROM information_schema.schemata ")
    :tables  (fn [& {:keys [schema]}]
-              (str " SELECT table_name                \n"
-                   " FROM information_schema.tables   \n"
-                   (if schema
-                     (str " WHERE table_schema = '" schema "'")
-                     "")
-                   " ORDER BY table_name              \n"))
+              (format "
+               SELECT table_name
+               FROM information_schema.tables
+               %s
+               ORDER BY table_name "
+                      (if schema
+                        (format " WHERE table_schema = '%s'" schema)
+                        "")))
    :views   (fn [& _] "
               SELECT table_name
               FROM information_schema.views ")
-   :all-tables (fn [& _]
-                 (str "SELECT s.schema_owner, s.schema_name, t.table_name \n"
-                      "FROM information_schema.schemata AS s,             \n"
-                      "     information_schema.tables AS t                \n"
-                      "WHERE t.table_schema = s.schema_name               \n"))
+   :all-tables (fn [& _] "
+                 SELECT s.schema_owner, s.schema_name, t.table_name
+                 FROM information_schema.schemata AS s,
+                      information_schema.tables AS t
+                 WHERE t.table_schema = s.schema_name ")
    :columns (fn [& {:keys [table]}]
-              (str " SELECT column_name               \n"
-                   " FROM information_schema.columns  \n"
-                   " WHERE table_name = '" table "'   \n"
-                   " ORDER BY column_name             \n"))
+              (format "
+               SELECT column_name
+               FROM information_schema.columns
+               WHERE UPPER(table_name) = '%s'
+               ORDER BY column_name "
+                      (s/upper-case table)))
    :view    (fn [& {:keys [entity-name]}]
-                   (format "
-                    SELECT v.view_definition
-                    FROM information_schema.views AS v
-                    WHERE UPPER(v.table_name) = '%s' "
-                           (s/upper-case entity-name)))})
+              (format "
+               SELECT v.view_definition
+               FROM information_schema.views AS v
+               WHERE UPPER(v.table_name) = '%s' "
+                      (s/upper-case entity-name)))})
 
 (def queries
   {
@@ -162,16 +166,24 @@
                      :else
                      "SELECT * FROM user_constraints"))
     :procedures  (fn [& {:keys [owner]}]
-                   (str " SELECT object_name, procedure_name \n"
-                        " FROM all_procedures                \n"
-                        (if owner
-                          (str " WHERE owner = '" owner "'")
-                          "")))
-    :objects     (fn [& _]
-                   (str "SELECT * FROM all_objects WHERE object_type IN "
-                        "('FUNCTION','PROCEDURE','PACKAGE')"))
-    :keywords    (fn [& _] "
-                   SELECT * FROM V$RESERVED_WORDS ORDER BY keyword ")}
+                   (format "
+                    SELECT object_name, procedure_name
+                    FROM all_procedures
+                    %s " (if owner
+                           (format "WHERE owner = '%s' " owner)
+                           "")))
+    :procedure (fn [& {:keys [entity-name]}]
+                 ;; entity-name is a package name here
+                 (format "
+                  SELECT text FROM all_source
+                  WHERE UPPER(name) = '%s'
+                    AND type = 'PACKAGE BODY'
+                  ORDER BY line " (s/upper-case entity-name)))
+    :objects   (fn [& _] "
+                 SELECT * FROM all_objects
+                 WHERE object_type IN ('FUNCTION','PROCEDURE','PACKAGE') ")
+    :keywords  (fn [& _] "
+                 SELECT * FROM V$RESERVED_WORDS ORDER BY keyword ")}
    ;;--------
    :informix
    ;;--------
@@ -367,7 +379,8 @@
                                      "dbo")
                         :oracle (db->value
                                  db
-                                 "SELECT sys_context('userenv', 'current_schema') FROM dual")
+                                 "SELECT sys_context('userenv', 'current_schema')
+                                  FROM dual")
                         ;; By default
                         ;; Assume owner == schema (it can be wrong in general).
                         (get-user db)))) db)))
