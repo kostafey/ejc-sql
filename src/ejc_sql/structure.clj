@@ -93,7 +93,7 @@
                     SELECT v.view_definition
                     FROM information_schema.views AS v
                     WHERE UPPER(v.table_name) = '%s' "
-                    (s/upper-case entity-name)))})
+                           (s/upper-case entity-name)))})
 
 (def queries
   {
@@ -101,52 +101,64 @@
    :oracle
    ;;--------
    {:entity      (fn [& {:keys [entity-name]}]
-                   (str " SELECT text                    \n"
-                        " FROM all_source                \n"
-                        " WHERE UPPER(name) = '"
-                        (s/upper-case entity-name) "' \n"))
+                   (format "
+                    SELECT text
+                    FROM all_source
+                    WHERE UPPER(name) = '%s' "
+                           (s/upper-case entity-name)))
     :entity-type (fn [& {:keys [entity-name]}]
-                   (format
-                    "
+                   (format "
                     SELECT object_type
                     FROM all_objects
-                    WHERE UPPER(OBJECT_NAME) = '%s'
-                    "
+                    WHERE UPPER(OBJECT_NAME) = '%s' "
                     (s/upper-case entity-name)))
     :view        (fn [& {:keys [entity-name]}]
-                   (format
-                    "SELECT DBMS_METADATA.GET_DDL('VIEW', '%s') FROM DUAL"
+                   (format "
+                    SELECT DBMS_METADATA.GET_DDL('VIEW', '%s') FROM DUAL"
                     (s/upper-case entity-name)))
-    :types       (fn [& _] "SELECT * FROM USER_TYPES")
-    :owners      (fn [& _] (str " SELECT DISTINCT(owner) \n"
-                                " FROM ALL_OBJECTS       \n"
-                                " ORDER BY owner         \n"))
+    :types       (fn [& _] "
+                    SELECT * FROM USER_TYPES ")
+    :owners      (fn [& _] "
+                    SELECT DISTINCT(owner)
+                    FROM ALL_OBJECTS
+                    ORDER BY owner ")
     :tables      (fn [& {:keys [owner]}]
-                   (str " SELECT table_name, owner \n"
-                        " FROM all_tables          \n"
-                        (if owner
-                          (str " WHERE UPPER(owner) = '"
-                               (s/upper-case owner)"'"))
-                        " ORDER BY table_name"))
-    :all-tables  (fn [& _]
-                   (str " SELECT owner, table_name             \n"
-                        " FROM all_tables                      \n"
-                        " WHERE owner NOT IN ('SYS', 'SYSTEM') \n"
-                        " ORDER BY owner"))
+                   (format "
+                    SELECT table_name, owner
+                    FROM all_tables
+                    %s
+                    ORDER BY table_name "
+                           (if owner
+                             (format " WHERE UPPER(owner) = '%s' "
+                                     (s/upper-case owner))
+                             "")))
+    :views       (fn [& _] "
+                    SELECT view_name
+                    FROM all_views
+                    ORDER BY view_name ")
+    :all-tables  (fn [& _] "
+                    SELECT owner, table_name
+                    FROM all_tables
+                    WHERE owner NOT IN ('SYS', 'SYSTEM')
+                    ORDER BY owner ")
     :columns     (fn [& {:keys [table]}]
-                   (str " SELECT column_name      \n"
-                        " FROM ALL_TAB_COLUMNS    \n"
-                        " WHERE UPPER(table_name) = '"
-                        (s/upper-case table)"'"))
+                   (format "
+                    SELECT column_name
+                    FROM ALL_TAB_COLUMNS
+                    WHERE UPPER(table_name) = '%s' "
+                           (s/upper-case table)))
     :constraints (fn [& {:keys [owner table]}]
                    (cond
                      (and owner table)
-                     (str " SELECT * FROM all_constraints    \n"
-                          " WHERE owner = "owner"            \n"
-                          "       AND table_name = '"table"' \n")
+                     (format "
+                      SELECT * FROM all_constraints
+                      WHERE owner = '%s'
+                        AND table_name = '%s' "
+                             owner table)
                      table
-                     (str " SELECT * FROM all_constraints \n"
-                          " WHERE table_name = '"table"'  \n")
+                     (format "
+                      SELECT * FROM all_constraints
+                      WHERE table_name = '%s' " table)
                      :else
                      "SELECT * FROM user_constraints"))
     :procedures  (fn [& {:keys [owner]}]
@@ -158,8 +170,8 @@
     :objects     (fn [& _]
                    (str "SELECT * FROM all_objects WHERE object_type IN "
                         "('FUNCTION','PROCEDURE','PACKAGE')"))
-    :keywords    (fn [& _]
-                   "SELECT * FROM V$RESERVED_WORDS ORDER BY keyword")}
+    :keywords    (fn [& _] "
+                   SELECT * FROM V$RESERVED_WORDS ORDER BY keyword ")}
    ;;--------
    :informix
    ;;--------
@@ -197,13 +209,13 @@
    :h2
    ;;--------
    {:tables  (fn [& _] ((default-queries :tables) :schema "PUBLIC"))
-    :views   (fn [& _] ((default-queries :views)))
-    :all-tables (fn [& _]
-                  (str "SELECT s.schema_owner, s.schema_name, t.table_name \n"
-                       "FROM information_schema.schemata AS s,             \n"
-                       "     information_schema.tables AS t                \n"
-                       "WHERE t.table_schema = s.schema_name               \n"
-                       "  AND LCASE(s.schema_name) != 'information_schema' \n"))
+    :views   (default-queries :views)
+    :all-tables (fn [& _] "
+                 SELECT s.schema_owner, s.schema_name, t.table_name
+                 FROM information_schema.schemata AS s,
+                      information_schema.tables AS t
+                 WHERE t.table_schema = s.schema_name
+                   AND LCASE(s.schema_name) != 'information_schema' ")
     :columns (default-queries :columns)
     :keywords (fn [& _]
                 "SELECT topic FROM information_schema.help")

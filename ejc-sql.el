@@ -108,6 +108,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<up>") #'ejc-show-last-result)
     (define-key map (kbd "t") #'ejc-show-tables-list)
+    (define-key map (kbd "v") #'ejc-show-views-list)
     (define-key map (kbd "T") #'ejc-show-user-types-list)
     (define-key map (kbd "s") #'ejc-strinp-sql-at-point)
     (define-key map (kbd "S") #'ejc-dress-sql-at-point)
@@ -596,6 +597,15 @@ boundaries."
   (ejc-check-connection)
   (ejc-eval-user-sql
    (ejc-select-db-meta-script ejc-db :all-tables)
+   :rows-limit 0
+   :display-result t))
+
+(defun ejc-show-views-list ()
+  "Output views list."
+  (interactive)
+  (ejc-check-connection)
+  (ejc-eval-user-sql
+   (ejc-select-db-meta-script ejc-db :views)
    :rows-limit 0
    :display-result t))
 
