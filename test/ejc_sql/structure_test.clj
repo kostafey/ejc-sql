@@ -58,6 +58,7 @@
     (with-redefs-fn {#'get-tables (fn [db]
                                     '("users" "products"))
                      #'get-db-type (fn [db] :h2)
+                     #'get-db-name (fn [db] "mydb")
                      #'get-all-tables get-tables
                      #'get-colomns (fn [db table force?]
                                      ({"users" '("id" "name")
