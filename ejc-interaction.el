@@ -132,9 +132,10 @@
                :return-value :stdout)
 
 (clomacs-defun ejc-format-by-hibernate
-               format-sql
+               format-sql-print
                :lib-name "ejc-sql"
-               :namespace ejc-sql.output)
+               :namespace ejc-sql.output
+               :return-value :stdout)
 
 (clomacs-defun ejc-set-rows-limit
                set-rows-limit

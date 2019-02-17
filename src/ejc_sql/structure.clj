@@ -118,8 +118,10 @@
                     (s/upper-case entity-name)))
     :view        (fn [& {:keys [entity-name]}]
                    (format "
-                    SELECT DBMS_METADATA.GET_DDL('VIEW', '%s') FROM DUAL"
-                    (s/upper-case entity-name)))
+                    SELECT text
+                    FROM all_views
+                    WHERE UPPER(view_name) = '%s' "
+                           (s/upper-case entity-name)))
     :types       (fn [& _] "
                     SELECT * FROM USER_TYPES ")
     :owners      (fn [& _] "
@@ -704,6 +706,15 @@ records. Otherwise return nil."
           s/lower-case
           keyword))))
 
+;; TODO: Dummy definition, implement to all DB and entity types
+(defn add-creation-header [db entity-type entity-name sql]
+  (let [db-type (get-db-type db)]
+    (if (and (= db-type :oracle) (= entity-type :view))
+      (format "CREATE OR REPLACE VIEW %s AS\n %s"
+              (s/upper-case entity-name)
+              sql)
+      sql)))
+
 (defn get-entity-description [db entity-name]
   "Get DB entity or view creation SQL."
   (if-let [type (get-entity-type db entity-name)]
@@ -719,7 +730,7 @@ records. Otherwise return nil."
                                               (clob-to-string %)
                                               %)
                                            row)))]
-        (c/complete (o/format-sql-if-required entity-sql)
+        (c/complete (add-creation-header db type entity-name entity-sql)
                     :mode 'sql-mode)
         (c/complete (format "Can't find %s named %s."
                             (name type) entity-name)))

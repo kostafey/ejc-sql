@@ -136,6 +136,19 @@ buffer. Set BEG and END parameters to add manual boundaries restrictions."
                (buffer-substring beg end))))
      sql)))
 
+(defun ejc-flash-region (start end &optional timeout)
+  "Temporarily highlight region from START to END."
+  (let ((overlay (make-overlay start end)))
+    (overlay-put overlay 'face 'secondary-selection)
+    (run-with-timer (or timeout 0.2) nil 'delete-overlay overlay)))
+
+(cl-defun ejc-flash-this-sql (&key beg end)
+  "Select (mark) SQL around the point."
+  (interactive)
+  (ejc--in-sql-boundaries
+   beg end
+   (ejc-flash-region beg end)))
+
 (defmacro ejc-ensure-sql-mode (&rest body)
   `(if (not (equal major-mode 'sql-mode))
        (error "SQL formatting is suitable in sql-mode only.")
@@ -180,7 +193,8 @@ boundaries."
      (when (equal (char-before beg)
                   (string-to-char ejc-sql-separator))
        (goto-char beg)
-       (insert "\n")))))
+       (insert "\n")))
+    (ejc-flash-this-sql)))
 
 (defun ejc-format-sql-region (beg end)
   "Pretty-print SQL bounded by the selection area."
@@ -258,19 +272,6 @@ boundaries."
              (insert "\\n\";")
            (insert "\\n\" +"))
          (setq curr-line (1+ curr-line)))))))
-
-(defun ejc-flash-region (start end &optional timeout)
-  "Temporarily highlight region from START to END."
-  (let ((overlay (make-overlay start end)))
-    (overlay-put overlay 'face 'secondary-selection)
-    (run-with-timer (or timeout 0.2) nil 'delete-overlay overlay)))
-
-(cl-defun ejc-flash-this-sql (&key beg end)
-  "Select (mark) SQL around the point."
-  (interactive)
-  (ejc--in-sql-boundaries
-   beg end
-   (ejc-flash-region beg end)))
 
 (provide 'ejc-format)
 
