@@ -1,6 +1,7 @@
 (ns ejc-sql.connect-test
   (:require [clojure.test :refer :all]
-            [ejc-sql.connect :refer :all]))
+            [ejc-sql.connect :refer :all]
+            [ejc-sql.lib :refer :all]))
 
 (deftest determine-dml-test
   (testing "determine-dml fn test."

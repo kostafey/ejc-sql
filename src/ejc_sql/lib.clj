@@ -112,3 +112,29 @@
                               v))
                (next rest-keys)))
       acc)))
+
+(defn clean-sql [sql]
+  (-> sql
+      (s/replace #"(--).*\n" "")
+      (s/replace #"(  )|( \t)|\t" " ")
+      (s/replace "^\n" "")
+      trim))
+
+(def dml-set
+  #{"SELECT"
+    "INSERT"
+    "UPDATE"
+    "DELETE"})
+
+(def ignore-set #{\( \[})
+
+(defn determine-dml [sql]
+  "Determine if current SQL is Data Manipulation Language (DML) case."
+  (let [sql (clean-sql sql)
+        pos (loop [pos 0]
+              (if (ignore-set (get sql pos))
+                (recur (inc pos))
+                pos))]
+    (or
+     (dml-set (.toUpperCase (subs sql pos (+ 6 pos))))
+     (#{"SHOW"} (.toUpperCase (subs sql pos (+ 4 pos)))))))

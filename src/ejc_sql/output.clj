@@ -26,7 +26,8 @@
            (java.util.Date)
            (java.text.SimpleDateFormat)
            (org.apache.commons.lang3 StringUtils)
-           (org.hibernate.engine.jdbc.internal BasicFormatterImpl)))
+           (org.hibernate.engine.jdbc.internal BasicFormatterImpl
+                                               DDLFormatterImpl)))
 
 (def result-file-name
   "SQL evaluation results file name."
@@ -159,9 +160,15 @@ E.g. transtofm from: a | b | c into: a | 1
   ([rows] (print-table (keys (first rows)) rows @rows-limit)))
 
 (defn format-sql [sql]
-  (s/trim (.format (BasicFormatterImpl.) sql)))
+  (s/trim
+   (let [sql (s/trim sql)]
+     (.format (if (determine-dml sql)
+                (BasicFormatterImpl.)
+                (DDLFormatterImpl.))
+              sql))))
 
 (defn format-sql-print [sql]
+  "SQL should be printed to provide cross-platform newline handling."
   (print (format-sql sql)))
 
 (defn format-sql-if-required [sql]

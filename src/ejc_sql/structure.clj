@@ -174,13 +174,17 @@
                     %s " (if owner
                            (format "WHERE owner = '%s' " owner)
                            "")))
-    :procedure (fn [& {:keys [entity-name]}]
+    :package   (fn [& {:keys [entity-name]}]
                  ;; entity-name is a package name here
                  (format "
                   SELECT text FROM all_source
                   WHERE UPPER(name) = '%s'
                     AND type = 'PACKAGE BODY'
                   ORDER BY line " (s/upper-case entity-name)))
+    :table     (fn [& {:keys [entity-name]}]
+                 (format "
+                  SELECT dbms_metadata.get_ddl('TABLE','%s')
+                  FROM dual " (s/upper-case entity-name)))
     :objects   (fn [& _] "
                  SELECT * FROM all_objects
                  WHERE object_type IN ('FUNCTION','PROCEDURE','PACKAGE') ")
@@ -669,7 +673,7 @@ records. Otherwise return nil."
                 columns-list (get-colomns db table true)]
             ;; ok - columns
             (autocomplete-result columns-list))
-          (let [sql (c/clean-sql sql)
+          (let [sql (clean-sql sql)
                 table-alias (first
                              (filter
                               (fn [table]
@@ -698,21 +702,24 @@ records. Otherwise return nil."
                   (autocomplete-nothing))))))))))
 
 (defn get-entity-type [db entity-name]
-  "Determine DB entity type, whether id `:view`, `:type` or `:procedure`."
+  "Determine DB entity type, whether it is a `:view`, `:type`,
+`package` or `:procedure`."
   (if-let [sql (select-db-meta-script db :entity-type
                                       :entity-name entity-name)]
     (if-let [found-type (db->value db sql)]
-      (-> found-type
+      (-> (.split found-type " ")
+          first
           s/lower-case
           keyword))))
 
-;; TODO: Dummy definition, implement to all DB and entity types
+(def creation-headers
+  {:oracle {:view "CREATE OR REPLACE VIEW %s AS\n %s"
+            :package "CREATE OR REPLACE %2$s\n"}})
+
 (defn add-creation-header [db entity-type entity-name sql]
   (let [db-type (get-db-type db)]
-    (if (and (= db-type :oracle) (= entity-type :view))
-      (format "CREATE OR REPLACE VIEW %s AS\n %s"
-              (s/upper-case entity-name)
-              sql)
+    (if-let [header-format (get-in creation-headers [db-type entity-type])]
+      (format header-format entity-name sql)
       sql)))
 
 (defn get-entity-description [db entity-name]
@@ -722,15 +729,21 @@ records. Otherwise return nil."
                                   db
                                   type
                                   :entity-name entity-name)]
-      (if-let [entity-sql (db->value
-                           db
-                           entity-obtainig-sql
-                           :row-fn (fn [row]
-                                     (mapv #(if (is-clob? %)
-                                              (clob-to-string %)
-                                              %)
-                                           row)))]
-        (c/complete (add-creation-header db type entity-name entity-sql)
+      (if-let [entity-sql (s/join
+                           ""
+                           (db->column
+                            db
+                            entity-obtainig-sql
+                            :row-fn (fn [row]
+                                      (mapv #(if (is-clob? %)
+                                               (clob-to-string %)
+                                               %)
+                                            row))))]
+        (c/complete (add-creation-header
+                     db
+                     type
+                     entity-name
+                     (o/format-sql-if-required entity-sql))
                     :mode 'sql-mode)
         (c/complete (format "Can't find %s named %s."
                             (name type) entity-name)))
