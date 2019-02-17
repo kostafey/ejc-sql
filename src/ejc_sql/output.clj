@@ -161,9 +161,6 @@ E.g. transtofm from: a | b | c into: a | 1
 (defn format-sql [sql]
   (s/trim (.format (BasicFormatterImpl.) sql)))
 
-(defn pretty-print [sql]
-  (print (format-sql sql)))
-
 (defn format-sql-if-required [sql]
   (if (> (StringUtils/countMatches sql "\n") 1)
     sql

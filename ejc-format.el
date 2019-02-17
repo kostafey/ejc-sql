@@ -164,26 +164,28 @@ buffer. Set BEG and END parameters to add manual boundaries restrictions."
              (" on "         "\n  on ")
              (" group by "   "\ngroup by "))))))
 
-(defun ejc-format-sql-at-point ()
-  (interactive)
-  (ejc--in-sql-boundaries
-   beg end
-   (ejc-format-sql beg end)))
-
-(defun ejc-pretty-print-sql-at-point ()
-  "Pretty-print SQL bounded by the `ejc-sql-separator' or/and buffer
+(defun ejc-format-sql-at-point (arg)
+  "Format SQL bounded by the `ejc-sql-separator' or/and buffer
 boundaries."
-  (interactive)
-  (ejc--in-sql-boundaries
-   beg end
-   (let ((result (ejc-pretty-print (buffer-substring beg end) :hibernate)))
-     (delete-region beg end)
-     (insert result))))
+  (interactive "P")
+  (save-excursion
+    (ejc--in-sql-boundaries
+     beg end
+     (if arg
+         (ejc-format-sql beg end)
+       (let ((result (ejc-format-by-hibernate
+                      (buffer-substring beg end))))
+         (delete-region beg end)
+         (insert result)))
+     (when (equal (char-before beg)
+                  (string-to-char ejc-sql-separator))
+       (goto-char beg)
+       (insert "\n")))))
 
-(defun ejc-pretty-print-sql-region (beg end)
+(defun ejc-format-sql-region (beg end)
   "Pretty-print SQL bounded by the selection area."
   (interactive "r")
-  (let ((result (ejc-pretty-print (buffer-substring beg end) :hibernate)))
+  (let ((result (ejc-format-by-hibernate (buffer-substring beg end))))
     (delete-region beg end)
     (insert result)))
 
@@ -208,7 +210,6 @@ boundaries."
      (whitespace-cleanup-region beg end))))
 
 (defun ejc-longest-line-length (beg-line end-line)
-  (interactive)
   (save-excursion
     (let ((curr-line beg-line)
           (max-length 0)

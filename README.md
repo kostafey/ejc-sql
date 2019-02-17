@@ -448,13 +448,15 @@ New keybindings defined in `ejc-sql-mode` minor mode:
  <kbd>C-c C-c</kbd>  | `ejc-eval-user-sql-at-point`    | Evaluate SQL/JPQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
  <kbd>C-g</kbd>      | `ejc-cancel-query`              | Terminate current running query or run `keyboard-quit` if there is no running queries.
  <kbd>C-h t</kbd>    | `ejc-describe-table`            | Describe SQL table.
- <kbd>C-h T</kbd>    | `ejc-describe-entity`           | Describe SQL entity entity - function, procedure or type.
+ <kbd>C-h T</kbd>    | `ejc-describe-entity`           | Describe SQL entity entity, show creation SQL of view, function, procedure or type.
  <kbd>C-c e up</kbd> | `ejc-show-last-result`          | Show last result.
  <kbd>C-c e t</kbd>  | `ejc-show-tables-list`          | Show tables list.
+ <kbd>C-c e v</kbd>  | `ejc-show-views-list`           | Show views list.
+ <kbd>C-c e p</kbd>  | `ejc-show-procedures-list`      | Show stored procedures list.
  <kbd>C-c e T</kbd>  | `ejc-show-user-types-list`      | Show user types list.
  <kbd>C-c e s</kbd>  | `ejc-strinp-sql-at-point`       | Strip SQL (trim java string tokens).
  <kbd>C-c e S</kbd>  | `ejc-dress-sql-at-point`        | Dress SQL (to copy-paste it to java code).
- <kbd>C-c e p</kbd>  | `ejc-pretty-print-sql-at-point` | Pretty-print this SQL statement.
+ <kbd>C-c e f</kbd>  | `ejc-format-sql-at-point`       | Format (pretty-print) this SQL statement.
  <kbd>C-M-b</kbd>    | `ejc-previous-sql`              | Goto previous SQL statement.
  <kbd>C-M-f</kbd>    | `ejc-next-sql`                  | Goto next SQL statement.
  <kbd>C-M-S-b</kbd>  | `ejc-previous-sql`              | Select from point to previous SQL statement.
@@ -466,12 +468,10 @@ List of other interactive functions
 ------------------------------------|------------------------------------------
  `ejc-connect`                      | Connect to database for current buffer
  `ejc-quit-connection`              | Close all database connections, quit Clojure REPL.
- `ejc-format-sql-at-point`          | Format SQL
- `ejc-pretty-print-sql-region`      | Pretty-print selected SQL snippet
+ `ejc-format-sql-region`            | Format (pretty-print) selected SQL snippet
  `ejc-mark-this-sql`                | Mark SQL script bounded by the `ejc-sql-separator` or/and buffer boundaries
  `ejc-show-tables-list`             | Show tables list
  `ejc-show-constraints-list`        | Show constraints list
- `ejc-show-procedures-list`         | Show procedures list
  `ejc-open-log`                     | Open log
  `ejc-switch-to-sql-editor-buffer`  | Create buffer with `ejc-sql-mode`
  `ejc-invalidate-cache`             | Clean your current connection cache (database owners and tables list)
