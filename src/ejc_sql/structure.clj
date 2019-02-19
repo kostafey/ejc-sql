@@ -722,7 +722,7 @@ records. Otherwise return nil."
       (format header-format entity-name sql)
       sql)))
 
-(defn get-entity-description [db entity-name]
+(defn get-entity-description [db connection-name entity-name]
   "Get DB entity or view creation SQL."
   (if-let [type (get-entity-type db entity-name)]
     (if-let [entity-obtainig-sql (select-db-meta-script
@@ -744,7 +744,9 @@ records. Otherwise return nil."
                      type
                      entity-name
                      (o/format-sql-if-required entity-sql))
-                    :mode 'sql-mode)
+                    :mode 'sql-mode
+                    :connection-name connection-name
+                    :db db)
         (c/complete (format "Can't find %s named %s."
                             (name type) entity-name)))
       (c/complete (format (str "Script for obtaining DB entity of type %s "

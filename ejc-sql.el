@@ -97,7 +97,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
-(define-key ejc-sql-mode-keymap (kbd "C-h T") 'ejc-describe-entity)
+(define-key ejc-sql-mode-keymap (kbd "C-h d") 'ejc-describe-entity)
 (define-key ejc-sql-mode-keymap (kbd "C-M-S-b") '(lambda() (interactive) (ejc-previous-sql t)))
 (define-key ejc-sql-mode-keymap (kbd "C-M-S-f") '(lambda() (interactive) (ejc-next-sql t)))
 (define-key ejc-sql-mode-keymap (kbd "C-M-b") 'ejc-previous-sql)
@@ -512,12 +512,16 @@ any SQL buffer to connect to exact database, as always. "
                               start-time
                               status
                               display-result
-                              mode)
+                              mode
+                              connection-name
+                              db)
   (if result-file-path
       (setq ejc-result-file-path result-file-path))
   (ejc-spinner-stop)
   (if display-result
-      (ejc-show-last-result :mode mode))
+      (ejc-show-last-result :mode mode
+                            :connection-name connection-name
+                            :db db))
   (if (and start-time status)
       (ejc-message-query-done start-time status))
   nil)
@@ -542,7 +546,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
     (when (not table)
       (setq table owner)
       (setq owner nil))
-    (ejc-get-table-meta ejc-db table-name)
+    (ejc-get-table-meta ejc-db ejc-connection-name table-name)
     (let ((sql (ejc-select-db-meta-script ejc-db :constraints
                                           :owner owner
                                           :table table)))
@@ -557,8 +561,8 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   "Describe SQL entity ENTITY-NAME - function, procedure, type or view
    (default entity name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe entity"))
-  (ejc-get-entity-description ejc-db entity-name)
-  (ejc-check-connection))
+  (ejc-check-connection)
+  (ejc-get-entity-description ejc-db ejc-connection-name entity-name))
 
 (cl-defun ejc-eval-user-sql (sql &key rows-limit sync display-result)
   "Evaluate SQL by user: reload and show query results buffer, update log."
@@ -660,16 +664,21 @@ If this buffer is not exists or it was killed - create buffer via
       ejc-results-buffer
     (ejc-create-output-buffer)))
 
-(cl-defun ejc-show-last-result (&key result mode)
+(cl-defun ejc-show-last-result (&key result mode connection-name db)
   "Popup buffer with last SQL execution result output."
   (interactive)
   (let ((output-buffer (ejc-get-output-buffer))
-        (old-split split-width-threshold))
+        (old-split split-width-threshold)
+        (product-name (ejc-get-product-name db)))
     (set-buffer output-buffer)
     (read-only-mode -1)
     (erase-buffer)
     (if mode
         (funcall mode))
+    (ejc-sql-mode t)
+    (setq-local ejc-connection-name connection-name)
+    (setq-local ejc-db db)
+    (ejc-set-mode-name connection-name)
     (if result
         (insert result)
       (insert-file-contents (ejc-get-result-file-path)))

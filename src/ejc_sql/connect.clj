@@ -146,7 +146,9 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                append
                                mode
                                start-time
-                               status]
+                               status
+                               connection-name
+                               db]
                         :or {display-result true
                              append false
                              mode 'ejc-result-mode}}]
@@ -156,7 +158,9 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                          :start-time start-time
                          :status status
                          :display-result display-result
-                         :mode mode)]
+                         :mode mode
+                         :connection-name connection-name
+                         :db db)]
     (spinner-stop)
     complete-output))
 
@@ -243,7 +247,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 
 (defn get-table-meta
   "Describe table."
-  [db table-name]
+  [db connection-name table-name]
   (let [result-map (table-meta db table-name)
         success (:success result-map)
         result-data (:result result-map)
@@ -255,4 +259,6 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
             (ejc-sql.lib/simple-join head-length "-") "\n"
             (o/print-table result-data))
        result-data)
-     :display-result true)))
+     :display-result true
+     :connection-name connection-name
+     :db db)))
