@@ -313,8 +313,8 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 <a id="basic-use-case"></a>
 ### Basic use case
 
-First of all, open your SQL buffer file (or any temporary buffer) and connect
-to your database
+First of all, open your SQL buffer file (or any temporary `sql-mode` buffer)
+and connect to your database
 
 `M-x ejc-connect <RET> MySQL-db-connection <RET>`.
 

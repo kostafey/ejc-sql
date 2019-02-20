@@ -641,30 +641,17 @@ boundaries."
    :rows-limit 0
    :display-result t))
 
-;;-----------------------------------------------------------------------------
-;; results buffer
-;;
-(defun ejc-create-output-buffer ()
-  (set-buffer (get-buffer-create ejc-results-buffer-name))
-  (setq ejc-results-buffer (current-buffer))
-  (ejc-result-mode)
-  ejc-results-buffer)
-
-(defun ejc-get-buffer-or-create (buffer-or-name create-buffer-fn)
-  "Return buffer passed in `buffer-or-name' parameter.
-If this buffer is not exists or it was killed - create buffer via
-`create-buffer-fn' function (this function must return buffer)."
-  (let ((buf (if (bufferp buffer-or-name)
-                 buffer-or-name
-               (get-buffer buffer-or-name))))
-    (if (and buf (buffer-live-p buf))
-        buf
-      (apply create-buffer-fn nil))))
-
 (defun ejc-get-output-buffer ()
-  (if (and ejc-results-buffer (buffer-live-p ejc-results-buffer))
-      ejc-results-buffer
-    (ejc-create-output-buffer)))
+  "Get or create buffer for output SQL evaluation results.
+It can be result sets, record affected messages, SQL definition of entities
+or error messages."
+  (when (not (and ejc-results-buffer
+                  (buffer-live-p ejc-results-buffer)))
+    (setq ejc-results-buffer (get-buffer-create
+                              ejc-results-buffer-name))
+    (with-current-buffer ejc-results-buffer
+      (ejc-result-mode)))
+  ejc-results-buffer)
 
 ;;;###autoload
 (cl-defun ejc-show-last-result (&key result mode connection-name db)
