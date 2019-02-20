@@ -139,9 +139,6 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 (clomacs-defn complete-query ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
 
-(clomacs-defn spinner-stop ejc-spinner-stop
-              :doc "Stop spinner indicating current running query.")
-
 (defn complete [text & {:keys [display-result
                                append
                                mode
@@ -153,16 +150,14 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                              append false
                              mode 'ejc-result-mode}}]
   "Complete query and display `text` as a result."
-  (let [complete-output (complete-query
-                         (o/write-result-file text :append append)
-                         :start-time start-time
-                         :status status
-                         :display-result display-result
-                         :mode mode
-                         :connection-name connection-name
-                         :db db)]
-    (spinner-stop)
-    complete-output))
+  (complete-query
+   (o/write-result-file text :append append)
+   :start-time start-time
+   :status status
+   :display-result display-result
+   :mode mode
+   :connection-name connection-name
+   :db db))
 
 (defn- eval-user-sql [db sql & {:keys [rows-limit append display-result]}]
   (let [clear-sql (.trim sql)]

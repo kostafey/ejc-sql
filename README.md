@@ -321,7 +321,7 @@ to your database
 and wait until "Connected." message appears.
 Since connection information is buffer-local, you should use `ejc-connect`
 for any new buffer. There is a handy function to create temporary buffer for
-playing with SQL: `ejc-switch-to-sql-editor-buffer`.
+playing with SQL: `ejc-get-editor-buffer`.
 
 Then type your queries like this:
 
@@ -474,7 +474,7 @@ List of other interactive functions
  `ejc-show-tables-list`             | Show tables list
  `ejc-show-constraints-list`        | Show constraints list
  `ejc-open-log`                     | Open log
- `ejc-switch-to-sql-editor-buffer`  | Create buffer with `ejc-sql-mode`
+ `ejc-get-editor-buffer`            | Create ad-hoc SQL editor buffer, use prefix arg number to get many buffers
  `ejc-invalidate-cache`             | Clean your current connection cache (database owners and tables list)
  `ejc-direx:pop-to-buffer`          | Create buffer with database structure tree
 
