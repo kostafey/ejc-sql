@@ -389,7 +389,7 @@ Have much fun!
 
 You can run `M-x ejc-connect <RET> my-db-connection <RET>` in `org-mode`
 buffers. In this case, `major-mode` will persists as `org-mode`, but all
-connection-relatead data will be added to the buffer.
+connection-related data will be added to the buffer.
 
 ```markdown
 * Create DB
@@ -445,8 +445,8 @@ expected, add to your `.emacs`:
 If your `org-mode` buffer connected via `ejc-connect`, any time you run
 <kbd>C-c '</kbd> (`org-edit-special`) for code snippets, you will get new
 buffer with this minor-mode (`ejc-sql-mode`) and all connection-related data.
-So, you can operate inside it like in ordinary `sql-mode` buffer, witch is
-already connected to database.
+So, you can operate inside it like in ordinary `sql-mode` buffer, which is
+already connected to the database.
 
 You can use both `ejc-sql` and `org-mode` original `org-babel` execution
 engine simultaneously in one buffer.
@@ -462,7 +462,7 @@ Reference this [discussion](https://github.com/kostafey/ejc-sql/pull/74).
 <a id="use-existing-nrepl"></a>
 ### Use existing nREPL
 
-If you have to restart Emacs multiple times, you can keep the ejc-sql clojure
+If you have to restart Emacs multiple times, you can keep the `ejc-sql` Clojure
 backend alive between Emacs restarts by running this backend out of Emacs, and
 connect to it from Emacs.
 
