@@ -19,6 +19,7 @@ formatting of SQL scripts are also available.
 - [Installation](#installation)
 - [Install JDBC Drivers](#install-jdbc-drivers)
 - [Configuration](#configuration)
+  - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
   - [MySQL connection](#mysqlconnection)
   - [MS SQL Server connection](#mssqlserverconnection)
@@ -31,7 +32,6 @@ formatting of SQL scripts are also available.
   - [Use with org-mode](#use-with-org-mode)
   - [Use existing nREPL](#use-existing-nrepl)
 - [List of keybindings & functions](#keybindings)
-- [Autocomplete](#autocomplete)
 - [Yasnippet](#yasnippet)
 - [Troubleshooting](#troubleshooting)
 - [Requirements](#requirements)
@@ -120,10 +120,29 @@ First, load `ejc-sql` package:
 
 `ejc-set-rows-limit` set limit for the number of records to output (1000 by
 default). Set to nil if you want to disable this limit.
-
 ```lisp
 (ejc-set-rows-limit 1000)
 ```
+
+## Autocomplete
+
+Enable autocomplete for `ejc-sql` minor mode:
+```lisp
+(add-hook 'ejc-sql-minor-mode-hook
+          (lambda ()
+            (auto-complete-mode t)
+            (ejc-ac-setup)))
+```
+
+Autocompletion is available for the following databases:
+
+* Oracle
+* MS SQL Server
+* PostgreSQL
+* MySQL
+* Informix
+* H2
+* SQLite
 
 <a id="fuzzy-matching"></a>
 ### Fuzzy matching
@@ -313,15 +332,32 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 <a id="basic-use-case"></a>
 ### Basic use case
 
-First of all, open your SQL buffer file (or any temporary `sql-mode` buffer)
-and connect to your database
+First of all, open your SQL buffer file (or any `sql-mode` buffer).
+
+On the other hand, there is a handy function to create temporary `sql-mode`
+buffers for playing with SQL: `ejc-get-temp-editor-buffer`.
+If you bind it, e.g. to:
+```lisp
+(global-set-key (kbd "C-c eb") 'ejc-get-temp-editor-buffer)
+```
+then, when you press <kbd>C-c eb</kbd>, `*ejc-sql-editor*` buffer will be
+created; when you press <kbd>M-1 C-c eb</kbd>, `*ejc-sql-editor-1*` buffer will
+created and so on. This buffers can be saved as ordinary file buffers by
+`save-buffer` command to the appropriate files, located in
+`ejc-temp-editor-file-path` directory ("~/tmp/ejc-sql/" by default).
+
+In any selected SQL buffer connect to your database:
 
 `M-x ejc-connect <RET> MySQL-db-connection <RET>`.
 
-and wait until "Connected." message appears.
-Since connection information is buffer-local, you should use `ejc-connect`
-for any new buffer. There is a handy function to create temporary buffer for
-playing with SQL: `ejc-get-editor-buffer`.
+and wait until "Connected." message appears. This will add connection
+information to buffer local variables. Furthermore, if there is no `ejc-sql`
+dedicated Clojure REPL running, it will start it.
+
+Since connection information is **`buffer-local`**, you should run `ejc-connect`
+for any new buffer. Any of `ejc-sql-mode` buffers can keep connection
+information to different databases and database types. But they use the same
+`ejc-sql` dedicated Clojure REPL to interact with databases via JDBC.
 
 Then type your queries like this:
 
@@ -474,21 +510,9 @@ List of other interactive functions
  `ejc-show-tables-list`             | Show tables list
  `ejc-show-constraints-list`        | Show constraints list
  `ejc-open-log`                     | Open log
- `ejc-get-editor-buffer`            | Create ad-hoc SQL editor buffer, use prefix arg number to get many buffers
+ `ejc-get-temp-editor-buffer`       | Create ad-hoc SQL editor buffer, use prefix arg number to get many buffers
  `ejc-invalidate-cache`             | Clean your current connection cache (database owners and tables list)
  `ejc-direx:pop-to-buffer`          | Create buffer with database structure tree
-
-## Autocomplete
-
-Autocompletion is available for the following databases:
-
-* Oracle
-* MS SQL Server
-* PostgreSQL
-* MySQL
-* Informix
-* H2
-* SQLite
 
 ## Yasnippet
 

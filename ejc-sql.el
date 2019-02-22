@@ -156,8 +156,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
   (if (fboundp 'font-lock-flush)
       (font-lock-flush)
     (when font-lock-mode
-      (with-no-warnings (font-lock-fontify-buffer))))
-  (run-hooks 'ejc-sql-minor-mode-hook))
+      (with-no-warnings (font-lock-fontify-buffer)))))
 
 ;;;###autoload
 (define-minor-mode ejc-sql-mode
@@ -168,9 +167,9 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
   :global nil
   (if ejc-sql-mode
       (progn
-        (ejc-ac-setup)
         (ejc-create-menu)
-        (ejc-refresh-font-lock))
+        (ejc-refresh-font-lock)
+        (run-hooks 'ejc-sql-minor-mode-hook))
     (progn
       (ejc-refresh-font-lock)
       (run-hooks 'ejc-sql-minor-mode-exit-hook))))
@@ -674,16 +673,18 @@ or error messages."
     (display-buffer output-buffer)))
 
 ;;;###autoload
-(defun ejc-get-editor-buffer (&optional num)
+(defun ejc-get-temp-editor-buffer (&optional num)
   (interactive "P")
   "Switch to buffer dedicated to ad-hoc edit and SQL scripts.
 If the buffer is not exists - create it.
 Buffer can be saved to file with `ejc-temp-editor-file' path."
   (interactive)
-  (let* ((tmp-file-name (if (and num (numberp num))
+  (let* ((tmp-file-name (if num
                             (format "%s-%s"
                                     ejc-temp-editor-buffer-name
-                                    (int-to-string num))
+                                    (if (numberp num)
+                                        (int-to-string num)
+                                      num))
                           ejc-temp-editor-buffer-name))
          (tmp-file-path (progn
                           (unless (file-exists-p ejc-temp-editor-file-path)
@@ -699,6 +700,7 @@ Buffer can be saved to file with `ejc-temp-editor-file' path."
         (sql-mode)
         (auto-fill-mode t)
         (auto-complete-mode t)
+        (ejc-ac-setup)
         (ejc-add-connection)
         (get-buffer tmp-buffer-name)))))
 
