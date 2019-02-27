@@ -121,10 +121,11 @@ Uppercase by default, set to nil to use downcase candidates."
               ejc-auxulary-sql-words))))
 
 (defun ejc-get-keywords ()
-  (unless (or (ejc-return-point) (ejc-get-prefix-word))
-    (if ejc-candidates-uppercase
-        (mapcar 'upcase (ejc-get-keywords-inner ejc-db nil))
-      (mapcar 'lowercase (ejc-get-keywords-inner ejc-db nil)))))
+  (if (ejc-buffer-connected-p)
+      (unless (or (ejc-return-point) (ejc-get-prefix-word))
+        (if ejc-candidates-uppercase
+            (mapcar 'upcase (ejc-get-keywords-inner ejc-db nil))
+          (mapcar 'lowercase (ejc-get-keywords-inner ejc-db nil))))))
 
 (defun ac-ejc-documentation (symbol-name)
   "Return a documentation string for SYMBOL-NAME."
