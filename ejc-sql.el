@@ -396,13 +396,24 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
       (advice-add 'org-babel-execute:sql :around 'ejc-eval-org-snippet)
       (advice-add 'org-edit-special :around #'ejc-org-edit-special))
     (message "Connection started...")
-    (ejc-connect-to-db db)
-    (let ((validation-result
-           (ejc-validate-connection :db ejc-db
-                                    :timeout ejc-connection-validate-timeout)))
-      (when (alist-get :status validation-result)
-        (ejc-set-mode-name connection-name)
-        (message (alist-get :message validation-result))))))
+    (clomacs-with-nrepl "ejc-sql"
+      (lambda (db connection-name)
+        (ejc-connect-to-db db)
+        (let ((validation-result
+               (ejc-validate-connection
+                :db db
+                :timeout ejc-connection-validate-timeout)))
+          (when (alist-get :status validation-result)
+            (ejc-set-mode-name connection-name)
+            (message (let ((status (alist-get :status validation-result))
+                           (msg (alist-get :message validation-result)))
+                       (if (and status (equal "Connected." msg))
+                           (format
+                            "Connected -> %s."
+                            (propertize connection-name
+                                        'face 'font-lock-keyword-face))
+                         msg))))))
+      :params (list db connection-name))))
 
 ;;;###autoload
 (defun ejc-connect-existing-repl ()
