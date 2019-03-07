@@ -194,6 +194,10 @@
 
 (ejc-test:run-maven-dependency-plugin)
 
-;; (ert-run-tests-batch-and-exit '(tag el))
-;; (ert-run-tests-batch-and-exit '(tag el+cl))
-(ert-run-tests-batch-and-exit t)
+(clomacs-with-nrepl "ejc-sql"
+  (lambda ()
+    ;; (ert-run-tests-batch-and-exit '(tag el))
+    ;; (ert-run-tests-batch-and-exit '(tag el+cl))
+    (ert-run-tests-batch-and-exit t)))
+
+(sit-for 60)
