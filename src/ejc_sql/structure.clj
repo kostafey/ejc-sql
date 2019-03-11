@@ -52,14 +52,18 @@
   "Execute `sql`, return first value of first column of result set as result."
   (first (db->column db sql :row-fn row-fn)))
 
-(defn get-ms-sql-server-version [db]
+(defn get-ms-sql-server-version [ver]
   (->
-   (filter not-empty
-           (.split
-            (db->value db "SELECT @@VERSION AS 'SQL Server Version'")
-            " "))
+   (filter not-empty (.split ver " "))
    (nth 3)
    Integer/parseInt))
+
+(defn is-legacy-sql-server? [db]
+  (let [ver (db->value db "SELECT @@VERSION AS 'SQL Server Version'")]
+    (if (.startsWith ver "Microsoft SQL Azure")
+      false
+      (> (get-ms-sql-server-version ver) 2000))))
+
 
 (def default-queries
   {:owners  (fn [& _] "
@@ -284,7 +288,7 @@
                         "WHERE type_desc LIKE '%CONSTRAINT'   \n"
                         "  AND OBJECT_NAME(parent_object_id)='" table "'"))
     :entity      (fn [& {:keys [db entity-name]}]
-                   (if (> (get-ms-sql-server-version db) 2000)
+                   (if (is-legacy-sql-server? db)
                      (str
                       "SELECT definition                                   \n"
                       "FROM sys.objects     o                              \n"
@@ -379,7 +383,7 @@
                  ((fn [db]
                     (let [db-type (get-db-type db)]
                       (case db-type
-                        :sqlserver (if (> (get-ms-sql-server-version db) 2000)
+                        :sqlserver (if (is-legacy-sql-server? db)
                                      ;; Get default SQL Server schema for session
                                      (db->value db "SELECT SCHEMA_NAME()")
                                      "dbo")
