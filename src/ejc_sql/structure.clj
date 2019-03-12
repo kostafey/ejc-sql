@@ -64,7 +64,6 @@
       true
       (> (get-ms-sql-server-version ver) 2000))))
 
-
 (def default-queries
   {:owners  (fn [& _] "
               SELECT schema_owner
@@ -198,32 +197,33 @@
    :informix
    ;;--------
    {:owners nil
-    :tables  (fn [& _]
-               (str " SELECT TRIM(t.tabname) as tablesList \n"
-                    " FROM systables AS t                  \n"
-                    " WHERE t.tabtype = 'T'                \n"
-                    "   AND t.tabid >= 100                 \n"
-                    " ORDER BY t.tabname;                  \n"))
+    :tables  (fn [& _] "
+               SELECT TRIM(t.tabname) as tablesList
+               FROM systables AS t
+               WHERE t.tabtype = 'T'
+                 AND t.tabid >= 100
+               ORDER BY t.tabname; ")
     :columns (fn [& {:keys [table]}]
-               (str " SELECT TRIM(c.colname) AS column_name \n"
-                    "  FROM systables AS t, syscolumns AS c \n"
-                    " WHERE t.tabid = c.tabid               \n"
-                    "   AND t.tabtype = 'T'                 \n"
-                    "   AND t.tabid >= 100                  \n"
-                    "   AND TRIM(t.tabname) = '" table "'   \n"
-                    " ORDER BY c.colno;                     \n"))}
+               (format "
+                SELECT TRIM(c.colname) AS column_name
+                 FROM systables AS t, syscolumns AS c
+                WHERE t.tabid = c.tabid
+                  AND t.tabtype = 'T'
+                  AND t.tabid >= 100
+                  AND TRIM(t.tabname) = '%s'
+                ORDER BY c.colno; " table))}
    ;;-------
    :mysql
    ;;-------
-   {:owners  (fn [& _]
-              (str " SELECT schema_name               \n"
-                   " FROM information_schema.schemata \n"))
+   {:owners  (fn [& _] "
+               SELECT schema_name
+               FROM information_schema.schemata ")
     :tables  (default-queries :tables)
-    :all-tables (fn [& _]
-                  (str "SELECT s.schema_name, t.table_name     \n"
-                       "FROM information_schema.schemata AS s, \n"
-                       "     information_schema.tables AS t    \n"
-                       "WHERE t.table_schema = s.schema_name   \n"))
+    :all-tables (fn [& _] "
+                  SELECT s.schema_name, t.table_name
+                  FROM information_schema.schemata AS s,
+                       information_schema.tables AS t
+                  WHERE t.table_schema = s.schema_name ")
     :columns (default-queries :columns)
     :keywords (fn [& _]
                 "SELECT name FROM mysql.help_keyword")}
@@ -256,12 +256,13 @@
     :views      (fn [& _] "SELECT name FROM sqlite_master WHERE type='view'")
     :all-tables (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
     :columns    (fn [& {:keys [table]}]
-                  (str "SELECT p.name as columnName                   \n"
-                       "FROM sqlite_master m                          \n"
-                       "LEFT OUTER JOIN pragma_table_info((m.name)) p \n"
-                       "     ON m.name <> p.name                      \n"
-                       "WHERE m.name = '" table "'                    \n"
-                       "ORDER BY columnName                           \n"))
+                  (format "
+                   SELECT p.name as columnName
+                   FROM sqlite_master m
+                   LEFT OUTER JOIN pragma_table_info((m.name)) p
+                        ON m.name <> p.name
+                   WHERE m.name = '%s'
+                   ORDER BY columnName " table))
     :keywords    (:sqlite k/keywords)
     :entity-type (fn [& {:keys [entity-name]}]
                    (format "
@@ -282,23 +283,24 @@
     :all-tables (default-queries :all-tables)
     :columns (default-queries :columns)
     :constraints (fn [& {:keys [table]}]
-                   (str "SELECT type_desc AS constraint_type, \n"
-                        "       name                          \n"
-                        "FROM sys.objects                     \n"
-                        "WHERE type_desc LIKE '%CONSTRAINT'   \n"
-                        "  AND OBJECT_NAME(parent_object_id)='" table "'"))
+                   (format "
+                    SELECT type_desc AS constraint_type,
+                           name
+                    FROM sys.objects
+                    WHERE type_desc LIKE '%CONSTRAINT'
+                      AND OBJECT_NAME(parent_object_id)='%s' " table))
     :entity      (fn [& {:keys [db entity-name]}]
                    (if (is-modern-sql-server? db)
-                     (str
-                      "SELECT definition                                   \n"
-                      "FROM sys.objects     o                              \n"
-                      "JOIN sys.sql_modules m ON m.object_id = o.object_id \n"
-                      "WHERE o.object_id = object_id('" entity-name "')    \n")
-                     (str
-                      "SELECT c.text                     \n"
-                      "FROM sysobjects  o                \n"
-                      "JOIN syscomments c ON c.id = o.id \n"
-                      "WHERE o.name = '" entity-name "'  \n")))}
+                     (format "
+                      SELECT definition
+                      FROM sys.objects o
+                      JOIN sys.sql_modules m ON m.object_id = o.object_id
+                      WHERE o.object_id = object_id('%s') " entity-name)
+                     (format "
+                      SELECT c.text
+                      FROM sysobjects o
+                      JOIN syscomments c ON c.id = o.id
+                      WHERE o.name = '%s' " entity-name)))}
    ;;-------
    :postgresql
    ;;-------

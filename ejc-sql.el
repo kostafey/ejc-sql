@@ -405,9 +405,8 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                 :timeout ejc-connection-validate-timeout)))
           (when (alist-get :status validation-result)
             (ejc-set-mode-name connection-name)
-            (message (let ((status (alist-get :status validation-result))
-                           (msg (alist-get :message validation-result)))
-                       (if (and status (equal "Connected." msg))
+            (message (let ((msg (alist-get :message validation-result)))
+                       (if (equal "Connected." msg)
                            (format
                             "Connected -> %s."
                             (propertize connection-name
