@@ -58,10 +58,10 @@
    (nth 3)
    Integer/parseInt))
 
-(defn is-legacy-sql-server? [db]
+(defn is-modern-sql-server? [db]
   (let [ver (db->value db "SELECT @@VERSION AS 'SQL Server Version'")]
     (if (.startsWith ver "Microsoft SQL Azure")
-      false
+      true
       (> (get-ms-sql-server-version ver) 2000))))
 
 
@@ -288,7 +288,7 @@
                         "WHERE type_desc LIKE '%CONSTRAINT'   \n"
                         "  AND OBJECT_NAME(parent_object_id)='" table "'"))
     :entity      (fn [& {:keys [db entity-name]}]
-                   (if (is-legacy-sql-server? db)
+                   (if (is-modern-sql-server? db)
                      (str
                       "SELECT definition                                   \n"
                       "FROM sys.objects     o                              \n"
@@ -383,7 +383,7 @@
                  ((fn [db]
                     (let [db-type (get-db-type db)]
                       (case db-type
-                        :sqlserver (if (is-legacy-sql-server? db)
+                        :sqlserver (if (is-modern-sql-server? db)
                                      ;; Get default SQL Server schema for session
                                      (db->value db "SELECT SCHEMA_NAME()")
                                      "dbo")
