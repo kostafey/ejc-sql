@@ -436,6 +436,19 @@ any SQL buffer to connect to exact database, as always. "
     (with-current-buffer current-repl-b-name
       (rename-buffer ejc-repl-b-name))))
 
+;;;###autoload
+(defun ejc-connect-sqlite (sqlite-db-file)
+  "A helper command to dynamically create SQLite Driver connection."
+  (interactive "fSQLite db file: ")
+  (let ((connection-name (read-string "Input SQLite connection name: ")))
+    (ejc-create-connection
+     connection-name
+     :classpath (concat "~/.m2/repository/org/xerial/sqlite-jdbc/"
+                        "3.25.2/sqlite-jdbc-3.25.2.jar")
+     :subprotocol "sqlite"
+     :subname (file-truename sqlite-db-file))
+    (ejc-connect connection-name)))
+
 (defun ejc-get-word-at-point (pos)
   "Return SQL word around the point."
   (interactive "d")
