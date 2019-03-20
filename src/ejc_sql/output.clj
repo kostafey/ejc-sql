@@ -31,7 +31,13 @@
 
 (def result-file-name
   "SQL evaluation results file name."
-  "ejc-sql-result.txt")
+  "ejc-sql-result-%d.txt")
+
+(def ring-length 10)
+
+(def ring-position (atom 1))
+
+(format result-file-name 1)
 
 (defn get-result-file-path []
   (s/replace
@@ -40,6 +46,8 @@
      (File. (System/getProperty "java.io.tmpdir"))
      result-file-name))
    #"\\" "/"))
+
+;; (get-result-file-path)
 
 (defn get-log-dir []
   (file (if windows?
@@ -176,11 +184,11 @@ E.g. transtofm from: a | b | c into: a | 1
     sql
     (format-sql sql)))
 
-(defn write-result-file [text & {:keys [append]
+(defn write-result-file [text & {:keys [result-file
+                                        append]
                                  :or {append false}}]
-  (let [result-file-path (get-result-file-path)]
-    (spit result-file-path text :append append)
-    result-file-path))
+  (spit result-file text :append append)
+  result-file)
 
 (defn clear-result-file []
   (write-result-file ""))

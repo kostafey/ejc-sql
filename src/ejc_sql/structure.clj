@@ -728,7 +728,7 @@ records. Otherwise return nil."
       (format header-format entity-name sql)
       sql)))
 
-(defn get-entity-description [db connection-name entity-name]
+(defn get-entity-description [db connection-name entity-name result-file]
   "Get DB entity or view creation SQL."
   (if-let [type (get-entity-type db entity-name)]
     (if-let [entity-obtainig-sql (select-db-meta-script
@@ -752,13 +752,17 @@ records. Otherwise return nil."
                      (o/format-sql-if-required entity-sql))
                     :mode 'sql-mode
                     :connection-name connection-name
-                    :db db)
+                    :db db
+                    :result-file result-file)
         (c/complete (format "Can't find %s named %s."
-                            (name type) entity-name)))
+                            (name type) entity-name)
+                    :result-file result-file))
       (c/complete (format (str "Script for obtaining DB entity of type %s "
                                "was not added for this database type.")
-                          (name type))))
-    (c/complete (format "Can't determine type of %s." entity-name))))
+                          (name type))
+                  :result-file result-file))
+    (c/complete (format "Can't determine type of %s." entity-name)
+                :result-file result-file)))
 
 (defn get-cache []
   "Output actual cache."

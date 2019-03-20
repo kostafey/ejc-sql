@@ -140,6 +140,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
               :doc "Show file contents with SQL query evaluation results.")
 
 (defn complete [text & {:keys [display-result
+                               result-file
                                append
                                mode
                                start-time
@@ -151,7 +152,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                              mode 'ejc-result-mode}}]
   "Complete query and display `text` as a result."
   (complete-query
-   (o/write-result-file text :append append)
+   (o/write-result-file text :result-file result-file :append append)
    :start-time start-time
    :status status
    :display-result display-result
@@ -159,7 +160,10 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
    :connection-name connection-name
    :db db))
 
-(defn- eval-user-sql [db sql & {:keys [rows-limit append display-result]}]
+(defn- eval-user-sql [db sql & {:keys [rows-limit
+                                       append
+                                       display-result
+                                       result-file]}]
   (let [clear-sql (.trim sql)]
     (o/log-sql (str clear-sql "\n"))
     (let [[result-type result] (eval-sql-core
@@ -181,11 +185,17 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                    :terminated
                    :error)
                  :done)
-       :display-result display-result))))
+       :display-result display-result
+       :result-file result-file))))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
-  [db sql & {:keys [rows-limit append start-time sync display-result]
+  [db sql & {:keys [rows-limit
+                    append
+                    start-time
+                    sync
+                    display-result
+                    result-file]
              :or {append false
                   sync false
                   display-result true}}]
@@ -194,7 +204,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
               (eval-user-sql db sql
                              :rows-limit rows-limit
                              :append append
-                             :display-result display-result)
+                             :display-result display-result
+                             :result-file result-file)
               (catch Exception e
                 (complete
                  (str (.getMessage e) "\n"
@@ -242,7 +253,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 
 (defn get-table-meta
   "Describe table."
-  [db connection-name table-name]
+  [db connection-name table-name result-file]
   (let [result-map (table-meta db table-name)
         success (:success result-map)
         result-data (:result result-map)
@@ -256,4 +267,5 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
        result-data)
      :display-result true
      :connection-name connection-name
-     :db db)))
+     :db db
+     :result-file result-file)))
