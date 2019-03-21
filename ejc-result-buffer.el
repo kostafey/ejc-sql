@@ -106,8 +106,12 @@ or error messages."
       (insert-file-contents (ejc-get-result-file-path)))
     (read-only-mode 1)
     (beginning-of-buffer)
-    (if (not (get-buffer-window output-buffer t))
-        (display-buffer output-buffer))))
+    (let* ((window (get-buffer-window output-buffer t))
+           (frame (window-frame window)))
+      (if (not window)
+          (display-buffer output-buffer))
+      (if (not (eq frame (selected-frame)))
+          (make-frame-visible frame)))))
 
 (cl-defun ejc-show-ring-result (prev-next)
   "Popup buffer with last SQL execution result output."
