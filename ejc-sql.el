@@ -584,7 +584,8 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (interactive "r")
   (ejc-check-connection)
   (let ((sql (buffer-substring beg end)))
-    (ejc-eval-user-sql sql)))
+    (ejc-eval-user-sql sql
+                       :display-result t)))
 
 ;;;###autoload
 (cl-defun ejc-eval-user-sql-at-point (&key
