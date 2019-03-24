@@ -284,16 +284,10 @@ For more details about parameters see `get-connection' function in jdbc.clj:
 
 (defun ejc-load-conn-statistics ()
   "Load connection usage statistics to `ejc-conn-statistics' var."
-  (condition-case nil
-      (let ((dir (file-name-directory ejc-conn-statistics-file)))
-        (if (not (file-accessible-directory-p dir))
-            (make-directory dir))
-        (load-file ejc-conn-statistics-file))
-    (error
-     (with-temp-file ejc-conn-statistics-file
-       (insert "(setq ejc-conn-statistics (list))"))
-     (load-file ejc-conn-statistics-file)))
-  ejc-conn-statistics)
+  (setq ejc-conn-statistics
+        (ejc-load-from-file ejc-conn-statistics-file
+                            :default (list)
+                            :check 'ejc-plist-p)))
 
 (defun ejc-update-conn-statistics (connection-name)
   "Update connection usage statistics, persist it in `ejc-conn-statistics-file'"
@@ -302,10 +296,7 @@ For more details about parameters see `get-connection' function in jdbc.clj:
          ejc-conn-statistics
          connection-name
          (1+ (or (lax-plist-get ejc-conn-statistics connection-name) 0))))
-  (with-temp-file ejc-conn-statistics-file
-    (insert "(setq ejc-conn-statistics '")
-    (prin1 ejc-conn-statistics (current-buffer))
-    (insert ")")))
+  (ejc-save-to-file ejc-conn-statistics-file ejc-conn-statistics))
 
 (defun ejc-set-mode-name (connection-name)
   "Show CONNECTION-NAME as part of `mode-name' in `mode-line'."
@@ -549,15 +540,16 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
                                             :owner owner
                                             :table table)))
         (when (ejc-not-nil-str sql)
-          (with-temp-buffer
-            (insert
-             (concat "\n"
-                     "Constraints:\n"
-                     "------------\n"))
-            (write-region (point-min) (point-max) result-file t))
+          (ejc-write-result-file
+           (concat "\n"
+                   "Constraints:\n"
+                   "------------\n")
+           :result-file result-file
+           :append t)
           (ejc-eval-sql-and-log ejc-db sql
+                                :result-file result-file
                                 :append t
-                                :result-file result-file))))))
+                                :display-result t))))))
 
 (defun ejc-describe-entity (entity-name)
   "Describe SQL entity ENTITY-NAME - function, procedure, type or view

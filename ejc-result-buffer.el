@@ -18,6 +18,8 @@
 
 ;;; Code:
 
+(require 'ejc-lib)
+
 (defvar ejc-results-buffer nil
   "The results buffer.")
 
@@ -27,21 +29,46 @@
 (defvar ejc-result-file-template "ejc-sql-result-%d.txt"
   "SQL evaluation results file name template.")
 
-(defvar ejc-ring-length 10)
-
-(defvar ejc-ring-position 0)
-
 (defvar ejc-result-file-path nil
-  "The results file path. Refreshed by any finished SQL evaluation.")
+  "The current result file path. Refreshed by any finished SQL evaluation.")
 
-(defvar ejc-modes-ring ())
+(defcustom ejc-results-path (temporary-file-directory)
+  "SQL evaluation result files location."
+  :group 'ejc-sql
+  :type 'string)
+
+(defcustom ejc-ring-length 10
+  "The number of SQL evaluation results to keep."
+  :group 'ejc-sql
+  :type 'integer)
+
+(defvar ejc-ring-position 0
+  "Current SQL evaluation result position in ring.")
+
+(defvar ejc-modes-ring (list)
+  "List of SQL evaluation result modes.")
+
+(defcustom ejc-modes-ring-file (expand-file-name
+                                "ejc-modes-ring.el"
+                                ejc-results-path)
+  "Previous SQL evaluation result modes file location."
+  :group 'ejc-sql
+  :type 'string)
 
 (defun ejc-update-modes-ring (mode)
-  (setf (alist-get ejc-ring-position ejc-modes-ring) mode))
+  "Update SQL evaluation result modes list, persist it in `ejc-modes-ring-file'."
+  (setf (alist-get ejc-ring-position ejc-modes-ring) mode)
+  (ejc-save-to-file ejc-modes-ring-file ejc-modes-ring))
+
+(defun ejc-load-modes-ring ()
+  "Load SQL evaluation result modes list `ejc-modes-ring' var."
+  (setq ejc-modes-ring
+        (ejc-load-from-file ejc-modes-ring-file :default (list))))
 
 (defun ejc-get-result-file-path ()
+  "Get current SQL evaluation result file path."
   (expand-file-name (format ejc-result-file-template ejc-ring-position)
-                    (temporary-file-directory)))
+                    ejc-results-path))
 
 (defun ejc-inc-ring-position ()
   (setq ejc-ring-position (1+ ejc-ring-position)
@@ -113,45 +140,34 @@ or error messages."
       (if (not (eq frame (selected-frame)))
           (make-frame-visible frame)))))
 
-(cl-defun ejc-show-ring-result (prev-next)
-  "Popup buffer with last SQL execution result output."
-  (let ((output-buffer (ejc-get-output-buffer))
-        (mode (alist-get ejc-ring-position ejc-modes-ring)))
+(cl-defun ejc-show-ring-result (prev-or-next)
+  (let ((output-buffer (ejc-get-output-buffer)))
     (set-buffer output-buffer)
     (read-only-mode -1)
     (erase-buffer)
-    (if mode
-        (funcall mode))
     (ejc-add-connection ejc-connection-name ejc-db)
-    (let ((file-path (funcall prev-next t)))
+    (let ((file-path (funcall prev-or-next t))
+          (mode (alist-get ejc-ring-position (or ejc-modes-ring
+                                                 (ejc-load-modes-ring)))))
+      (if mode
+          (funcall mode))
       (insert-file-contents file-path)
       (read-only-mode 1)
       (beginning-of-buffer)
       (display-buffer output-buffer)
       (message file-path))))
 
+;;;###autoload
 (cl-defun ejc-show-prev-result ()
-  "Popup buffer with last SQL execution result output."
+  "Change `ejc-results-buffer' contents: show previous SQL evaluation result."
   (interactive)
   (ejc-show-ring-result 'ejc-prev-result-file-path))
 
+;;;###autoload
 (cl-defun ejc-show-next-result ()
-  "Popup buffer with last SQL execution result output."
+  "Change `ejc-results-buffer' contents: show next SQL evaluation result."
   (interactive)
   (ejc-show-ring-result 'ejc-next-result-file-path))
-(ejc-next-result-file-path t)
-
-(global-set-key (kbd "C-M-<next>") (lambda ()
-                                     (interactive)
-                                     (if (equal (buffer-name)
-                                                ejc-results-buffer-name)
-                                         (ejc-show-next-result))))
-
-(global-set-key (kbd "C-M-<prior>") (lambda ()
-                                      (interactive)
-                                      (if (equal (buffer-name)
-                                                 ejc-results-buffer-name)
-                                          (ejc-show-prev-result))))
 
 (provide 'ejc-result-buffer)
 

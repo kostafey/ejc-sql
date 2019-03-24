@@ -29,26 +29,6 @@
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl
                                                DDLFormatterImpl)))
 
-(def result-file-name
-  "SQL evaluation results file name."
-  "ejc-sql-result-%d.txt")
-
-(def ring-length 10)
-
-(def ring-position (atom 1))
-
-(format result-file-name 1)
-
-(defn get-result-file-path []
-  (s/replace
-   (.getAbsolutePath
-    (File.
-     (File. (System/getProperty "java.io.tmpdir"))
-     result-file-name))
-   #"\\" "/"))
-
-;; (get-result-file-path)
-
 (defn get-log-dir []
   (file (if windows?
           (System/getenv "AppData")
