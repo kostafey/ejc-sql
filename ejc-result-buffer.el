@@ -32,7 +32,7 @@
 (defvar ejc-result-file-path nil
   "The current result file path. Refreshed by any finished SQL evaluation.")
 
-(defcustom ejc-results-path (temporary-file-directory)
+(defcustom ejc-results-path temporary-file-directory
   "SQL evaluation result files location."
   :group 'ejc-sql
   :type 'string)
