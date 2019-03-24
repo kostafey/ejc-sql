@@ -29,18 +29,6 @@
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl
                                                DDLFormatterImpl)))
 
-(def result-file-name
-  "SQL evaluation results file name."
-  "ejc-sql-result.txt")
-
-(defn get-result-file-path []
-  (s/replace
-   (.getAbsolutePath
-    (File.
-     (File. (System/getProperty "java.io.tmpdir"))
-     result-file-name))
-   #"\\" "/"))
-
 (defn get-log-dir []
   (file (if windows?
           (System/getenv "AppData")
@@ -176,11 +164,11 @@ E.g. transtofm from: a | b | c into: a | 1
     sql
     (format-sql sql)))
 
-(defn write-result-file [text & {:keys [append]
+(defn write-result-file [text & {:keys [result-file
+                                        append]
                                  :or {append false}}]
-  (let [result-file-path (get-result-file-path)]
-    (spit result-file-path text :append append)
-    result-file-path))
+  (spit result-file text :append append)
+  result-file)
 
 (defn clear-result-file []
   (write-result-file ""))

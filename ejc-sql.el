@@ -41,6 +41,7 @@
 (require 'ejc-format)
 (require 'ejc-interaction)
 (require 'ejc-result-mode)
+(require 'ejc-result-buffer)
 (require 'ejc-autocomplete)
 
 (defvar-local ejc-db nil
@@ -48,15 +49,6 @@
 
 (defvar ejc-connections nil
   "List of existing configured jdbc connections")
-
-(defvar ejc-results-buffer nil
-  "The results buffer.")
-
-(defvar ejc-results-buffer-name "*ejc-sql-output*"
-  "The results buffer name.")
-
-(defvar ejc-result-file-path nil
-  "The results file path. Refreshed by any finished SQL evaluation.")
 
 (defvar ejc-current-buffer-query nil
   "Current SQL edit buffer lanched query.")
@@ -292,16 +284,10 @@ For more details about parameters see `get-connection' function in jdbc.clj:
 
 (defun ejc-load-conn-statistics ()
   "Load connection usage statistics to `ejc-conn-statistics' var."
-  (condition-case nil
-      (let ((dir (file-name-directory ejc-conn-statistics-file)))
-        (if (not (file-accessible-directory-p dir))
-            (make-directory dir))
-        (load-file ejc-conn-statistics-file))
-    (error
-     (with-temp-file ejc-conn-statistics-file
-       (insert "(setq ejc-conn-statistics (list))"))
-     (load-file ejc-conn-statistics-file)))
-  ejc-conn-statistics)
+  (setq ejc-conn-statistics
+        (ejc-load-from-file ejc-conn-statistics-file
+                            :default (list)
+                            :check 'ejc-plist-p)))
 
 (defun ejc-update-conn-statistics (connection-name)
   "Update connection usage statistics, persist it in `ejc-conn-statistics-file'"
@@ -310,10 +296,7 @@ For more details about parameters see `get-connection' function in jdbc.clj:
          ejc-conn-statistics
          connection-name
          (1+ (or (lax-plist-get ejc-conn-statistics connection-name) 0))))
-  (with-temp-file ejc-conn-statistics-file
-    (insert "(setq ejc-conn-statistics '")
-    (prin1 ejc-conn-statistics (current-buffer))
-    (insert ")")))
+  (ejc-save-to-file ejc-conn-statistics-file ejc-conn-statistics))
 
 (defun ejc-set-mode-name (connection-name)
   "Show CONNECTION-NAME as part of `mode-name' in `mode-line'."
@@ -332,11 +315,6 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
   (setq-local ejc-connection-name connection-name)
   (setq-local ejc-db db)
   (ejc-set-mode-name connection-name))
-
-(defun ejc-get-result-file-path ()
-  (or ejc-result-file-path
-      (setq ejc-result-file-path
-            (ejc--get-result-file-path))))
 
 (defun ejc-eval-org-snippet (&optional orig-fun body params)
   "Used to eval SQL code in `org-mode' code snippets."
@@ -479,7 +457,8 @@ any SQL buffer to connect to exact database, as always. "
                                 rows-limit
                                 append
                                 sync
-                                display-result)
+                                display-result
+                                result-file)
   (when sql
     (spinner-start 'rotating-line)
     (setq ejc-current-buffer-query (current-buffer))
@@ -491,7 +470,9 @@ any SQL buffer to connect to exact database, as always. "
        :rows-limit rows-limit
        :append append
        :sync sync
-       :display-result display-result))))
+       :display-result display-result
+       :result-file (or result-file
+                        (if display-result (ejc-next-result-file-path)))))))
 
 (defun ejc-message-query-done (start-time status)
   (message
@@ -550,23 +531,35 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
     (when (not table)
       (setq table owner)
       (setq owner nil))
-    (ejc-get-table-meta ejc-db ejc-connection-name table-name)
-    (let ((sql (ejc-select-db-meta-script ejc-db :constraints
-                                          :owner owner
-                                          :table table)))
-      (when (ejc-not-nil-str sql)
-        (ejc-write-result-file (concat "\n"
-                                       "Constraints:\n"
-                                       "------------\n")
-                               :append t)
-        (ejc-eval-sql-and-log ejc-db sql :append t)))))
+    (let ((result-file (ejc-next-result-file-path)))
+      (ejc-get-table-meta ejc-db
+                          ejc-connection-name
+                          table-name
+                          result-file)
+      (let ((sql (ejc-select-db-meta-script ejc-db :constraints
+                                            :owner owner
+                                            :table table)))
+        (when (ejc-not-nil-str sql)
+          (ejc-write-result-file
+           (concat "\n"
+                   "Constraints:\n"
+                   "------------\n")
+           :result-file result-file
+           :append t)
+          (ejc-eval-sql-and-log ejc-db sql
+                                :result-file result-file
+                                :append t
+                                :display-result t))))))
 
 (defun ejc-describe-entity (entity-name)
   "Describe SQL entity ENTITY-NAME - function, procedure, type or view
    (default entity name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe entity"))
   (ejc-check-connection)
-  (ejc-get-entity-description ejc-db ejc-connection-name entity-name))
+  (ejc-get-entity-description ejc-db
+                              ejc-connection-name
+                              entity-name
+                              (ejc-next-result-file-path)))
 
 (cl-defun ejc-eval-user-sql (sql &key rows-limit sync display-result)
   "User starts SQL evaluation process."
@@ -650,38 +643,6 @@ boundaries."
                               :owner (ejc-get-this-owner ejc-db))
    :rows-limit 0
    :display-result t))
-
-(defun ejc-get-output-buffer ()
-  "Get or create buffer for output SQL evaluation results.
-It can be result sets, record affected messages, SQL definition of entities
-or error messages."
-  (when (not (and ejc-results-buffer
-                  (buffer-live-p ejc-results-buffer)))
-    (setq ejc-results-buffer (get-buffer-create
-                              ejc-results-buffer-name))
-    (with-current-buffer ejc-results-buffer
-      (ejc-result-mode)))
-  ejc-results-buffer)
-
-;;;###autoload
-(cl-defun ejc-show-last-result (&key result mode connection-name db)
-  "Popup buffer with last SQL execution result output."
-  (interactive)
-  (let ((output-buffer (ejc-get-output-buffer)))
-    (set-buffer output-buffer)
-    (read-only-mode -1)
-    (erase-buffer)
-    (if mode
-        (funcall mode))
-    (ejc-add-connection connection-name db)
-    (if result
-        ;; SQL evaluation result passed directly to fn
-        (insert result)
-      ;; SQL evaluation result rendered to file
-      (insert-file-contents (ejc-get-result-file-path)))
-    (read-only-mode 1)
-    (beginning-of-buffer)
-    (display-buffer output-buffer)))
 
 ;;;###autoload
 (defun ejc-get-temp-editor-buffer (&optional num)

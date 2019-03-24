@@ -1,6 +1,6 @@
 ;;; ejc-lib.el -- ejc-sql shared objects (the part of ejc-sql).
 
-;;; Copyright © 2013-2016 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -56,6 +56,38 @@
     (or (cdr (assoc-string product-name ejc-product-assoc))
         (car (assoc-string product-name sql-product-alist))
         'ansi)))
+
+(defun ejc-ensure-file-directory-exists (file-path)
+  (let ((dir (file-name-directory file-path)))
+    (if (not (file-accessible-directory-p dir))
+        (make-directory dir))))
+
+(defun ejc-save-to-file (file-path data)
+  "Save Elisp variable DATA to FILE-PATH."
+  (ejc-ensure-file-directory-exists file-path)
+  (with-temp-file file-path
+    (prin1 data (current-buffer))))
+
+(cl-defun ejc-load-from-file (file-path &key default check)
+  "Read Elisp variable from FILE-PATH."
+  (ejc-ensure-file-directory-exists file-path)
+  (condition-case nil
+      (with-temp-buffer
+        (insert-file-contents file-path)
+        (let ((value (read (current-buffer))))
+          (if (and check (funcall check value))
+              value
+            (error "File contents don't match function check."))))
+    (error (ejc-save-to-file file-path default)
+           default)))
+
+(defun ejc-plist-p (lst)
+  "Check if LST is a plist."
+  (condition-case nil
+      (progn
+        (lax-plist-get lst nil)
+        t)
+    (error nil)))
 
 (provide 'ejc-lib)
 
