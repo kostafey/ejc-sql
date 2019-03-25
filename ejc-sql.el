@@ -95,11 +95,13 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
 (define-key ejc-sql-mode-keymap (kbd "C-h d") 'ejc-describe-entity)
-(define-key ejc-sql-mode-keymap (kbd "C-M-S-b") '(lambda() (interactive) (ejc-previous-sql t)))
-(define-key ejc-sql-mode-keymap (kbd "C-M-S-f") '(lambda() (interactive) (ejc-next-sql t)))
+(define-key ejc-sql-mode-keymap (kbd "C-M-S-b") (lambda () (interactive) (ejc-previous-sql t)))
+(define-key ejc-sql-mode-keymap (kbd "C-M-S-f") (lambda () (interactive) (ejc-next-sql t)))
 (define-key ejc-sql-mode-keymap (kbd "C-M-b") 'ejc-previous-sql)
 (define-key ejc-sql-mode-keymap (kbd "C-M-f") 'ejc-next-sql)
 (define-key ejc-sql-mode-keymap (kbd "C-g") 'ejc-cancel-query)
+(define-key ejc-sql-mode-keymap (kbd "M-.") 'ejc-describe-entity)
+(define-key ejc-sql-mode-keymap (kbd "M-,") 'ejc-show-prev-result)
 
 (defvar ejc-command-map
   (let ((map (make-sparse-keymap)))

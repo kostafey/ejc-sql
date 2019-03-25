@@ -31,6 +31,7 @@ formatting of SQL scripts are also available.
   - [Basic use case](#basic-use-case)
   - [Use with org-mode](#use-with-org-mode)
   - [Use existing nREPL](#use-existing-nrepl)
+  - [Goto definition & results ring](#goto-definition-results-ring)
 - [List of keybindings & functions](#keybindings)
 - [Yasnippet](#yasnippet)
 - [Troubleshooting](#troubleshooting)
@@ -475,6 +476,34 @@ from your `lein repl` console output.
 Finally, use `M-x ejc-connect` from any SQL buffer to connect to the exact database,
 as always.
 
+<a id="goto-definition-results-ring"></a>
+### Goto definition & results ring
+
+In terms of `ejc-sql`, **SQL evaluation results** can be result sets, record
+affected messages, SQL definition of entities or error messages.
+
+Any SQL evaluation result saved to results ring - list of files
+`ejc-sql-result-0.txt`, `ejc-sql-result-1.txt`, and so on.
+They located in the `TEMP` folder, it can be customized by `ejc-results-path`.
+The number of files (number of previous results) can be customized by setting
+`ejc-ring-length` (10 by default).
+
+You can see previous SQL evaluation result by <kbd>C-M-b</kbd>
+(`ejc-show-prev-result`) in `*ejc-sql-output*` buffer.
+To return back use <kbd>C-M-f</kbd> (`ejc-show-next-result`). This way you can
+navigate through the results ring.
+
+Since `*ejc-sql-output*` buffer contains `ejc-sql` connection information, it
+makes possible to navigate through views & stored procedures code definitions.
+E.g. you can require `ejc-describe-entity` for some stored procedure, then
+require `ejc-describe-entity` inside `*ejc-sql-output*` for some stored
+procedure, used in this (just described) procedure definition, and so on. Then
+you can return to previous procedure definition by `ejc-show-prev-result`. So,
+it looks like goto definition, then return back. For the purpose of convenience,
+the following keybindings are provided:
+* <kbd>M-.</kbd> `ejc-describe-entity`
+* <kbd>M-,</kbd> `ejc-show-prev-result`
+
 <a id="keybindings"></a>
 ## List of keybindings & functions
 
@@ -486,6 +515,8 @@ New keybindings defined in `ejc-sql-mode` minor mode:
  <kbd>C-g</kbd>      | `ejc-cancel-query`              | Terminate current running query or run `keyboard-quit` if there is no running queries.
  <kbd>C-h t</kbd>    | `ejc-describe-table`            | Describe SQL table.
  <kbd>C-h d</kbd>    | `ejc-describe-entity`           | Get entity definition: show creation SQL of view, package, function, procedure or type.
+ <kbd>M-.</kbd>      | `ejc-describe-entity`           | Get entity definition: show creation SQL of view, package, function, procedure or type.
+ <kbd>M-,</kbd>      | `ejc-show-prev-result`          | Load previous SQL eval result in `*ejc-sql-output*` buffer.
  <kbd>C-c e up</kbd> | `ejc-show-last-result`          | Show last result.
  <kbd>C-c e t</kbd>  | `ejc-show-tables-list`          | Show tables list.
  <kbd>C-c e v</kbd>  | `ejc-show-views-list`           | Show views list.
@@ -494,8 +525,8 @@ New keybindings defined in `ejc-sql-mode` minor mode:
  <kbd>C-c e s</kbd>  | `ejc-strinp-sql-at-point`       | Strip SQL (trim java string tokens).
  <kbd>C-c e S</kbd>  | `ejc-dress-sql-at-point`        | Dress SQL (to copy-paste it to java code).
  <kbd>C-c e f</kbd>  | `ejc-format-sql-at-point`       | Format (pretty-print) this SQL statement.
- <kbd>C-M-b</kbd>    | `ejc-previous-sql`              | Goto previous SQL statement.
- <kbd>C-M-f</kbd>    | `ejc-next-sql`                  | Goto next SQL statement.
+ <kbd>C-M-b</kbd>    | `ejc-previous-sql`              | Goto previous SQL statement (or load previous SQL eval result in `*ejc-sql-output*`).
+ <kbd>C-M-f</kbd>    | `ejc-next-sql`                  | Goto next SQL statement (or load next SQL eval result in `*ejc-sql-output*`).
  <kbd>C-M-S-b</kbd>  | `ejc-previous-sql`              | Select from point to previous SQL statement.
  <kbd>C-M-S-f</kbd>  | `ejc-next-sql`                  | Select from point to next SQL statement.
 
