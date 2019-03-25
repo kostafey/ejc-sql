@@ -111,6 +111,7 @@ or error messages."
     (setq ejc-results-buffer (get-buffer-create
                               ejc-results-buffer-name))
     (with-current-buffer ejc-results-buffer
+      (buffer-disable-undo)
       (ejc-result-mode)))
   ejc-results-buffer)
 
