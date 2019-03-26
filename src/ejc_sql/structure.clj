@@ -117,7 +117,8 @@
                    (format "
                     SELECT object_type
                     FROM all_objects
-                    WHERE UPPER(OBJECT_NAME) = '%s' "
+                    WHERE UPPER(OBJECT_NAME) = '%s'
+                      AND object_type NOT IN ('SYNONYM', 'PACKAGE BODY')"
                     (s/upper-case entity-name)))
     :view        (fn [& {:keys [entity-name]}]
                    (format "
