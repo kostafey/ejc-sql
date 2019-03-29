@@ -181,10 +181,30 @@
     :package   (fn [& {:keys [entity-name]}]
                  ;; entity-name is a package name here
                  (format "
-                  SELECT text FROM all_source
-                  WHERE UPPER(name) = '%s'
-                    AND type = 'PACKAGE BODY'
-                  ORDER BY line " (s/upper-case entity-name)))
+                  SELECT text FROM
+                  (
+                    SELECT text AS text,
+                           1 AS ordered,
+                           line AS line
+                    FROM all_source
+                    WHERE UPPER(name) = '%s'
+                      AND type = 'PACKAGE'
+                    UNION SELECT '\n\n',                     2, 1 from dual
+                    UNION SELECT '    ------------------\n', 3, 1 from dual
+                    UNION SELECT '    -- PACKAGE BODY --\n', 4, 1 from dual
+                    UNION SELECT '    ------------------\n', 5, 1 from dual
+                    UNION SELECT '\n',                       6, 1 from dual
+                    UNION
+                    SELECT text,
+                           7,
+                           line
+                    FROM all_source
+                    WHERE UPPER(name) = '%s'
+                      AND type = 'PACKAGE BODY'
+                  )
+                  ORDER BY ordered, line "
+                         (s/upper-case entity-name)
+                         (s/upper-case entity-name)))
     :table     (fn [& {:keys [entity-name]}]
                  (format "
                   SELECT dbms_metadata.get_ddl('TABLE','%s')

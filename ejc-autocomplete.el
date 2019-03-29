@@ -50,7 +50,7 @@ Uppercase by default, set to nil to use downcase candidates."
 
 (defvar ejc-ansi-sql-words
   '("select" "where" "and" "or" "from" "insert" "update" "delete" "join"
-    "order" "by" "distinct" "create" "alter" "drop" "like"
+    "order by" "distinct" "create" "alter" "drop" "like"
     "grant" "revoke" "deny" "commit" "rollback" "savepoint"))
 
 (defvar ejc-auxulary-sql-words
