@@ -475,7 +475,7 @@ any SQL buffer to connect to exact database, as always. "
        :sync sync
        :display-result display-result
        :result-file (or result-file
-                        (if display-result (ejc-next-result-file-path)))))))
+                        (ejc-next-result-file-path))))))
 
 (defun ejc-message-query-done (start-time status)
   (message
