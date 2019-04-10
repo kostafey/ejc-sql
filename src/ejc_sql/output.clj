@@ -35,7 +35,7 @@
           "/var/log/")
         "ejc-sql"))
 
-(defn get-log-file []
+(defn get-log-file [& [create-new]]
   (loop [xs (take 100 (range))]
     (if xs
       (let [prev-day (first xs)
@@ -50,15 +50,15 @@
                                  (.add cal java.util.Calendar/DATE
                                        (if prev-day (- prev-day) 0))
                                  (.getTime cal)))))]
-        (if (not (.exists log-file))
-          (recur (next xs))
-          log-file)))))
+        (if (or create-new (.exists log-file))
+          log-file
+          (recur (next xs)))))))
 
 (defn print-log-file-path []
   (print (.getAbsolutePath (or (get-log-file) (get-log-dir)))))
 
 (defn log-sql [sql]
-  (let [log-file (get-log-file)
+  (let [log-file (get-log-file true)
         is-new-file (not (.exists log-file))]
     (when is-new-file
       (.mkdirs (File. (.getParent log-file)))
