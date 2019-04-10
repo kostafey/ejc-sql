@@ -36,13 +36,26 @@
         "ejc-sql"))
 
 (defn get-log-file []
-  (file (get-log-dir)
-        (str (.format (new java.text.SimpleDateFormat
-                           "yyyy-MM-dd")
-                      (new java.util.Date)) ".log")))
+  (loop [xs (take 100 (range))]
+    (if xs
+      (let [prev-day (first xs)
+            log-file (file
+                      (get-log-dir)
+                      (format "%s.log"
+                              (.format
+                               (new java.text.SimpleDateFormat
+                                    "yyyy-MM-dd")
+                               (let [cal (java.util.Calendar/getInstance)]
+                                 (.setTime cal (new java.util.Date))
+                                 (.add cal java.util.Calendar/DATE
+                                       (if prev-day (- prev-day) 0))
+                                 (.getTime cal)))))]
+        (if (not (.exists log-file))
+          (recur (next xs))
+          log-file)))))
 
 (defn print-log-file-path []
-  (print (.getAbsolutePath (get-log-file))))
+  (print (.getAbsolutePath (or (get-log-file) (get-log-dir)))))
 
 (defn log-sql [sql]
   (let [log-file (get-log-file)
