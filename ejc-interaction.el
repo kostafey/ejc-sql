@@ -38,7 +38,7 @@
 (clomacs-defun ejc-add-classpath
                add-classpath
                :lib-name "ejc-sql"
-               :namespace cemerick.pomegranate)
+               :namespace ejc-sql.classpath)
 
 (clomacs-defun ejc-require
                clojure.core/require
@@ -49,7 +49,6 @@
                :lib-name "ejc-sql")
 
 (defun ejc-connect-to-db (conn-struct)
-  (ejc-require `'cemerick.pomegranate)
   (ejc-add-classpath (alist-get :classpath conn-struct))
   (if-let ((classname (alist-get :classname conn-struct)))
       (ejc-import (read classname)))
