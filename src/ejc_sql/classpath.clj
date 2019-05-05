@@ -8,6 +8,9 @@
   (:require [dynapath.util :as dp]
             [clojure.java.io :as io]))
 
+(def new-jdk
+  (>= (BigDecimal. (System/getProperty "java.specification.version")) 1.9))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Pomegranate
 
@@ -23,7 +26,9 @@
    Uses the current thread context ClassLoader as the tip ClassLoader
    if one is not provided."
   ([]
-   (ensure-compiler-loader)
+   (if new-jdk
+     (ensure-compiler-loader)
+     (classloader-hierarchy (.. Thread currentThread getContextClassLoader)))
    (classloader-hierarchy (deref clojure.lang.Compiler/LOADER)))
   ([tip]
    (->> tip
@@ -47,9 +52,13 @@
      (throw (IllegalStateException. (str classloader " is not a modifiable classloader")))))
   ([jar-or-dir]
    (let [classloaders (classloader-hierarchy)]
-     (if-let [cl (filter modifiable-classloader? classloaders)]
+     (if-let [cl (if new-jdk
+                   (filter modifiable-classloader? classloaders)
+                   (last (filter modifiable-classloader? classloaders)))]
        ;; Add to all classloaders that allow it. Brute force but doesn't hurt.
-       (run! #(add-classpath jar-or-dir %) cl)
+       (if new-jdk
+         (run! #(add-classpath jar-or-dir %) cl)
+         (add-classpath jar-or-dir cl))
        (throw (IllegalStateException. (str "Could not find a suitable classloader to modify from "
                                            classloaders)))))))
 
