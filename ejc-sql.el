@@ -91,6 +91,9 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
   :group 'ejc-sql
   :type 'boolean)
 
+(defvar-local ejc-replace-double-quotes nil
+  "When t replace double quotes with single ones in SQL before evaluation.")
+
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
@@ -452,6 +455,13 @@ any SQL buffer to connect to exact database, as always. "
 (defun ejc-check-connection ()
   (unless (ejc-buffer-connected-p)
     (error "Run M-x ejc-connect first!")))
+
+(defun ejc-get-sql-from-string (sql)
+  (let* ((sql (replace-regexp-in-string ejc-clear-sql-regexp "" sql))
+         (sql (if ejc-replace-double-quotes
+                  (replace-regexp-in-string "\"" "'" sql)
+                sql)))
+    sql))
 
 (cl-defun ejc-eval-sql-and-log (db
                                 sql

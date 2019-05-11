@@ -55,11 +55,6 @@
   (ejc-sql-set-db conn-struct)
   (setq-local ejc-connection-struct conn-struct))
 
-(defun ejc-get-sql-from-string (sql)
-  (let* ((sql (replace-regexp-in-string ejc-clear-sql-regexp "" sql))
-         (sql (replace-regexp-in-string "\"" "'" sql)))
-    sql))
-
 (clomacs-defun ejc--eval-sql-and-log-print
                eval-sql-and-log-print
                :lib-name "ejc-sql"
