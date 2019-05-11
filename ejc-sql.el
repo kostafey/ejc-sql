@@ -360,6 +360,59 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
     (apply orig-fun args)))
 
 ;;;###autoload
+(defun ejc-connect-interactive (connection-name)
+  "Create new connection interactively."
+  (interactive
+   (list
+    (or (and (boundp 'connection-name) connection-name)
+        (read-string "DataBase new connection name: "))))
+  (let* ((db-types '(("MySQL" . "mysql")
+                     ("Oracle" . "oracle")
+                     ("MS SQL Server" . "sqlserver")
+                     ("H2" . "h2")
+                     ("SQLite" . "sqlite")
+                     ("PostgreSQL" . "postgresql")))
+         (dbtype (cdr (assoc-string
+                       (ido-completing-read
+                        "Database type: "
+                        (cl-sort (-map 'car db-types)
+                                 'string-lessp :key 'downcase))
+                       db-types)))
+         (properties
+          (-concat
+           (pcase dbtype
+             ("sqlite"
+              `((:subprotocol . "sqlite")
+                (:classpath . ,(concat "~/.m2/repository"
+                                       "/org/xerial/sqlite-jdbc/3.23.1"
+                                       "/sqlite-jdbc-3.23.1.jar"))
+                (:subname . ""))))
+           '((:user . "")
+             (:password . ""))))
+         (args
+          (-reduce-from
+           (lambda (memo p)
+             (-concat
+              memo
+              (list
+               (car p)
+               (case (car p)
+                 (:dbtype (cdr p))
+                 (:classpath (cdr p))
+                 (:subprotocol (cdr p))
+                 (:subname (if (member dbtype '("h2" "sqlite"))
+                               (let ((fpath (ido-read-file-name "DB file: ")))
+                                 (if (equal "h2" dbtype)
+                                     (concat "file://" fpath)
+                                   fpath))
+                             (read-string "DataBase subname: " (cdr p))))
+                 (:user (read-string "User: "))
+                 (:password (read-string "Password: "))))))
+           (list connection-name)
+           properties)))
+    (apply 'ejc-create-connection args)))
+
+;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."
   (interactive
@@ -372,7 +425,10 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                 (> (or (lax-plist-get conn-statistics c1) 0)
                    (or (lax-plist-get conn-statistics c2) 0)))
               conn-list)))))
-  (let ((db (cdr (ejc-find-connection connection-name))))
+  (let* ((db (cdr (ejc-find-connection connection-name)))
+         (db (or db (progn
+                      (ejc-connect-interactive connection-name)
+                      (cdr (ejc-find-connection connection-name))))))
     (ejc-update-conn-statistics connection-name)
     (ejc-add-connection connection-name db)
     (when (derived-mode-p 'org-mode)
