@@ -385,6 +385,11 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
               `((:subprotocol . "sqlite")
                 (:classpath . ,(concat "~/.m2/repository/org/xerial/sqlite-jdbc"
                                        "/3.23.1/sqlite-jdbc-3.23.1.jar"))
+                (:subname . "")))
+             ("h2"
+              `((:subprotocol . "h2")
+                (:classpath . ,(concat "~/.m2/repository/com/h2database"
+                                       "/h2/1.4.192/h2-1.4.192.jar"))
                 (:subname . ""))))
            '((:user . "")
              (:password . ""))))
@@ -400,9 +405,15 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                  (:classpath (cdr p))
                  (:subprotocol (cdr p))
                  (:subname (if (member dbtype '("h2" "sqlite"))
-                               (let ((fpath (ido-read-file-name "DB file: ")))
+                               (let ((fpath
+                                      (file-truename
+                                       (ido-read-file-name "DB file: "))))
                                  (if (equal "h2" dbtype)
-                                     (concat "file://" fpath)
+                                     (concat "file://"
+                                             (file-name-sans-extension
+                                              (file-name-sans-extension
+                                               fpath))
+                                             ";AUTO_SERVER=TRUE")
                                    fpath))
                              (read-string "DataBase subname: " (cdr p))))
                  (:user (read-string "User: "))
