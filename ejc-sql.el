@@ -383,9 +383,8 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
            (pcase dbtype
              ("sqlite"
               `((:subprotocol . "sqlite")
-                (:classpath . ,(concat "~/.m2/repository"
-                                       "/org/xerial/sqlite-jdbc/3.23.1"
-                                       "/sqlite-jdbc-3.23.1.jar"))
+                (:classpath . ,(concat "~/.m2/repository/org/xerial/sqlite-jdbc"
+                                       "/3.23.1/sqlite-jdbc-3.23.1.jar"))
                 (:subname . ""))))
            '((:user . "")
              (:password . ""))))
@@ -410,49 +409,50 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                  (:password (read-string "Password: "))))))
            (list connection-name)
            properties)))
-    (apply 'ejc-create-connection args)))
+    (apply 'ejc-create-connection args)
+    (ejc-connect connection-name)))
 
 ;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."
   (interactive
    (list
-    (ido-completing-read
-     "DataBase connection name: "
-     (let ((conn-list (mapcar 'car ejc-connections))
-           (conn-statistics (ejc-load-conn-statistics)))
-       (-sort (lambda (c1 c2)
-                (> (or (lax-plist-get conn-statistics c1) 0)
-                   (or (lax-plist-get conn-statistics c2) 0)))
-              conn-list)))))
-  (let* ((db (cdr (ejc-find-connection connection-name)))
-         (db (or db (progn
-                      (ejc-connect-interactive connection-name)
-                      (cdr (ejc-find-connection connection-name))))))
-    (ejc-update-conn-statistics connection-name)
-    (ejc-add-connection connection-name db)
-    (when (derived-mode-p 'org-mode)
-      (require 'ob-sql)
-      (advice-add 'org-babel-execute:sql :around 'ejc-eval-org-snippet)
-      (advice-add 'org-edit-special :around #'ejc-org-edit-special))
-    (message "Connection started...")
-    (clomacs-with-nrepl "ejc-sql"
-      (lambda (db connection-name)
-        (ejc-connect-to-db db)
-        (let ((validation-result
-               (ejc-validate-connection
-                :db db
-                :timeout ejc-connection-validate-timeout)))
-          (when (alist-get :status validation-result)
-            (ejc-set-mode-name connection-name)
-            (message (let ((msg (alist-get :message validation-result)))
-                       (if (equal "Connected." msg)
-                           (format
-                            "Connected -> %s."
-                            (propertize connection-name
-                                        'face 'font-lock-keyword-face))
-                         msg))))))
-      :params (list db connection-name))))
+    (or (and (boundp 'connection-name) connection-name)
+        (ido-completing-read
+         "DataBase connection name: "
+         (let ((conn-list (mapcar 'car ejc-connections))
+               (conn-statistics (ejc-load-conn-statistics)))
+           (-sort (lambda (c1 c2)
+                    (> (or (lax-plist-get conn-statistics c1) 0)
+                       (or (lax-plist-get conn-statistics c2) 0)))
+                  conn-list))))))
+  (if-let ((db (cdr (ejc-find-connection connection-name))))
+      (progn
+        (ejc-update-conn-statistics connection-name)
+        (ejc-add-connection connection-name db)
+        (when (derived-mode-p 'org-mode)
+          (require 'ob-sql)
+          (advice-add 'org-babel-execute:sql :around 'ejc-eval-org-snippet)
+          (advice-add 'org-edit-special :around #'ejc-org-edit-special))
+        (message "Connection started...")
+        (clomacs-with-nrepl "ejc-sql"
+          (lambda (db connection-name)
+            (ejc-connect-to-db db)
+            (let ((validation-result
+                   (ejc-validate-connection
+                    :db db
+                    :timeout ejc-connection-validate-timeout)))
+              (when (alist-get :status validation-result)
+                (ejc-set-mode-name connection-name)
+                (message (let ((msg (alist-get :message validation-result)))
+                           (if (equal "Connected." msg)
+                               (format
+                                "Connected -> %s."
+                                (propertize connection-name
+                                            'face 'font-lock-keyword-face))
+                             msg))))))
+          :params (list db connection-name)))
+    (ejc-connect-interactive connection-name)))
 
 ;;;###autoload
 (defun ejc-connect-existing-repl ()
