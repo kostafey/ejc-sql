@@ -399,7 +399,14 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                 (:classname . "com.mysql.jdbc.Driver")
                 (:dbname . "")
                 (:host . "localhost")
-                (:port . "3306"))))
+                (:port . "3306")))
+             ("oracle"
+              `((:dbtype . "oracle")
+                (:classpath . ,(concat "~/.m2/repository/com/oracle/jdbc"
+                                       "/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar"))
+                (:dbname . "")
+                (:host . "localhost")
+                (:port . "1521"))))
            '((:user . "")
              (:password . ""))))
          (args
