@@ -390,7 +390,16 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
               `((:subprotocol . "h2")
                 (:classpath . ,(concat "~/.m2/repository/com/h2database"
                                        "/h2/1.4.192/h2-1.4.192.jar"))
-                (:subname . ""))))
+                (:subname . "")))
+             ("mysql"
+              `((:dbtype . "mysql")
+                (:classpath . ,(concat "~/.m2/repository/mysql"
+                                       "/mysql-connector-java/5.1.44"
+                                       "/mysql-connector-java-5.1.44.jar"))
+                (:classname . "com.mysql.jdbc.Driver")
+                (:dbname . "")
+                (:host . "localhost")
+                (:port . "3306"))))
            '((:user . "")
              (:password . ""))))
          (args
@@ -403,6 +412,7 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                (case (car p)
                  (:dbtype (cdr p))
                  (:classpath (cdr p))
+                 (:classname (cdr p))
                  (:subprotocol (cdr p))
                  (:subname (if (member dbtype '("h2" "sqlite"))
                                (let ((fpath
@@ -416,8 +426,11 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                                              ";AUTO_SERVER=TRUE")
                                    fpath))
                              (read-string "DataBase subname: " (cdr p))))
+                 (:dbname (read-string "DataBase name: " (cdr p)))
+                 (:host (read-string "Host: " (cdr p)))
+                 (:port (read-string "Port: " (cdr p)))
                  (:user (read-string "User: "))
-                 (:password (read-string "Password: "))))))
+                 (:password (read-passwd "Password: "))))))
            (list connection-name)
            properties)))
     (apply 'ejc-create-connection args)
