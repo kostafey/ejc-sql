@@ -127,7 +127,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                               :stmt stmt
                               :conn conn)
                        (j/query db stmt
-                                {:as-arrays? false
+                                {:as-arrays? true
                                  :row-fn clob-to-string-row}))))
              (list :message
                    (str "Records affected: "
@@ -222,9 +222,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 (defn eval-sql-internal-get-column [db sql]
   (let [[result-type result] (eval-sql-core :db db
                                             :sql sql)]
-    (if (= result-type :result-set)
-      (-> result rest flatten)
-      result)))
+    result))
 
 (defn query-meta [db sql]
   "Get metadata for `sql` result dataset."
