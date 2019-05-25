@@ -31,10 +31,10 @@
 (defun ejc-result-mode ()
   (interactive)
   (kill-all-local-variables)
-  (setq view-read-only t)
   (setq truncate-lines t)
   (setq major-mode 'ejc-result-mode
         mode-name "SQL-Result")
+  (orgtbl-mode 1)
   (setq font-lock-defaults '(ejc-result-font-lock-keywords)))
 
 (provide 'ejc-result-mode)

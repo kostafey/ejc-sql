@@ -111,7 +111,6 @@ or error messages."
     (setq ejc-results-buffer (get-buffer-create
                               ejc-results-buffer-name))
     (with-current-buffer ejc-results-buffer
-      (buffer-disable-undo)
       (ejc-result-mode)))
   ejc-results-buffer)
 
@@ -121,7 +120,6 @@ or error messages."
   (interactive)
   (let ((output-buffer (ejc-get-output-buffer)))
     (set-buffer output-buffer)
-    (read-only-mode -1)
     (erase-buffer)
     (when mode
       (ejc-update-modes-ring mode)
@@ -132,7 +130,7 @@ or error messages."
         (insert result)
       ;; SQL evaluation result rendered to file
       (insert-file-contents (ejc-get-result-file-path)))
-    (read-only-mode 1)
+    (when (org-table-p) (org-table-align))
     (beginning-of-buffer)
     (let* ((window (get-buffer-window output-buffer t))
            (frame (window-frame window)))
@@ -144,7 +142,6 @@ or error messages."
 (cl-defun ejc-show-ring-result (prev-or-next)
   (let ((output-buffer (ejc-get-output-buffer)))
     (set-buffer output-buffer)
-    (read-only-mode -1)
     (erase-buffer)
     (ejc-add-connection ejc-connection-name ejc-db)
     (let ((file-path (funcall prev-or-next t))
@@ -153,7 +150,7 @@ or error messages."
       (if mode
           (funcall mode))
       (insert-file-contents file-path)
-      (read-only-mode 1)
+      (when (org-table-p) (org-table-align))
       (beginning-of-buffer)
       (display-buffer output-buffer)
       (message file-path))))

@@ -130,10 +130,10 @@ E.g. transtofm from: a | b | c into: a | 1
            out #(.append result (str % "\n"))]
        (if (not rotated)
          (do
-           (out (fmt-row "" " | " "" headers))
-           (out (fmt-row "" "-+-" "" spacers))))
+           (out (fmt-row "|" " | " "|" headers))
+           (out (fmt-row "|" "-+-" "|" spacers))))
        (doseq [row rows]
-         (out (fmt-row "" " | " "" row)))
+         (out (fmt-row "|" " | " "|" row)))
        (str msg
             (if rotated
               (String/join "\n"
