@@ -441,6 +441,14 @@ Assume to run somewhere in .emacs or any file, loaded as Emacs configuration."
                 (:dbname . "")
                 (:host . "localhost")
                 (:port . "5432")))
+             ("sqlserver"
+              `((:dbtype . "sqlserver")
+                (:classpath . ,(concat "~/.m2/repository/com/microsoft"
+                                       "/sqlserver/mssql-jdbc/6.2.2.jre8"
+                                       "/mssql-jdbc-6.2.2.jre8.jar"))
+                (:dbname . "")
+                (:host . "localhost")
+                (:port . "1433")))
              ("oracle"
               `((:dbtype . "oracle")
                 (:classpath . ,(concat "~/.m2/repository/com/oracle/jdbc"
