@@ -102,16 +102,7 @@
 
 (defn clob-to-string-row [row]
   "Check all data in row if it's a CLOB and convert CLOB to string."
-  (loop [acc {}
-         rest-keys (keys row)]
-    (if rest-keys
-      (let [k (first rest-keys)
-            v (row k)]
-        (recur (assoc acc k (if (is-clob? v)
-                              (clob-to-string v)
-                              v))
-               (next rest-keys)))
-      acc)))
+  (map #(if (is-clob? %) (clob-to-string %) %) row))
 
 (defn clean-sql [sql]
   (-> sql

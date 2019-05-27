@@ -92,23 +92,12 @@ Applied to single-record result set.
 E.g. transtofm from: a | b | c into: a | 1
                      --+---+--       b | 2
                      1 | 2 | 3       c | 3"
-  (let [first-row (first data)
-        keys (map #(if (keyword? %) (name %) (str %))
-                  (first first-row))
-        values (rest first-row)]
-    (into [] (map
-              (fn [v]
-                (into {}
-                      (map #(identity
-                             [%1 (if (keyword? %2) (name %2) %2)])
-                           keys v)))
-              values))))
+  (apply mapv vector data))
 
 (defn print-table
-  "Prints a collection of maps in a textual table. Prints table headings
-   ks, and then a line of output for each row, corresponding to the keys
-   in ks. If ks are not specified, use the keys of the first item in rows."
-  ([ks rows limit]
+  ([rows limit]
+  "Converts a seq of seqs to a textual table. Uses the first seq as the table
+  headings and the remaining seqs as rows."
    (when (seq rows)
      (let [row-limit (or limit @rows-limit)
            [rows msg] (if (and row-limit
@@ -118,38 +107,31 @@ E.g. transtofm from: a | b | c into: a | 1
                          (format "Too many rows. Only %s from %s is shown.\n\n"
                                  row-limit (count rows))]
                         [rows ""])
-           [rows ks rotated] (if (and (= (count rows) 1)
+           [headers rows] [(map name (first rows)) (rest rows)]
+           [rows rotated] (if (and (= (count rows) 1)
                                       (> (count (first rows)) 1))
-                               (let [r (rotate-table rows)]
-                                 [r (keys (first r)) true])
-                               [rows ks false])
-           rows (map (fn [row]
-                       (fmap (fn [v]
-                               (if (string? v)
-                                 (clojure.string/replace v "\n" " ")
-                                 v))
-                             row))
-                     rows)
-           widths (map
-                   (fn [k]
-                     (apply max (count (name k)) (map #(count (str (get % k))) rows)))
-                   ks)
-           headers (map name ks)
+                               [(rotate-table [headers (first rows)]) true]
+                               [rows false])
+           rows (for [row rows]
+                  (map #(if (string? %) (clojure.string/replace % "\n" " ") %) row))
+           widths (for [col (rotate-table (conj rows headers))]
+                    (apply max (map #(count (str %)) col)))
            spacers (map #(apply str (repeat % "-")) widths)
            ;; TODO: #(str "%" % "d") for numbers
            fmts (map #(str "%-" % "s") widths)
            fmt-row (fn [leader divider trailer row]
                      (str leader
                           (apply str (interpose divider
-                                                (for [[col fmt] (map vector (map #(get row %) ks) fmts)]
+                                                (for [[col fmt] (map vector row fmts)]
                                                   (format fmt (str col)))))
                           trailer))
            result (new StringBuffer "")
-           ;; TODO: cahnge to #(println %) when async output ready
+           ;; TODO: change to #(println %) when async output ready
            out #(.append result (str % "\n"))]
-       (out (fmt-row "" " | " "" (zipmap ks headers)))
        (if (not rotated)
-         (out (fmt-row "" "-+-" "" (zipmap ks spacers))))
+         (do
+           (out (fmt-row "" " | " "" headers))
+           (out (fmt-row "" "-+-" "" spacers))))
        (doseq [row rows]
          (out (fmt-row "" " | " "" row)))
        (str msg
@@ -157,8 +139,7 @@ E.g. transtofm from: a | b | c into: a | 1
               (String/join "\n"
                            (mapv #(.trim %) (.split (.toString result) "\n")))
               (.toString result))))))
-  ([rows limit] (print-table (keys (first rows)) rows limit))
-  ([rows] (print-table (keys (first rows)) rows @rows-limit)))
+  ([rows] (print-table rows @rows-limit)))
 
 (defn format-sql [sql]
   (s/trim
