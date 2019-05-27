@@ -400,6 +400,14 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                 (:dbname . "")
                 (:host . "localhost")
                 (:port . "3306")))
+             ("postgresql"
+              `((:dbtype . "postgresql")
+                (:classpath . ,(concat "~/.m2/repository/postgresql"
+                                       "/postgresql/9.3-1102.jdbc41"
+                                       "/postgresql-9.3-1102.jdbc41.jar"))
+                (:dbname . "")
+                (:host . "localhost")
+                (:port . "5432")))
              ("oracle"
               `((:dbtype . "oracle")
                 (:classpath . ,(concat "~/.m2/repository/com/oracle/jdbc"
