@@ -359,6 +359,39 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
         (ejc-add-connection connection-name db))
     (apply orig-fun args)))
 
+(defun ejc-read-connection-name ()
+  "Read connection-name in minibuffer."
+  (ido-completing-read
+   "DataBase connection name: "
+   (let ((conn-list (mapcar 'car ejc-connections))
+         (conn-statistics (ejc-load-conn-statistics)))
+     (-sort (lambda (c1 c2)
+              (> (or (lax-plist-get conn-statistics c1) 0)
+                 (or (lax-plist-get conn-statistics c2) 0)))
+            conn-list))))
+
+;;;###autoload
+(defun ejc-insert-connection-data (connection-name)
+  "Insert configured connection data to keep it between Emacs restarts.
+Assume to run somewhere in .emacs or any file, loaded as Emacs configuration."
+  (interactive
+   (list (or (and (boundp 'connection-name) connection-name)
+             (ejc-read-connection-name))))
+  (let* ((conn (ejc-find-connection connection-name)))
+    (insert
+     (format "(ejc-create-connection\n \"%s\"%s)"
+             (car conn)
+             (-reduce-from
+              (lambda (result x)
+                (concat result
+                        (format "\n %s \"%s\""
+                                (symbol-name (car x))
+                                (cdr x))))
+              ""
+              (cdr conn))))))
+
+(defalias 'ejc-save-connection-data 'ejc-insert-connection-data)
+
 ;;;###autoload
 (defun ejc-connect-interactive (connection-name)
   "Create new connection interactively."
@@ -454,17 +487,9 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
 ;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."
-  (interactive
-   (list
-    (or (and (boundp 'connection-name) connection-name)
-        (ido-completing-read
-         "DataBase connection name: "
-         (let ((conn-list (mapcar 'car ejc-connections))
-               (conn-statistics (ejc-load-conn-statistics)))
-           (-sort (lambda (c1 c2)
-                    (> (or (lax-plist-get conn-statistics c1) 0)
-                       (or (lax-plist-get conn-statistics c2) 0)))
-                  conn-list))))))
+  (interactive (list
+                (or (and (boundp 'connection-name) connection-name)
+                    (ejc-read-connection-name))))
   (if-let ((db (cdr (ejc-find-connection connection-name))))
       (progn
         (ejc-update-conn-statistics connection-name)
