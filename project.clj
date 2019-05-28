@@ -7,7 +7,7 @@
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.kostafey/java.jdbc "0.7.10-SNAPSHOT"]
                  [org.hibernate/hibernate-core "5.4.1.Final"]
-                 [org.tcrawley/dynapath "1.0.0"]
+                 [com.cemerick/pomegranate "1.1.0"]
                  [org.apache.commons/commons-lang3 "3.5"]
                  [org.apache.httpcomponents/httpclient "4.5.5"]
                  [clomacs "0.0.3-SNAPSHOT"]])

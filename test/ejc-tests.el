@@ -34,6 +34,27 @@
      (-last (lambda (x) (not (equal "" x)))
             (s-split "\n" (ejc-test:run-lein)))))))
 
+(ert-deftest ejc-test:ejc-lein-artifact-to-path ()
+  :tags '(el)
+  (should
+   (equal "~/.m2/repository/org/xerial/sqlite-jdbc/3.23.1/sqlite-jdbc-3.23.1.jar"
+          (ejc-lein-artifact-to-path [org.xerial/sqlite-jdbc "3.23.1"])))
+  (should
+   (equal "~/.m2/repository/com/h2database/h2/1.4.199/h2-1.4.199.jar"
+          (ejc-lein-artifact-to-path [com.h2database/h2 "1.4.199"])))
+  (should
+   (equal "~/.m2/repository/mysql/mysql-connector-java/5.1.44/mysql-connector-java-5.1.44.jar"
+          (ejc-lein-artifact-to-path [mysql/mysql-connector-java "5.1.44"])))
+  (should
+   (equal "~/.m2/repository/postgresql/postgresql/9.3-1102.jdbc41/postgresql-9.3-1102.jdbc41.jar"
+          (ejc-lein-artifact-to-path [postgresql/postgresql "9.3-1102.jdbc41"])))
+  (should
+   (equal "~/.m2/repository/com/microsoft/sqlserver/mssql-jdbc/6.2.2.jre8/mssql-jdbc-6.2.2.jre8.jar"
+          (ejc-lein-artifact-to-path [com.microsoft.sqlserver/mssql-jdbc "6.2.2.jre8"])))
+  (should
+   (equal "~/.m2/repository/com/oracle/jdbc/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar"
+          (ejc-lein-artifact-to-path [com.oracle.jdbc/ojdbc8 "12.2.0.1"]))))
+
 (ert-deftest ejc-test:get-log-file-path ()
   :tags '(el+cl)
   (let ((log-file-path (ejc-get-log-file-path)))

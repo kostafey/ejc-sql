@@ -91,6 +91,17 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
   :group 'ejc-sql
   :type 'boolean)
 
+(defcustom ejc-jdbc-drivers
+  '("sqlite"     [org.xerial/sqlite-jdbc "3.23.1"]
+    "h2"         [com.h2database/h2 "1.4.199"]
+    "mysql"      [mysql/mysql-connector-java "5.1.44"]
+    "postgresql" [postgresql/postgresql "9.3-1102.jdbc41"]
+    "sqlserver"  [com.microsoft.sqlserver/mssql-jdbc "6.2.2.jre8"]
+    "oracle"     [com.oracle.jdbc/ojdbc8 "12.2.0.1"])
+  "Artifacts used as JDBC drivers for each database type in Leiningen format."
+  :group 'ejc-sql
+  :type '(plist :key-type string :value-type (vector symbol string)))
+
 (defvar-local ejc-replace-double-quotes nil
   "When t replace double quotes with single ones in SQL before evaluation.")
 
@@ -373,14 +384,15 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
 ;;;###autoload
 (defun ejc-insert-connection-data (connection-name)
   "Insert configured connection data to keep it between Emacs restarts.
-Assume to run somewhere in .emacs or any file, loaded as Emacs configuration."
+Assume to be evaluated somewhere in .emacs or any file, loaded as Emacs
+configuration."
   (interactive
    (list (or (and (boundp 'connection-name) connection-name)
              (ejc-read-connection-name))))
-  (let* ((conn (ejc-find-connection connection-name)))
+  (let ((connection-params (cdr (ejc-find-connection connection-name))))
     (insert
      (format "(ejc-create-connection\n \"%s\"%s)"
-             (car conn)
+             connection-name
              (-reduce-from
               (lambda (result x)
                 (concat result
@@ -388,9 +400,48 @@ Assume to run somewhere in .emacs or any file, loaded as Emacs configuration."
                                 (symbol-name (car x))
                                 (cdr x))))
               ""
-              (cdr conn))))))
+              connection-params)))))
 
 (defalias 'ejc-save-connection-data 'ejc-insert-connection-data)
+
+(defun ejc-lein-artifact-to-path (artifact)
+  "Get ~/.m2 jar file path of artifact."
+  (if (not (vectorp artifact))
+      (error
+       "Expect leiningen artifact, e.g. [com.h2database/h2 \"1.4.199\"]."))
+  (let* ((group (car (split-string
+                      (ejc-strip-text-properties (symbol-name (elt artifact 0)))
+                      "/")))
+         (name (or (cadr (split-string
+                          (ejc-strip-text-properties
+                           (symbol-name (elt artifact 0))) "/"))
+                   group))
+         (version (elt artifact 1)))
+    (format "~/.m2/repository/%s/%s/%s/%s-%s.jar"
+            (mapconcat 'identity (split-string group "\\.") "/")
+            name
+            version
+            name
+            version)))
+
+(defun ejc-resolve-jdbc-driver (dbtype)
+  "Resolve and download artifacts (JDBC drivers) for DBTYPE.
+Apropriate artifacts list located in `ejc-jdbc-drivers'."
+  (let* ((artifact (lax-plist-get (ejc-jdbc-drivers dbtype)))
+         (jar-path (ejc-lein-artifact-to-path artifact)))
+    (if (not (and (file-exists-p jar-path)
+                  (if (> (file-attribute-size (file-attributes jar-path))
+                         0)
+                      t
+                    ;; If JDBC driver jar file is accidentally empty - it
+                    ;; should be deleted and reinstalled.
+                    (progn (delete-file jar-path)
+                           nil))))
+        (ejc-resolve-dependencies
+         :coordinates (vector artifact)
+         :repositories '(("central" . "https://repo1.maven.org/maven2/")
+                         ("clojars" . "https://clojars.org/repo"))))
+    jar-path))
 
 ;;;###autoload
 (defun ejc-connect-interactive (connection-name)
@@ -416,47 +467,33 @@ Assume to run somewhere in .emacs or any file, loaded as Emacs configuration."
            (pcase dbtype
              ("sqlite"
               `((:subprotocol . "sqlite")
-                (:classpath . ,(concat "~/.m2/repository/org/xerial/sqlite-jdbc"
-                                       "/3.23.1/sqlite-jdbc-3.23.1.jar"))
                 (:subname . "")))
              ("h2"
               `((:subprotocol . "h2")
-                (:classpath . ,(concat "~/.m2/repository/com/h2database"
-                                       "/h2/1.4.192/h2-1.4.192.jar"))
                 (:subname . "")))
              ("mysql"
               `((:dbtype . "mysql")
-                (:classpath . ,(concat "~/.m2/repository/mysql"
-                                       "/mysql-connector-java/5.1.44"
-                                       "/mysql-connector-java-5.1.44.jar"))
                 (:classname . "com.mysql.jdbc.Driver")
                 (:dbname . "")
                 (:host . "localhost")
                 (:port . "3306")))
              ("postgresql"
               `((:dbtype . "postgresql")
-                (:classpath . ,(concat "~/.m2/repository/postgresql"
-                                       "/postgresql/9.3-1102.jdbc41"
-                                       "/postgresql-9.3-1102.jdbc41.jar"))
                 (:dbname . "")
                 (:host . "localhost")
                 (:port . "5432")))
              ("sqlserver"
               `((:dbtype . "sqlserver")
-                (:classpath . ,(concat "~/.m2/repository/com/microsoft"
-                                       "/sqlserver/mssql-jdbc/6.2.2.jre8"
-                                       "/mssql-jdbc-6.2.2.jre8.jar"))
                 (:dbname . "")
                 (:host . "localhost")
                 (:port . "1433")))
              ("oracle"
               `((:dbtype . "oracle")
-                (:classpath . ,(concat "~/.m2/repository/com/oracle/jdbc"
-                                       "/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar"))
                 (:dbname . "")
                 (:host . "localhost")
                 (:port . "1521"))))
-           '((:user . "")
+           '((:classpath . "")
+             (:user . "")
              (:password . ""))))
          (args
           (-reduce-from
@@ -467,7 +504,7 @@ Assume to run somewhere in .emacs or any file, loaded as Emacs configuration."
                (car p)
                (case (car p)
                  (:dbtype (cdr p))
-                 (:classpath (cdr p))
+                 (:classpath (ejc-resolve-jdbc-driver dbtype))
                  (:classname (cdr p))
                  (:subprotocol (cdr p))
                  (:subname (if (member dbtype '("h2" "sqlite"))

@@ -40,6 +40,11 @@
                :lib-name "ejc-sql"
                :namespace ejc-sql.classpath)
 
+(clomacs-defun ejc-resolve-dependencies
+               resolve-dependencies
+               :lib-name "ejc-sql"
+               :namespace cemerick.pomegranate.aether)
+
 (clomacs-defun ejc-require
                clojure.core/require
                :lib-name "ejc-sql")
