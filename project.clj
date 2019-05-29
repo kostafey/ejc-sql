@@ -8,6 +8,7 @@
                  [org.clojars.kostafey/java.jdbc "0.7.10-SNAPSHOT"]
                  [org.hibernate/hibernate-core "5.4.1.Final"]
                  [com.cemerick/pomegranate "1.1.0"]
+                 [org.slf4j/slf4j-simple "1.7.26"]
                  [org.apache.commons/commons-lang3 "3.5"]
                  [org.apache.httpcomponents/httpclient "4.5.5"]
                  [clomacs "0.0.3-SNAPSHOT"]])
