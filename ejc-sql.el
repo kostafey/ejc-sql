@@ -428,7 +428,7 @@ configuration."
 (defun ejc-resolve-jdbc-driver (dbtype)
   "Resolve and download artifacts (JDBC drivers) for DBTYPE.
 Apropriate artifacts list located in `ejc-jdbc-drivers'."
-  (let* ((artifact (lax-plist-get (ejc-jdbc-drivers dbtype)))
+  (let* ((artifact (lax-plist-get ejc-jdbc-drivers dbtype))
          (jar-path (ejc-lein-artifact-to-path artifact)))
     (if (not (and (file-exists-p jar-path)
                   (if (> (file-attribute-size (file-attributes jar-path))
