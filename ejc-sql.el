@@ -120,6 +120,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
 (defvar ejc-command-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "c") #'ejc-connect)
+    (define-key map (kbd "i") #'ejc-connect-interactive)
     (define-key map (kbd "<up>") #'ejc-show-last-result)
     (define-key map (kbd "t") #'ejc-show-tables-list)
     (define-key map (kbd "v") #'ejc-show-views-list)
@@ -445,7 +446,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
 
 ;;;###autoload
 (defun ejc-connect-interactive (connection-name)
-  "Create new connection interactively."
+  "Create new connection interactively and connect to it."
   (interactive
    (list
     (or (and (boundp 'connection-name) connection-name)

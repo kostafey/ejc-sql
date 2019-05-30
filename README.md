@@ -17,16 +17,18 @@ You can use multiple connections at the same time. Autocompletion and basic
 formatting of SQL scripts are also available.
 
 - [Installation](#installation)
-- [Install JDBC Drivers](#install-jdbc-drivers)
 - [Configuration](#configuration)
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
-  - [MySQL connection](#mysqlconnection)
-  - [MS SQL Server connection](#mssqlserverconnection)
-  - [Oracle connection](#oracleconnection)
-  - [H2 connection](#h2connection)
-  - [SQLite connection](#sqliteconnection)
-  - [PostgreSQL connection](#postgresqlconnection)
+  - [Interactive connection creation](#interactive-connection-creation)
+  - [Manual connection creation](#manual-connection-creation)
+    - [Install JDBC drivers](#install-jdbc-drivers)
+    - [MySQL connection](#mysqlconnection)
+    - [MS SQL Server connection](#mssqlserverconnection)
+    - [Oracle connection](#oracleconnection)
+    - [H2 connection](#h2connection)
+    - [SQLite connection](#sqliteconnection)
+    - [PostgreSQL connection](#postgresqlconnection)
 - [Usage](#usage)
   - [Basic use case](#basic-use-case)
   - [Use with org-mode](#use-with-org-mode)
@@ -50,7 +52,104 @@ formatting of SQL scripts are also available.
 
    <kbd>M-x package-install [RET] ejc-sql [RET]</kbd>
 
-## Install JDBC drivers
+## Configuration
+
+First, load `ejc-sql` package:
+```lisp
+(require 'ejc-sql)
+```
+
+`ejc-set-rows-limit` set limit for the number of records to output (1000 by
+default). Set to nil if you want to disable this limit.
+```lisp
+(ejc-set-rows-limit 1000)
+```
+
+## Autocomplete
+
+Enable autocomplete for `ejc-sql` minor mode:
+```lisp
+(add-hook 'ejc-sql-minor-mode-hook
+          (lambda ()
+            (auto-complete-mode t)
+            (ejc-ac-setup)))
+```
+
+Autocompletion is available for the following databases:
+
+* Oracle
+* MS SQL Server
+* PostgreSQL
+* MySQL
+* Informix
+* H2
+* SQLite
+
+<a id="fuzzy-matching"></a>
+### Fuzzy matching
+
+Non-nil `ejc-use-flx` enables `flx` fuzzy matching engine for autocompletion.
+[flx-ido](https://github.com/lewang/flx) is required in this case, it can
+be installed by your favorite approach. E.g. by `MEPLA`:
+<kbd>M-x package-install [RET] flx-ido [RET]</kbd>
+
+```lisp
+(setq ejc-use-flx t)
+```
+
+Customize the minimum number of typed chars required to use `flx` for
+autocompletion, 2 by default:
+
+```lisp
+(setq ejc-flx-threshold 2)
+```
+
+<a id="interactive-connection-creation"></a>
+## Interactive connection creation
+
+The easiest way to create connections configuration is to use interactive
+connections creation.
+
+In any `sql-mode` buffer run (<kbd>C-c ei</kbd>):
+
+```
+M-x ejc-connect-interactive <RET>
+```
+
+Then follow the creation steps: type your connection name, choose
+database type, host (or file path depends on selected database type), port,
+user name and password.
+
+`ejc-sql` uses [Aether](https://github.com/cemerick/pomegranate) API of
+Maven-resolver to automatically resolve and download the required JDBC
+driver (if not yet) for selected database type.
+
+You can customize artifacts and their versions used as JDBC drivers for each
+database type in Leiningen format in `ejc-jdbc-drivers` custom variable.
+
+After you type all required data a and new connection will be created, it
+will attempt to immediately connect `current-buffer` to this connection.
+Then you can use this connection name to connect from different buffers.
+Type (<kbd>C-c ec</kbd>):
+```
+M-x ejc-connect <RET> your-connection-name <RET>
+```
+
+This connection will be available during the current Emacs session. To keep
+it between Emacs restarts, you can open your `.emacs` file or any file,
+loaded as Emacs configuration and run:
+```
+M-x ejc-insert-connection-data <RET> your-connection-name <RET>
+```
+
+This function inserts `ejc-create-connection` expression the same as you can
+accomplish via manual connection creation.
+
+<a id="manual-connection-creation"></a>
+## Manual connection creation
+
+<a id="install-jdbc-drivers"></a>
+### Install JDBC drivers
 
 If you are familiar with JDBC, please omit this section.
 
@@ -111,58 +210,6 @@ mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgre
 **SQLite**
 
 ```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=org.xerial:sqlite-jdbc:3.8.11.2```
-
-## Configuration
-
-First, load `ejc-sql` package:
-```lisp
-(require 'ejc-sql)
-```
-
-`ejc-set-rows-limit` set limit for the number of records to output (1000 by
-default). Set to nil if you want to disable this limit.
-```lisp
-(ejc-set-rows-limit 1000)
-```
-
-## Autocomplete
-
-Enable autocomplete for `ejc-sql` minor mode:
-```lisp
-(add-hook 'ejc-sql-minor-mode-hook
-          (lambda ()
-            (auto-complete-mode t)
-            (ejc-ac-setup)))
-```
-
-Autocompletion is available for the following databases:
-
-* Oracle
-* MS SQL Server
-* PostgreSQL
-* MySQL
-* Informix
-* H2
-* SQLite
-
-<a id="fuzzy-matching"></a>
-### Fuzzy matching
-
-Non-nil `ejc-use-flx` enables `flx` fuzzy matching engine for autocompletion.
-[flx-ido](https://github.com/lewang/flx) is required in this case, it can
-be installed by your favorite approach. E.g. by `MEPLA`:
-<kbd>M-x package-install [RET] flx-ido [RET]</kbd>
-
-```lisp
-(setq ejc-use-flx t)
-```
-
-Customize the minimum number of typed chars required to use `flx` for
-autocompletion, 2 by default:
-
-```lisp
-(setq ejc-flx-threshold 2)
-```
 
 Setup connections with `ejc-create-connection` function in your `.emacs`.
 It's first arg is your custom database connection name, the remaining args
@@ -348,9 +395,9 @@ created and so on. This buffers can be saved as ordinary file buffers by
 `ejc-temp-editor-file-path` directory ("~/tmp/ejc-sql/" by default).
 
 In any selected SQL buffer connect to your database:
-
-`M-x ejc-connect <RET> MySQL-db-connection <RET>`.
-
+```
+M-x ejc-connect <RET> MySQL-db-connection <RET>
+```
 and wait until "Connected." message appears. This will add connection
 information to buffer local variables. Furthermore, if there is no `ejc-sql`
 dedicated Clojure REPL running, it will start it.
@@ -512,6 +559,7 @@ New keybindings defined in `ejc-sql-mode` minor mode:
  Keyboard shortcut   | Command                         | Description
 ---------------------|---------------------------------|------------------------------------------------------
  <kbd>C-c e c</kbd>  | `ejc-connect`                   | Select DB connection (configured by `ejc-create-connection`) and connect to it.
+ <kbd>C-c e i</kbd>  | `ejc-connect-interactive`       | Create new connection interactively and connect to it.
  <kbd>C-c C-c</kbd>  | `ejc-eval-user-sql-at-point`    | Evaluate SQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
  <kbd>C-g</kbd>      | `ejc-cancel-query`              | Terminate current running query or run `keyboard-quit` if there is no running queries.
  <kbd>C-h t</kbd>    | `ejc-describe-table`            | Describe SQL table.
