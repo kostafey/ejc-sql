@@ -152,7 +152,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                              mode 'ejc-result-mode}}]
   "Complete query and display `text` as a result."
   (complete-query
-   (o/write-result-file text :result-file result-file :append append)
+   (if text
+     (o/write-result-file text :result-file result-file :append append))
    :start-time start-time
    :status status
    :display-result display-result
@@ -248,22 +249,3 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
   [db table-name]
   (set-db db)
   (query-meta db (str "SELECT * FROM " table-name)))
-
-(defn get-table-meta
-  "Describe table."
-  [db connection-name table-name result-file]
-  (let [result-map (table-meta db table-name)
-        success (:success result-map)
-        result-data (:result result-map)
-        head (str "Table \"" table-name "\" description:\n")
-        head-length (dec (.length head))]
-    (complete
-     (if success
-       (str head
-            (ejc-sql.lib/simple-join head-length "-") "\n"
-            (o/print-table result-data))
-       result-data)
-     :display-result true
-     :connection-name connection-name
-     :db db
-     :result-file result-file)))

@@ -709,25 +709,11 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
     (when (not table)
       (setq table owner)
       (setq owner nil))
-    (let ((result-file (ejc-next-result-file-path)))
-      (ejc-get-table-meta ejc-db
-                          ejc-connection-name
-                          table-name
-                          result-file)
-      (let ((sql (ejc-select-db-meta-script ejc-db :constraints
-                                            :owner owner
-                                            :table table)))
-        (when (ejc-not-nil-str sql)
-          (ejc-write-result-file
-           (concat "\n"
-                   "Constraints:\n"
-                   "------------\n")
-           :result-file result-file
-           :append t)
-          (ejc-eval-sql-and-log ejc-db sql
-                                :result-file result-file
-                                :append t
-                                :display-result t))))))
+    (ejc--describe-table :db ejc-db
+                         :connection-name ejc-connection-name
+                         :table table
+                         :owner owner
+                         :result-file (ejc-next-result-file-path))))
 
 (defun ejc-describe-entity (entity-name)
   "Describe SQL entity ENTITY-NAME - function, procedure, type or view

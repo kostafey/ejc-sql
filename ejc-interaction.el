@@ -91,10 +91,10 @@
 
 (defalias 'ejc--eval-get-list 'ejc--eval-sql-get-column)
 
-(clomacs-defun ejc-get-table-meta
-               get-table-meta
+(clomacs-defun ejc--describe-table
+               describe-table
                :lib-name "ejc-sql"
-               :namespace ejc-sql.connect)
+               :namespace ejc-sql.structure)
 
 (clomacs-defun ejc-get-entity-description
                get-entity-description

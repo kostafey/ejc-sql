@@ -94,6 +94,35 @@ E.g. transtofm from: a | b | c into: a | 1
                      1 | 2 | 3       c | 3"
   (apply mapv vector data))
 
+(defn print-maps
+  "Prints a collection of maps in a textual table. Prints table headings
+   ks, and then a line of output for each row, corresponding to the keys
+   in ks. If ks are not specified, use the keys of the first item in rows."
+  ([ks rows add-borders]
+   (when (seq rows)
+     (let [widths (map
+                   (fn [k]
+                     (apply max (count (str k))
+                            (map #(count (str (get % k))) rows)))
+                   ks)
+           spacers (map #(apply str (repeat % "-")) widths)
+           fmts (map #(str "%" % "s") widths)
+           fmt-row (fn [leader divider trailer row]
+                     (str (if add-borders leader "")
+                          (apply str
+                                 (interpose
+                                  divider
+                                  (for [[col fmt]
+                                        (map vector (map #(get row %) ks) fmts)]
+                                    (format fmt (str col)))))
+                          (if add-borders trailer "")))]
+       (println (fmt-row "| " " | " " |" (zipmap ks (map name ks))))
+       (println (fmt-row "|-" "-+-" "-|" (zipmap ks spacers)))
+       (doseq [row rows]
+         (println (fmt-row "| " " | " " |" row))))))
+  ([rows add-borders]
+   (print-maps (keys (first rows)) rows add-borders)))
+
 (defn print-table
   ([rows limit]
   "Converts a seq of seqs to a textual table. Uses the first seq as the table

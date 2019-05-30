@@ -21,6 +21,7 @@
   (:require
    [clojure.java.jdbc :as j]
    [clojure.string :as s]
+   [clojure.java.io :as io]
    [ejc-sql.connect :as c]
    [ejc-sql.output :as o]
    [ejc-sql.keywords :as k]))
@@ -784,6 +785,43 @@ records. Otherwise return nil."
                   :result-file result-file))
     (c/complete (format "Can't determine type of %s." entity-name)
                 :result-file result-file)))
+
+(defn print-table-meta [db connection-name table-name]
+  (let [result-map (c/table-meta db table-name)
+        success (:success result-map)
+        result-data (:result result-map)]
+    (if success
+      (do (println (format "Table \"%s\" description:" table-name))
+          (println)
+          (o/print-maps result-data true))
+      (println result-data))
+    success))
+
+(defn describe-table [& {:keys [db
+                                connection-name
+                                table
+                                owner
+                                result-file]}]
+  (with-open [out (io/writer result-file)]
+    (binding [*out* out]
+      (when (print-table-meta db connection-name
+                              (if owner (str owner "." table) table))
+        (when-let [sql (select-db-meta-script db :constraints
+                                              :owner owner
+                                              :table table)]
+          (println)
+          (println "Constraints:")
+          (println)
+          (mapv println
+                (.split (o/print-table
+                         (second (c/eval-sql-core :db db :sql sql)))
+                        "\n"))))))
+  (c/complete
+   nil
+   :display-result true
+   :connection-name connection-name
+   :db db
+   :result-file result-file))
 
 (defn get-cache []
   "Output actual cache."
