@@ -20,8 +20,8 @@ formatting of SQL scripts are also available.
 - [Configuration](#configuration)
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
-  - [Interactive connection creation](#interactive-connection-creation)
-  - [Manual connection creation](#manual-connection-creation)
+  - [Create connections interactively](#create-connections-interactively)
+  - [Create connections manualy](#create-connections-manualy)
     - [Install JDBC drivers](#install-jdbc-drivers)
     - [MySQL connection](#mysqlconnection)
     - [MS SQL Server connection](#mssqlserverconnection)
@@ -104,8 +104,8 @@ autocompletion, 2 by default:
 (setq ejc-flx-threshold 2)
 ```
 
-<a id="interactive-connection-creation"></a>
-## Interactive connection creation
+<a id="create-connections-interactively"></a>
+## Create connections interactively
 
 The easiest way to create connections configuration is to use interactive
 connections creation.
@@ -137,7 +137,8 @@ M-x ejc-connect <RET> your-connection-name <RET>
 
 This connection will be available during the current Emacs session. To keep
 it between Emacs restarts, you can open your `.emacs` file or any file,
-loaded as Emacs configuration and run:
+loaded as Emacs configuration, locate point (cursor) somewhere after
+`(require 'ejc-sql)` expression and run:
 ```
 M-x ejc-insert-connection-data <RET> your-connection-name <RET>
 ```
@@ -145,8 +146,8 @@ M-x ejc-insert-connection-data <RET> your-connection-name <RET>
 This function inserts `ejc-create-connection` expression the same as you can
 accomplish via manual connection creation.
 
-<a id="manual-connection-creation"></a>
-## Manual connection creation
+<a id="create-connections-manualy"></a>
+## Create connections manualy
 
 <a id="install-jdbc-drivers"></a>
 ### Install JDBC drivers
