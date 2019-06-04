@@ -1,6 +1,6 @@
 ;;; ejc-result-mode.el
 
-;;; Copyright © 2017 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2017-2019 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -28,6 +28,9 @@
     ("-" . 'ejc-result-table-borders-face)
     ("+" . 'ejc-result-table-borders-face)))
 
+(defvar ejc-result-mode-hook nil
+  "Functions to be called when `ejc-result-mode' is entered.")
+
 (defun ejc-result-mode ()
   (interactive)
   (kill-all-local-variables)
@@ -35,7 +38,8 @@
   (setq major-mode 'ejc-result-mode
         mode-name "SQL-Result")
   (orgtbl-mode 1)
-  (setq font-lock-defaults '(ejc-result-font-lock-keywords)))
+  (setq font-lock-defaults '(ejc-result-font-lock-keywords))
+  (run-hooks 'ejc-result-mode-hook))
 
 (provide 'ejc-result-mode)
 
