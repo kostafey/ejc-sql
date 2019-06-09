@@ -55,6 +55,55 @@
    (equal "~/.m2/repository/com/oracle/jdbc/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar"
           (ejc-lein-artifact-to-path [com.oracle.jdbc/ojdbc8 "12.2.0.1"]))))
 
+(defun ejc-test:get-boundaries (point-position sql)
+  (with-temp-buffer
+    (insert sql)
+    (goto-char point-position)
+    (ejc-get-sql-boundaries-at-point)))
+
+(ert-deftest ejc-test:ejc-get-sql-boundaries-at-point ()
+  :tags '(el)
+  (should (equal '(1 20)
+                 (ejc-test:get-boundaries 1 "SELECT * FROM table")))
+  (should (equal '(1 1)
+                 (ejc-test:get-boundaries 1 "/ SELECT * FROM table")))
+  (should (equal '(3 22)
+                 (ejc-test:get-boundaries 2 "/ SELECT * FROM table")))
+  (should (equal '(1 21)
+                 (ejc-test:get-boundaries 1 "SELECT * FROM table /")))
+  ;; Separator useless without [RET]:
+  (should (equal '(1 41)
+                 (ejc-test:get-boundaries
+                  1  "SELECT * FROM table / SELECT * FROM user")))
+  (should (equal '(1 41)
+                 (ejc-test:get-boundaries
+                  23 "SELECT * FROM table / SELECT * FROM user")))
+  (should (equal '(4 23)
+                 (ejc-test:get-boundaries 3 "\n/\nSELECT * FROM table")))
+  (should (equal '(1 21)
+                 (ejc-test:get-boundaries 1 "\nSELECT * FROM table\n/")))
+  (should (equal '(26 44)
+                 (ejc-test:get-boundaries 26 (concat "\n"
+                                                     "SELECT * FROM table\n"
+                                                     "/  \n"
+                                                     "SELECT * FROM user"))))
+  (should (equal '(1 23)
+                 (ejc-test:get-boundaries 1 "\n  SELECT * FROM table\n  /")))
+  (should (equal '(1 23)
+                 (ejc-test:get-boundaries 1 "\n  SELECT * FROM table\n  /  ")))
+  (should (equal '(1 23)
+                 (ejc-test:get-boundaries 1
+                                          (concat "\n"
+                                                  "  SELECT * FROM table\n"
+                                                  "  /  \n"
+                                                  "  SELECT * FROM user\n"))))
+  (should (equal '(32 50)
+                 (ejc-test:get-boundaries 32
+                                          (concat "\n"
+                                                  "  SELECT * FROM table\n"
+                                                  "  /  \n"
+                                                  "  SELECT * FROM user")))))
+
 (ert-deftest ejc-test:get-log-file-path ()
   :tags '(el+cl)
   (let ((log-file-path (ejc-get-log-file-path)))

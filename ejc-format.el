@@ -34,7 +34,7 @@
 Upper position of this batch statement(s)."
   (save-excursion
     (if (re-search-backward (ejc-sql-separator-re) nil t nil)
-        (forward-char)
+        (re-search-forward (ejc-sql-separator-re) nil t nil)
       (beginning-of-buffer))
     (point)))
 
@@ -43,12 +43,13 @@ Upper position of this batch statement(s)."
 Bottom position of this batch statement(s)."
   (save-excursion
     (if (re-search-forward (ejc-sql-separator-re) nil t nil)
-        (backward-char)
+        (re-search-backward (ejc-sql-separator-re) nil t nil)
       (end-of-buffer))
     (if (equal (string (preceding-char)) "\n")
         (backward-char 1))
     (let ((sep-len (length ejc-sql-separator)))
-      (if (equal (buffer-substring (- (point) sep-len) (point))
+      (if (equal (buffer-substring (max (point-min) (- (point) sep-len))
+                                   (point))
                  ejc-sql-separator)
           (backward-char sep-len)))
     (point)))
