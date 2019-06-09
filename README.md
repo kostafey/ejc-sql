@@ -20,6 +20,7 @@ formatting of SQL scripts are also available.
 - [Configuration](#configuration)
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
+  - [Result output customization](#result-output-customization)
   - [Create connections interactively](#create-connections-interactively)
   - [Create connections manualy](#create-connections-manualy)
     - [Install JDBC drivers](#install-jdbc-drivers)
@@ -103,6 +104,17 @@ autocompletion, 2 by default:
 ```lisp
 (setq ejc-flx-threshold 2)
 ```
+
+<a id="result-output-customization"></a>
+### Result output customization
+
+Current result set table minor-mode is `orgtbl-mode`. This mode provides some
+functionality for post-processing and browsing the query results.
+```lisp
+(setq ejc-result-table-impl 'orgtbl-mode)
+```
+If you need a simple and bare result set mode to maximize the buffer
+perfomance, you can set `ejc-result-table-impl` to `'ejc-result-mode`.
 
 <a id="create-connections-interactively"></a>
 ## Create connections interactively
