@@ -343,12 +343,9 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                  (concat "ejc-sql is enabled, ignore source block connection"
                          " header arguments and use ejc-sql to execute it? ")))))
       (funcall orig-fun body params)
-    (let ((beg (save-excursion
-                 (org-babel-mark-block)
-                 (point)))
-          (end (save-excursion
-                 (org-babel-mark-block)
-                 (mark))))
+    (cl-multiple-value-bind (beg end) (save-excursion
+                                        (org-babel-mark-block)
+                                        (list (point) (mark)))
       (ejc-eval-user-sql-at-point
        :beg beg
        :end end
