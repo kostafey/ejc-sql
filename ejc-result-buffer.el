@@ -19,6 +19,7 @@
 ;;; Code:
 
 (require 'ejc-lib)
+(require 'ejc-result-mode)
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
@@ -112,7 +113,15 @@ or error messages."
                               ejc-results-buffer-name))
     (with-current-buffer ejc-results-buffer
       (ejc-result-mode)))
+  (with-current-buffer ejc-results-buffer
+    ;; Clear undo history
+    (setq buffer-undo-list nil))
   ejc-results-buffer)
+
+(defun ejc-output-mode-specific-customization ()
+  (case ejc-result-table-impl
+    (orgtbl-mode     (when (org-table-p) (org-table-align)))
+    (ejc-result-mode (read-only-mode 1))))
 
 ;;;###autoload
 (cl-defun ejc-show-last-result (&key result mode connection-name db)
@@ -120,6 +129,7 @@ or error messages."
   (interactive)
   (let ((output-buffer (ejc-get-output-buffer)))
     (set-buffer output-buffer)
+    (read-only-mode -1)
     (erase-buffer)
     (when mode
       (ejc-update-modes-ring mode)
@@ -130,7 +140,7 @@ or error messages."
         (insert result)
       ;; SQL evaluation result rendered to file
       (insert-file-contents (ejc-get-result-file-path)))
-    (when (org-table-p) (org-table-align))
+    (ejc-output-mode-specific-customization)
     (beginning-of-buffer)
     (let* ((window (get-buffer-window output-buffer t))
            (frame (window-frame window)))
@@ -142,6 +152,7 @@ or error messages."
 (cl-defun ejc-show-ring-result (prev-or-next)
   (let ((output-buffer (ejc-get-output-buffer)))
     (set-buffer output-buffer)
+    (read-only-mode -1)
     (erase-buffer)
     (ejc-add-connection ejc-connection-name ejc-db)
     (let ((file-path (funcall prev-or-next t))
@@ -150,7 +161,7 @@ or error messages."
       (if mode
           (funcall mode))
       (insert-file-contents file-path)
-      (when (org-table-p) (org-table-align))
+      (ejc-output-mode-specific-customization)
       (beginning-of-buffer)
       (display-buffer output-buffer)
       (message file-path))))

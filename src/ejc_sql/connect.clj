@@ -196,17 +196,20 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                     start-time
                     sync
                     display-result
-                    result-file]
+                    result-file
+                    add-outside-borders]
              :or {append false
                   sync false
-                  display-result true}}]
+                  display-result true
+                  add-outside-borders true}}]
   (letfn [(run-query []
             (try
-              (eval-user-sql db sql
-                             :rows-limit rows-limit
-                             :append append
-                             :display-result display-result
-                             :result-file result-file)
+              (binding [o/*add-outside-borders* add-outside-borders]
+                (eval-user-sql db sql
+                               :rows-limit rows-limit
+                               :append append
+                               :display-result display-result
+                               :result-file result-file))
               (catch Exception e
                 (complete
                  (str (.getMessage e) "\n"

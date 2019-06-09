@@ -37,7 +37,9 @@
   (setq truncate-lines t)
   (setq major-mode 'ejc-result-mode
         mode-name "SQL-Result")
-  (orgtbl-mode 1)
+  (case ejc-result-table-impl
+    (orgtbl-mode     (orgtbl-mode 1))
+    (ejc-result-mode (setq view-read-only t)))
   (setq font-lock-defaults '(ejc-result-font-lock-keywords))
   (run-hooks 'ejc-result-mode-hook))
 

@@ -78,6 +78,11 @@
   :group 'ejc-sql
   :type 'integer)
 
+(defcustom ejc-result-table-impl 'orgtbl-mode
+  "Set mode for result-set table. Possible values are one of:
+'orgtbl-mode
+'ejc-result-mode.")
+
 (defcustom ejc-org-mode-babel-wrapper t
   "Add wrapper around org-mode default `org-babel-execute:sql'."
   :type 'boolean
@@ -624,6 +629,11 @@ any SQL buffer to connect to exact database, as always. "
                 sql)))
     sql))
 
+(defun ejc-add-outside-borders-p ()
+  (case ejc-result-table-impl
+    (orgtbl-mode     t)
+    (ejc-result-mode nil)))
+
 (cl-defun ejc-eval-sql-and-log (db
                                 sql
                                 &key
@@ -646,7 +656,8 @@ any SQL buffer to connect to exact database, as always. "
        :sync sync
        :display-result display-result
        :result-file (or result-file
-                        (ejc-next-result-file-path))))))
+                        (ejc-next-result-file-path))
+       :add-outside-borders (ejc-add-outside-borders-p)))))
 
 (defun ejc-message-query-done (start-time status)
   (message
@@ -709,7 +720,8 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
                          :connection-name ejc-connection-name
                          :table table
                          :owner owner
-                         :result-file (ejc-next-result-file-path))))
+                         :result-file (ejc-next-result-file-path)
+                         :add-outside-borders (ejc-add-outside-borders-p))))
 
 (defun ejc-describe-entity (entity-name)
   "Describe SQL entity ENTITY-NAME - function, procedure, type or view

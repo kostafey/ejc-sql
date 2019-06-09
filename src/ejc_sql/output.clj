@@ -29,6 +29,8 @@
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl
                                                DDLFormatterImpl)))
 
+(def ^:dynamic *add-outside-borders* true)
+
 (defn get-log-dir []
   (file (if windows?
           (System/getenv "AppData")
@@ -106,7 +108,7 @@ E.g. transtofm from: a | b | c into: a | 1
                             (map #(count (str (get % k))) rows)))
                    ks)
            spacers (map #(apply str (repeat % "-")) widths)
-           fmts (map #(str "%" % "s") widths)
+           fmts (map #(str "%-" % "s") widths)
            fmt-row (fn [leader divider trailer row]
                      (str (if add-borders leader "")
                           (apply str
@@ -115,11 +117,14 @@ E.g. transtofm from: a | b | c into: a | 1
                                   (for [[col fmt]
                                         (map vector (map #(get row %) ks) fmts)]
                                     (format fmt (str col)))))
-                          (if add-borders trailer "")))]
-       (println (fmt-row "| " " | " " |" (zipmap ks (map name ks))))
-       (println (fmt-row "|-" "-+-" "-|" (zipmap ks spacers)))
+                          (if add-borders trailer "")))
+           aob *add-outside-borders*]
+       (println (fmt-row (if aob "| " "") " | " (if aob " |" "")
+                         (zipmap ks (map name ks))))
+       (println (fmt-row (if aob "|-" "") "-+-" (if aob "-|" "")
+                         (zipmap ks spacers)))
        (doseq [row rows]
-         (println (fmt-row "| " " | " " |" row))))))
+         (println (fmt-row (if aob "| " "") " | " (if aob " |" "") row))))))
   ([rows add-borders]
    (print-maps (keys (first rows)) rows add-borders)))
 
@@ -155,14 +160,15 @@ E.g. transtofm from: a | b | c into: a | 1
                                                   (format fmt (str col)))))
                           trailer))
            result (new StringBuffer "")
+           aob *add-outside-borders*
            ;; TODO: change to #(println %) when async output ready
            out #(.append result (str % "\n"))]
        (if (not rotated)
          (do
-           (out (fmt-row "|" " | " "|" headers))
-           (out (fmt-row "|" "-+-" "|" spacers))))
+           (out (fmt-row (if aob "|" "") " | " (if aob "|" "") headers))
+           (out (fmt-row (if aob "|" "") "-+-" (if aob "|" "") spacers))))
        (doseq [row rows]
-         (out (fmt-row "|" " | " "|" row)))
+         (out (fmt-row (if aob "|" "") " | " (if aob "|" "") row)))
        (str msg
             (if rotated
               (String/join "\n"

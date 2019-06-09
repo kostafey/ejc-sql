@@ -801,9 +801,11 @@ records. Otherwise return nil."
                                 connection-name
                                 table
                                 owner
-                                result-file]}]
+                                result-file
+                                add-outside-borders]}]
   (with-open [out (io/writer result-file)]
-    (binding [*out* out]
+    (binding [*out* out
+              o/*add-outside-borders* add-outside-borders]
       (when (print-table-meta db connection-name
                               (if owner (str owner "." table) table))
         (when-let [sql (select-db-meta-script db :constraints
