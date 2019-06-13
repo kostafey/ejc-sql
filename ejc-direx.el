@@ -150,8 +150,9 @@
                              (cons (list :type "schema" :name schema)
                                    (-map #'table-item tables)))))
     ;; Assume schema == owner (difference depends on exact database type).
-    (let ((schemas (ejc-get-cached-owners-list ejc-db t)))
-      (-map #'schema-item schemas))))
+    (if-let ((schemas (ejc-get-cached-owners-list ejc-db t)))
+        (-map #'schema-item schemas)
+      (-map #'table-item (ejc-get-cached-tables-list ejc-db nil t)))))
 
 (defmethod direx:item-refresh ((item ejc-direx:item) &key recursive)
   "Currently it always recursively refreshes whole tree."
