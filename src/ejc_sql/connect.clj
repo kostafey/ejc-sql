@@ -56,27 +56,34 @@ For debug purpose."
                sql)
     sql))
 
-(defn is-query-running? []
+(defn is-statement-not-closed? []
   (let [stmt (:stmt @current-query)]
     (and (not (nil? stmt))
          (not (.isClosed stmt)))))
+
+(defn is-query-process-running? []
+  (let [runner (:runner @current-query)]
+    (and
+     (not (nil? runner))
+     (not (future-done? runner))
+     (not (future-cancelled? runner)))))
+
+(defn is-query-running? []
+  (or (is-statement-not-closed?)
+      (is-query-process-running?)))
 
 (defn cancel-query []
   "Terminate current (long) running query. Aimed to cancel SELECT queries.
 Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (future
-    (if (is-query-running?)
-      (let [conn (:conn @current-query)
-            runner (:runner @current-query)]
+    (if (is-statement-not-closed?)
+      (let [conn (:conn @current-query)]
         (try
           (.rollback conn)
           (finally
-            (.close conn)))
-        (if (and
-             (not (nil? runner))
-             (not (future-done? runner))
-             (not (future-cancelled? runner)))
-          (future-cancel runner)))))
+            (.close conn)))))
+    (if (is-query-process-running?)
+      (future-cancel (:runner @current-query))))
   (:start-time @current-query))
 
 (defn validate-connection [& {:keys [db timeout]

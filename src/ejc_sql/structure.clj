@@ -750,7 +750,10 @@ records. Otherwise return nil."
       (format header-format entity-name sql)
       sql)))
 
-(defn get-entity-description [db connection-name entity-name result-file]
+(defn get-entity-description [& {:keys [db
+                                        connection-name
+                                        entity-name
+                                        result-file]}]
   "Get DB entity or view creation SQL."
   (if-let [type (get-entity-type db entity-name)]
     (if-let [entity-obtainig-sql (select-db-meta-script

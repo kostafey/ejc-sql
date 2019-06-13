@@ -603,21 +603,6 @@ any SQL buffer to connect to exact database, as always. "
              (sql-word (buffer-substring beg end)))
         sql-word))))
 
-(defun ejc-get-prompt-symbol-under-point (msg)
-  (let ((sql-symbol (if mark-active
-                        (buffer-substring (mark) (point))
-                      (ejc-get-word-at-point (point))))
-        (enable-recursive-minibuffers t)
-        val)
-    (setq val (completing-read
-               (if sql-symbol
-                   (format "%s (default %s): " msg sql-symbol)
-                 (format "%s: " msg))
-               obarray))
-    (list (if (equal val "")
-              sql-symbol
-            val))))
-
 (defun ejc-check-connection ()
   (unless (ejc-buffer-connected-p)
     (error "Run M-x ejc-connect first!")))
@@ -700,38 +685,56 @@ any SQL buffer to connect to exact database, as always. "
   "Terminate current (long) running query. Aimed to cancel SELECT queries.
 Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (interactive)
+  (ejc-spinner-stop)
   (if (and (clomacs-get-connection "ejc-sql")
            (ejc--is-query-running-p))
       (let ((start-time (ejc--cancel-query)))
-        (ejc-spinner-stop)
         (ejc-message-query-done start-time :terminated))
     (keyboard-quit)))
 
-(defun ejc-describe-table (table-name)
+(defun ejc-get-prompt-symbol-under-point (msg)
+  (let ((prefix (ejc-get-prefix-word))
+        (sql-symbol (if mark-active
+                        (buffer-substring (mark) (point))
+                      (ejc-get-word-at-point (point))))
+        (enable-recursive-minibuffers t)
+        val)
+    (setq val (completing-read
+               (if sql-symbol
+                   (format "%s (default %s): "
+                           msg
+                           (if prefix
+                               (format "%s.%s" prefix sql-symbol)
+                             sql-symbol))
+                 (format "%s: " msg))
+               obarray))
+    (if (equal val "")
+        (list prefix sql-symbol)
+      (let ((split-val (split-string val "\\.")))
+        (if (cadr split-val)
+            split-val
+          (list nil val))))))
+
+(defun ejc-describe-table (prefix table-name)
   "Describe SQL table TABLE-NAME (default table name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe table"))
   (ejc-check-connection)
-  (let* ((owner (car (split-string table-name "\\.")))
-         (table (cadr (split-string table-name "\\."))))
-    (when (not table)
-      (setq table owner)
-      (setq owner nil))
-    (ejc--describe-table :db ejc-db
-                         :connection-name ejc-connection-name
-                         :table table
-                         :owner owner
-                         :result-file (ejc-next-result-file-path)
-                         :add-outside-borders (ejc-add-outside-borders-p))))
+  (ejc--describe-table :db ejc-db
+                       :connection-name ejc-connection-name
+                       :table table-name
+                       :owner prefix
+                       :result-file (ejc-next-result-file-path)
+                       :add-outside-borders (ejc-add-outside-borders-p)))
 
-(defun ejc-describe-entity (entity-name)
+(defun ejc-describe-entity (prefix entity-name)
   "Describe SQL entity ENTITY-NAME - function, procedure, type or view
    (default entity name - word around the point)."
   (interactive (ejc-get-prompt-symbol-under-point "Describe entity"))
   (ejc-check-connection)
-  (ejc-get-entity-description ejc-db
-                              ejc-connection-name
-                              entity-name
-                              (ejc-next-result-file-path)))
+  (ejc-get-entity-description :db ejc-db
+                              :connection-name ejc-connection-name
+                              :entity-name entity-name
+                              :result-file (ejc-next-result-file-path)))
 
 (cl-defun ejc-eval-user-sql (sql &key rows-limit sync display-result)
   "User starts SQL evaluation process."
