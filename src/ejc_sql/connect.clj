@@ -129,7 +129,9 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                        (.equals sql-query-word "SHOW")))
              (list :result-set
                    (with-open [conn (j/get-connection db)]
-                     (let [stmt (j/prepare-statement conn sql-part)]
+                     (let [stmt (j/prepare-statement
+                                 conn sql-part
+                                 {:fetch-size (or @o/rows-limit 0)})]
                        (swap! current-query assoc
                               :stmt stmt
                               :conn conn)
