@@ -21,7 +21,6 @@
         [ejc-sql.lib]
         [clomacs])
   (:require [clojure.java.jdbc :as j]
-            [clojure.contrib.java-utils]
             [clojure.string :as s]
             [ejc-sql.output :as o])
   (:import [java.sql Connection

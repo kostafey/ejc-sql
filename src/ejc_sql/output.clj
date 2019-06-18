@@ -19,8 +19,7 @@
 (ns ejc-sql.output
   (:use clojure.java.io
         ejc-sql.lib)
-  (:require clojure.contrib.java-utils
-            [clojure.string :as s])
+  (:require [clojure.string :as s])
   (:import (java.io File)
            (java.lang.reflect Method)
            (java.util.Date)
