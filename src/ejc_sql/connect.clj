@@ -137,7 +137,12 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                               :conn conn)
                        (j/query db stmt
                                 {:as-arrays? true
-                                 :row-fn clob-to-string-row}))))
+                                 :result-set-fn
+                                 (fn [rs]
+                                   (let [single-record? (not (next (next rs)))]
+                                     (mapv
+                                      #(clob-to-string-row % single-record?)
+                                      rs)))}))))
              (list :message
                    (str "Records affected: "
                         (first (j/execute! db (list sql-part)))))))

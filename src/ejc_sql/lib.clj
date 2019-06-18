@@ -90,10 +90,10 @@
 (defn class-exists? [c]
   (resolve-class (.getContextClassLoader (Thread/currentThread)) c))
 
-(defn clob-to-string [clob & [records-count]]
+(defn clob-to-string [clob single-record?]
   "Turn an Oracle Clob into a String"
   (with-open [rdr (java.io.BufferedReader. (.getCharacterStream clob))]
-    (if (and records-count (= records-count 1))
+    (if single-record?
       (apply str (line-seq rdr))
       ;; Show only first 30 symbols of Clob field
       (let [result (apply str (take 31 (mapcat seq (line-seq rdr))))]
@@ -106,11 +106,11 @@
       (and (class-exists? 'oracle.sql.CLOB)
            (instance? (Class/forName "oracle.sql.CLOB") x))))
 
-(defn clob-to-string-row [row & [records-count]]
+(defn clob-to-string-row [row single-record?]
   "Check all data in row if it's a CLOB and convert CLOB to string."
   (mapv (fn [field]
           (if (is-clob? field)
-            (clob-to-string field records-count)
+            (clob-to-string field single-record?)
             field))
         row))
 
