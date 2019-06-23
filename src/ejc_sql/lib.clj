@@ -90,16 +90,19 @@
 (defn class-exists? [c]
   (resolve-class (.getContextClassLoader (Thread/currentThread)) c))
 
-(defn clob-to-string [clob single-record?]
+(defn clob-to-string
   "Turn an Oracle Clob into a String"
-  (with-open [rdr (java.io.BufferedReader. (.getCharacterStream clob))]
-    (if single-record?
-      (apply str (line-seq rdr))
-      ;; Show only first 30 symbols of Clob field
-      (let [result (apply str (take 31 (mapcat seq (line-seq rdr))))]
-        (if (> (count result) 30)
-          (str result "...")
-          result)))))
+  ([clob]
+   (clob-to-string clob true))
+  ([clob single-record?]
+   (with-open [rdr (java.io.BufferedReader. (.getCharacterStream clob))]
+     (if single-record?
+       (apply str (line-seq rdr))
+       ;; Show only first 30 symbols of Clob field
+       (let [result (apply str (take 31 (mapcat seq (line-seq rdr))))]
+         (if (> (count result) 30)
+           (str result "...")
+           result))))))
 
 (defn is-clob? [x]
   (or (instance? java.sql.Clob x)
@@ -136,6 +139,9 @@
               (if (ignore-set (get sql pos))
                 (recur (inc pos))
                 pos))]
-    (or
-     (dml-set (.toUpperCase (subs sql pos (+ 6 pos))))
-     (#{"SHOW"} (.toUpperCase (subs sql pos (+ 4 pos)))))))
+    (or (and
+         (> (count sql) (+ 6 pos))
+         (dml-set (.toUpperCase (subs sql pos (+ 6 pos)))))
+        (and
+         (> (count sql) (+ 4 pos))
+         (#{"SHOW"} (.toUpperCase (subs sql pos (+ 4 pos))))))))

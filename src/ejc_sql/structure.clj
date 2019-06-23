@@ -731,9 +731,10 @@ records. Otherwise return nil."
 
 (defn get-entity-type [db entity-name]
   "Determine DB entity type, whether it is a `:view`, `:type`,
-`package` or `:procedure`."
-  (if-let [sql (select-db-meta-script db :entity-type
-                                      :entity-name entity-name)]
+`:package` or `:procedure`."
+  (if-let [sql (and entity-name
+                    (select-db-meta-script db :entity-type
+                                           :entity-name entity-name))]
     (if-let [found-type (db->value db sql)]
       (-> (.split found-type " ")
           first
@@ -752,42 +753,45 @@ records. Otherwise return nil."
 
 (defn get-entity-description [& {:keys [db
                                         connection-name
+                                        prefix
                                         entity-name
                                         result-file]}]
   "Get DB entity or view creation SQL."
-  (if-let [type (get-entity-type db entity-name)]
-    (if-let [entity-obtainig-sql (select-db-meta-script
-                                  db
-                                  type
-                                  :entity-name entity-name)]
-      (if-let [entity-sql (s/join
-                           ""
-                           (db->column
-                            db
-                            entity-obtainig-sql
-                            :row-fn (fn [row]
-                                      (mapv #(if (is-clob? %)
-                                               (clob-to-string %)
-                                               %)
-                                            row))))]
-        (c/complete (add-creation-header
-                     db
-                     type
-                     entity-name
-                     (o/format-sql-if-required entity-sql))
-                    :mode 'sql-mode
-                    :connection-name connection-name
-                    :db db
-                    :result-file result-file)
-        (c/complete (format "Can't find %s named %s."
-                            (name type) entity-name)
+  (let [sql-object (or prefix entity-name)]
+    (if-let [type (get-entity-type db sql-object)]
+      (if-let [entity-obtainig-sql (select-db-meta-script
+                                    db
+                                    type
+                                    :entity-name sql-object)]
+        (if-let [entity-sql (s/join
+                             ""
+                             (db->column
+                              db
+                              entity-obtainig-sql
+                              :row-fn (fn [row]
+                                        (mapv #(if (is-clob? %)
+                                                 (clob-to-string %)
+                                                 %)
+                                              row))))]
+          (c/complete (add-creation-header
+                       db
+                       type
+                       sql-object
+                       (o/format-sql-if-required entity-sql))
+                      :mode 'sql-mode
+                      :connection-name connection-name
+                      :db db
+                      :result-file result-file
+                      :goto-symbol (if prefix entity-name))
+          (c/complete (format "Can't find %s named %s."
+                              (name type) sql-object)
+                      :result-file result-file))
+        (c/complete (format (str "Script for obtaining DB entity of type %s "
+                                 "was not added for this database type.")
+                            (name type))
                     :result-file result-file))
-      (c/complete (format (str "Script for obtaining DB entity of type %s "
-                               "was not added for this database type.")
-                          (name type))
-                  :result-file result-file))
-    (c/complete (format "Can't determine type of %s." entity-name)
-                :result-file result-file)))
+      (c/complete (format "Can't determine type of %s." sql-object)
+                  :result-file result-file))))
 
 (defn print-table-meta [db connection-name table-name]
   (let [result-map (c/table-meta db table-name)

@@ -159,7 +159,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                start-time
                                status
                                connection-name
-                               db]
+                               db
+                               goto-symbol]
                         :or {display-result true
                              append false
                              mode 'ejc-result-mode}}]
@@ -172,7 +173,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
    :display-result display-result
    :mode mode
    :connection-name connection-name
-   :db db))
+   :db db
+   :goto-symbol goto-symbol))
 
 (defn- eval-user-sql [db sql & {:keys [rows-limit
                                        append

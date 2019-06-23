@@ -89,6 +89,17 @@
         t)
     (error nil)))
 
+(defun ejc-flatten-index (imenu-index)
+  "Flatten imenu index into a plain list.
+IMENU-INDEX - imenu index tree."
+  (-mapcat
+   (lambda (x)
+     (if (imenu--subalist-p x)
+         (mapcar (lambda (y) (cons (car y) (cdr y)))
+                 (ejc-flatten-index (cdr x)))
+       (list x)))
+   imenu-index))
+
 (provide 'ejc-lib)
 
 ;;; ejc-lib.el ends here

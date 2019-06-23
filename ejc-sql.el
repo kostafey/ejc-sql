@@ -668,7 +668,8 @@ any SQL buffer to connect to exact database, as always. "
                               display-result
                               mode
                               connection-name
-                              db)
+                              db
+                              goto-symbol)
   "Called by Clojure side, when SQL evaluation thread completes."
   (ejc-spinner-stop)
   (if result-file-path
@@ -676,7 +677,8 @@ any SQL buffer to connect to exact database, as always. "
   (if display-result
       (ejc-show-last-result :mode mode
                             :connection-name connection-name
-                            :db db))
+                            :db db
+                            :goto-symbol goto-symbol))
   (if (and start-time status)
       (ejc-message-query-done start-time status))
   nil)
@@ -733,6 +735,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (ejc-check-connection)
   (ejc-get-entity-description :db ejc-db
                               :connection-name ejc-connection-name
+                              :prefix prefix
                               :entity-name entity-name
                               :result-file (ejc-next-result-file-path)))
 

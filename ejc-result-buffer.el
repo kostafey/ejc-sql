@@ -124,7 +124,11 @@ or error messages."
     (ejc-result-mode (read-only-mode 1))))
 
 ;;;###autoload
-(cl-defun ejc-show-last-result (&key result mode connection-name db)
+(cl-defun ejc-show-last-result (&key result
+                                     mode
+                                     connection-name
+                                     db
+                                     goto-symbol)
   "Popup buffer with last SQL execution result output."
   (interactive)
   (let ((output-buffer (ejc-get-output-buffer)))
@@ -147,7 +151,21 @@ or error messages."
       (if (not window)
           (display-buffer output-buffer))
       (if (not (eq frame (selected-frame)))
-          (make-frame-visible frame)))))
+          (make-frame-visible frame))
+      (if goto-symbol
+          ;; Reversed, since if the result buffer is a package, it can
+          ;; contain 2 concatenated parts: header and implementation.
+          ;; Assume user wants to locate a point (cursor) in
+          ;; procedure implementation.
+          (if-let* ((items-list (reverse (delq imenu--rescan-item
+                                               (ejc-flatten-index
+                                                (condition-case nil
+	                                                (imenu--make-index-alist)
+	                                              (error nil))))))
+                    ;; Find symbol position (typically to locate the
+                    ;; beginning of procedure implementation in the package).
+                    (pos (alist-get goto-symbol items-list nil nil 'equal)))
+              (set-window-point window pos))))))
 
 (cl-defun ejc-show-ring-result (prev-or-next)
   (let ((output-buffer (ejc-get-output-buffer)))
