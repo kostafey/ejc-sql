@@ -21,6 +21,7 @@
         [ejc-sql.lib]
         [clomacs])
   (:require [clojure.java.jdbc :as j]
+            [clojure.java.io :as io]
             [clojure.string :as s]
             [ejc-sql.output :as o])
   (:import [java.sql Connection
@@ -219,12 +220,14 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                   add-outside-borders true}}]
   (letfn [(run-query []
             (try
-              (binding [o/*add-outside-borders* add-outside-borders]
-                (eval-user-sql db sql
-                               :rows-limit rows-limit
-                               :append append
-                               :display-result display-result
-                               :result-file result-file))
+              (with-open [out (io/writer result-file)]
+                (binding [*out* out
+                          o/*add-outside-borders* add-outside-borders]
+                  (eval-user-sql db sql
+                                 :rows-limit rows-limit
+                                 :append append
+                                 :display-result display-result
+                                 :result-file result-file)))
               (catch Exception e
                 (complete
                  (str (.getMessage e) "\n"

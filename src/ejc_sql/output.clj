@@ -129,7 +129,7 @@ E.g. transtofm from: a | b | c into: a | 1
 
 (defn print-table
   ([rows limit]
-  "Converts a seq of seqs to a textual table. Uses the first seq as the table
+   "Converts a seq of seqs to a textual table. Uses the first seq as the table
   headings and the remaining seqs as rows."
    (when (seq rows)
      (let [row-limit (or limit @rows-limit)
@@ -137,42 +137,41 @@ E.g. transtofm from: a | b | c into: a | 1
                                (> row-limit 0)
                                (> (count rows) row-limit))
                         [(take row-limit rows)
-                         (format "Too many rows. Only %s from %s is shown.\n\n"
+                         (format "Too many rows. Only %s from %s is shown."
                                  row-limit (count rows))]
                         [rows ""])
            [headers rows] [(map name (first rows)) (rest rows)]
            [rows rotated] (if (and (= (count rows) 1)
-                                      (> (count (first rows)) 1))
-                               [(rotate-table [headers (first rows)]) true]
-                               [rows false])
+                                   (> (count (first rows)) 1))
+                            [(rotate-table [headers (first rows)]) true]
+                            [rows false])
            rows (for [row rows]
-                  (map #(if (string? %) (clojure.string/replace % "\n" " ") %) row))
+                  (map #(if (string? %) (clojure.string/replace % #"[\n\r]" " ") %) row))
            widths (for [col (rotate-table (conj rows headers))]
                     (apply max (map #(count (str %)) col)))
            spacers (map #(apply str (repeat % "-")) widths)
+           aob *add-outside-borders*
            ;; TODO: #(str "%" % "d") for numbers
-           fmts (map #(str "%-" % "s") widths)
+           fmts (if (and rotated (not aob))
+                  ;; Remove trailing spaces for data column of single-row
+                  ;; result if no outer borders required.
+                  (list (str "%-" (first widths) "s") "%s")
+                  (map #(str "%-" % "s") widths))
            fmt-row (fn [leader divider trailer row]
                      (str leader
                           (apply str (interpose divider
                                                 (for [[col fmt] (map vector row fmts)]
                                                   (format fmt (str col)))))
-                          trailer))
-           result (new StringBuffer "")
-           aob *add-outside-borders*
-           ;; TODO: change to #(println %) when async output ready
-           out #(.append result (str % "\n"))]
+                          trailer))]
+       (when (not-empty msg)
+         (println msg)
+         (println))
        (if (not rotated)
          (do
-           (out (fmt-row (if aob "|" "") " | " (if aob "|" "") headers))
-           (out (fmt-row (if aob "|" "") "-+-" (if aob "|" "") spacers))))
+           (println (fmt-row (if aob "|" "") " | " (if aob "|" "") headers))
+           (println (fmt-row (if aob "|" "") "-+-" (if aob "|" "") spacers))))
        (doseq [row rows]
-         (out (fmt-row (if aob "|" "") " | " (if aob "|" "") row)))
-       (str msg
-            (if rotated
-              (String/join "\n"
-                           (mapv #(.trim %) (.split (.toString result) "\n")))
-              (.toString result))))))
+         (println (fmt-row (if aob "|" "") " | " (if aob "|" "") row))))))
   ([rows] (print-table rows @rows-limit)))
 
 (defn format-sql [sql]
