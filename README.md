@@ -18,6 +18,7 @@ formatting of SQL scripts are also available.
 
 - [Installation](#installation)
 - [Configuration](#configuration)
+  - [Performance](#performance)
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
   - [Result output customization](#result-output-customization)
@@ -60,13 +61,21 @@ First, load `ejc-sql` package:
 (require 'ejc-sql)
 ```
 
+### Performance
+
 `ejc-set-rows-limit` set limit for the number of records to output (1000 by
 default). Set to nil if you want to disable this limit.
 ```lisp
 (ejc-set-rows-limit 1000)
 ```
 
-## Autocomplete
+`ejc-set-column-width-limit` set limit for the number of chars per column to
+output (30 by default). Set to nil if you want to disable this limit.
+```lisp
+(ejc-set-column-width-limit 30)
+```
+
+### Autocomplete
 
 Enable autocomplete for `ejc-sql` minor mode:
 ```lisp

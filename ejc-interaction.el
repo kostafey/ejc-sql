@@ -143,6 +143,13 @@
                :doc (concat "Set limit for number of records to output. "
                             "When nil no limit."))
 
+(clomacs-defun ejc-set-column-width-limit
+               set-column-width-limit
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.output
+               :doc (concat "Set limit for number of chars per column to "
+                            "output to output. When nil no limit."))
+
 (clomacs-defun ejc-get-stucture
                get-stucture
                :lib-name "ejc-sql"

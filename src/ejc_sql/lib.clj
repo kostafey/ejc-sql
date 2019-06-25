@@ -21,6 +21,8 @@
   (:require [clojure.string :as s]
             [clojure.reflect :refer [resolve-class]]))
 
+(def ^:dynamic *max-column-width* 30)
+
 (def windows?
   "The value is true if it runs under the os Windows."
   (>= 0 (.indexOf (System/getProperty "os.name") "Windows")))
@@ -96,12 +98,14 @@
    (clob-to-string clob true))
   ([clob single-record?]
    (with-open [rdr (java.io.BufferedReader. (.getCharacterStream clob))]
-     (if single-record?
+     (if (or single-record? (not *max-column-width*))
        (apply str (line-seq rdr))
-       ;; Show only first 30 symbols of Clob field
-       (let [result (apply str (take 31 (mapcat seq (line-seq rdr))))]
-         (if (> (count result) 30)
-           (str result "...")
+       ;; Show only first `*max-column-width*` (30 by default) symbols
+       ;; of Clob field. If longer, replace last 3 symbols by dots.
+       (let [result (apply str (take (+ *max-column-width* 1)
+                                     (mapcat seq (line-seq rdr))))]
+         (if (> (count result) *max-column-width*)
+           (str (subs result 0 (- *max-column-width* 3)) "...")
            result))))))
 
 (defn is-clob? [x]

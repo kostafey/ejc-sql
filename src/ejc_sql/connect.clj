@@ -222,7 +222,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
             (try
               (with-open [out (io/writer result-file)]
                 (binding [*out* out
-                          o/*add-outside-borders* add-outside-borders]
+                          o/*add-outside-borders* add-outside-borders
+                          *max-column-width* @o/column-width-limit]
                   (eval-user-sql db sql
                                  :rows-limit rows-limit
                                  :append append

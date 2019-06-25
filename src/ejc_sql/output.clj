@@ -80,9 +80,18 @@
   "Limit number of records to output."
   (atom 1000))
 
+(def column-width-limit
+  "Limit number of chars per column to output."
+  (atom 30))
+
 (defn set-rows-limit [val]
   "Set limit for number of records to output. When nil no limit."
   (reset! rows-limit val))
+
+(defn set-column-width-limit [val]
+  "Set limit for number of chars per column to output to output.
+When nil no limit."
+  (reset! column-width-limit val))
 
 (defn fmap [f m]
   (reduce (fn [altered-map [k v]] (assoc altered-map k (f v))) {} m))
@@ -127,6 +136,12 @@ E.g. transtofm from: a | b | c into: a | 1
   ([rows add-borders]
    (print-maps (keys (first rows)) rows add-borders)))
 
+(defn trim-max-width [x]
+  (let [s (str x)]
+    (if (and *max-column-width* (> (count s) *max-column-width*))
+      (str (subs s 0 (- *max-column-width* 3)) "...")
+      s)))
+
 (defn print-table
   ([rows limit]
    "Converts a seq of seqs to a textual table. Uses the first seq as the table
@@ -145,6 +160,10 @@ E.g. transtofm from: a | b | c into: a | 1
                                    (> (count (first rows)) 1))
                             [(rotate-table [headers (first rows)]) true]
                             [rows false])
+           [headers rows] (if (not rotated)
+                            [(map trim-max-width headers)
+                             (map #(map trim-max-width %) rows)]
+                            [headers rows])
            rows (for [row rows]
                   (map #(if (string? %) (clojure.string/replace % #"[\n\r]" " ") %) row))
            widths (for [col (rotate-table (conj rows headers))]
