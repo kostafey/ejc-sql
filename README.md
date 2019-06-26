@@ -74,6 +74,11 @@ output (30 by default). Set to nil if you want to disable this limit.
 ```lisp
 (ejc-set-column-width-limit 30)
 ```
+This setting is applied to the text representation of any field type, but
+especially useful for `varchar` and `CLOB` fields. If you want to see the full
+text of some field (e.g. the full text of `CLOB` field) despite
+`ejc-set-column-width-limit`, you can select single-record result set
+(e.g. `SELECT * FROM table WHERE id = 1`).
 
 ### Autocomplete
 
