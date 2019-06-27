@@ -63,22 +63,27 @@ First, load `ejc-sql` package:
 
 ### Performance
 
-`ejc-set-rows-limit` set limit for the number of records to output (1000 by
-default). Set to nil if you want to disable this limit.
-```lisp
-(ejc-set-rows-limit 1000)
-```
+`ejc-set-rows-limit` set limit for the number of records to output (`100` by
+default). Set to `nil` if you want to disable this limit.
 
 `ejc-set-column-width-limit` set limit for the number of chars per column to
-output (30 by default). Set to nil if you want to disable this limit.
-```lisp
-(ejc-set-column-width-limit 30)
-```
+output (`30` by default). Set to nil if you want to disable this limit.
 This setting is applied to the text representation of any field type, but
 especially useful for `varchar` and `CLOB` fields. If you want to see the full
 text of some field (e.g. the full text of `CLOB` field) despite
 `ejc-set-column-width-limit`, you can select single-record result set
 (e.g. `SELECT * FROM table WHERE id = 1`).
+
+Both of this functions change Clojure variables, so if you want to change
+defaults, to avoid Clojure nREPL launch on Emacs start, you should add
+them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
+```lisp
+(defun my-ejc-sql-connected-hook ()
+  (ejc-set-rows-limit 50)
+  (ejc-set-column-width-limit 25))
+
+(add-hook 'ejc-sql-connected-hook 'my-ejc-sql-connected-hook)
+```
 
 ### Autocomplete
 

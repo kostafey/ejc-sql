@@ -78,7 +78,7 @@
 
 (def rows-limit
   "Limit number of records to output."
-  (atom 1000))
+  (atom 100))
 
 (def column-width-limit
   "Limit number of chars per column to output."

@@ -146,6 +146,9 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
 (defvar ejc-sql-minor-mode-hook nil
   "*Functions to be called when `ejc-sql-mode' is entered.")
 
+(defvar ejc-sql-connected-hook nil
+  "Hook run when nREPL started and some buffer connected to DataBase.")
+
 (defvar ejc-sql-mode nil)
 
 (defvar ejc-conn-statistics (list)
@@ -554,6 +557,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
                     :timeout ejc-connection-validate-timeout)))
               (when (alist-get :status validation-result)
                 (ejc-set-mode-name connection-name)
+                (run-hooks 'ejc-sql-connected-hook)
                 (message (let ((msg (alist-get :message validation-result)))
                            (if (equal "Connected." msg)
                                (format
