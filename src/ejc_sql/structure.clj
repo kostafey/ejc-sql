@@ -799,7 +799,7 @@ records. Otherwise return nil."
       (c/complete (format "Can't determine type of %s." sql-object)
                   :result-file result-file))))
 
-(defn print-table-meta [db connection-name table-name]
+(defn print-table-meta [db table-name]
   (let [result-map (c/table-meta db table-name)
         success (:success result-map)
         result-data (:result result-map)]
@@ -819,18 +819,14 @@ records. Otherwise return nil."
   (with-open [out (io/writer result-file)]
     (binding [*out* out
               o/*add-outside-borders* add-outside-borders]
-      (when (print-table-meta db connection-name
-                              (if owner (str owner "." table) table))
+      (when (print-table-meta db (if owner (str owner "." table) table))
         (when-let [sql (select-db-meta-script db :constraints
                                               :owner owner
                                               :table table)]
           (println)
           (println "Constraints:")
           (println)
-          (mapv println
-                (.split (o/print-table
-                         (second (c/eval-sql-core :db db :sql sql)))
-                        "\n"))))))
+          (o/print-table (second (c/eval-sql-core :db db :sql sql)))))))
   (c/complete
    nil
    :display-result true
