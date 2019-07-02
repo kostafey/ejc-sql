@@ -742,19 +742,19 @@ records. Otherwise return nil."
           keyword))))
 
 (def creation-headers
-  {:oracle {:view (fn [db & [view]]
+  {:oracle {:view (fn [db view]
                     (format "CREATE OR REPLACE VIEW %%s\n(%s)\nAS\n%%s"
                             (s/join ", "
                                     (map #(-> % :name s/lower-case)
                                          (:result
                                           (c/query-meta db view))))))
-            :package (fn [db & _] "CREATE OR REPLACE %2$s\n")}})
+            :package (fn [db _] "CREATE OR REPLACE %2$s\n")}})
 
 (defn add-creation-header [db entity-type entity-name sql]
   (let [db-type (get-db-type db)]
-    (if-let [header-format ((get-in creation-headers [db-type entity-type])
-                            db entity-name)]
-      (format header-format entity-name sql)
+    (if-let [header-creator (get-in creation-headers [db-type entity-type])]
+      (let [header-format (header-creator db entity-name)]
+        (format header-format entity-name sql))
       sql)))
 
 (defn get-entity-description [& {:keys [db
