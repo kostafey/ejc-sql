@@ -38,6 +38,7 @@
 (require 'cl-lib)
 (require 'ejc-lib)
 (require 'ejc-direx)
+(require 'ejc-eldoc)
 (require 'ejc-format)
 (require 'ejc-interaction)
 (require 'ejc-result-mode)
@@ -589,23 +590,6 @@ any SQL buffer to connect to exact database, as always. "
                             :port port))))
     (with-current-buffer current-repl-b-name
       (rename-buffer ejc-repl-b-name))))
-
-(defun ejc-get-word-at-point (pos)
-  "Return SQL word around the point."
-  (interactive "d")
-  (let* ((char (char-after pos))
-         (str (char-to-string char)))
-    (save-excursion
-      (let* ((end (if (member str '(" " ")" "<" ">" "="))
-                      (point)
-                    (progn
-                      (forward-sexp 1)
-                      (point))))
-             (beg (progn
-                    (forward-sexp -1)
-                    (point)))
-             (sql-word (buffer-substring beg end)))
-        sql-word))))
 
 (defun ejc-check-connection ()
   (unless (ejc-buffer-connected-p)

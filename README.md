@@ -21,6 +21,7 @@ formatting of SQL scripts are also available.
   - [Performance](#performance)
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
+  - [ElDoc](#eldoc)
   - [Result output customization](#result-output-customization)
   - [Create connections interactively](#create-connections-interactively)
   - [Create connections manualy](#create-connections-manualy)
@@ -122,6 +123,15 @@ autocompletion, 2 by default:
 
 ```lisp
 (setq ejc-flx-threshold 2)
+```
+
+### ElDoc
+
+Enable ElDoc for `ejc-sql` minor mode:
+```lisp
+(add-hook 'ejc-sql-minor-mode-hook
+          (lambda ()
+            (ejc-eldoc-setup)))
 ```
 
 <a id="result-output-customization"></a>
