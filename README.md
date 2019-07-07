@@ -18,11 +18,10 @@ formatting of SQL scripts are also available.
 
 - [Installation](#installation)
 - [Configuration](#configuration)
-  - [Performance](#performance)
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
   - [ElDoc](#eldoc)
-  - [Result output customization](#result-output-customization)
+  - [Performance & output customization](#performance-output-customization)
   - [Create connections interactively](#create-connections-interactively)
   - [Create connections manualy](#create-connections-manualy)
     - [Install JDBC drivers](#install-jdbc-drivers)
@@ -60,30 +59,6 @@ formatting of SQL scripts are also available.
 First, load `ejc-sql` package:
 ```lisp
 (require 'ejc-sql)
-```
-
-### Performance
-
-`ejc-set-rows-limit` set limit for the number of records to output (`100` by
-default). Set to `nil` if you want to disable this limit.
-
-`ejc-set-column-width-limit` set limit for the number of chars per column to
-output (`30` by default). Set to nil if you want to disable this limit.
-This setting is applied to the text representation of any field type, but
-especially useful for `varchar` and `CLOB` fields. If you want to see the full
-text of some field (e.g. the full text of `CLOB` field) despite
-`ejc-set-column-width-limit`, you can select single-record result set
-(e.g. `SELECT * FROM table WHERE id = 1`).
-
-Both of this functions change Clojure variables, so if you want to change
-defaults, to avoid Clojure nREPL launch on Emacs start, you should add
-them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
-```lisp
-(defun my-ejc-sql-connected-hook ()
-  (ejc-set-rows-limit 50)
-  (ejc-set-column-width-limit 25))
-
-(add-hook 'ejc-sql-connected-hook 'my-ejc-sql-connected-hook)
 ```
 
 ### Autocomplete
@@ -134,8 +109,29 @@ Enable ElDoc for `ejc-sql` minor mode:
             (ejc-eldoc-setup)))
 ```
 
-<a id="result-output-customization"></a>
-### Result output customization
+<a id="performance-output-customization"></a>
+### Performance & output customization
+
+`ejc-set-rows-limit` set limit for the number of records to output (`100` by
+default). Set to `nil` if you want to disable this limit.
+
+`ejc-set-column-width-limit` set limit for the number of chars per column to
+output (`30` by default). Set to nil if you want to disable this limit.
+This setting is applied to the text representation of any field type, but
+especially useful for `varchar` and `CLOB` fields. If you want to see the full
+text of some field (e.g. the full text of `CLOB` field) despite
+`ejc-set-column-width-limit`, you can select single-record result set
+(e.g. `SELECT * FROM table WHERE id = 1`).
+
+Both of this functions change Clojure variables, so if you want to change
+defaults, to avoid Clojure nREPL launch on Emacs start, you should add
+them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
+```lisp
+(add-hook 'ejc-sql-connected-hook 
+          (lambda ()
+            (ejc-set-rows-limit 50)
+            (ejc-set-column-width-limit 25)))
+```
 
 Current result set table minor-mode is `orgtbl-mode`. This mode provides some
 functionality for post-processing and browsing the query results.
