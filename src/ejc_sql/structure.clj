@@ -330,6 +330,13 @@
     :tables  (default-queries :tables)
     :all-tables (default-queries :all-tables)
     :columns (default-queries :columns)
+    :procedures (fn [& _] "
+                      SELECT p.proname
+                      FROM   pg_catalog.pg_namespace n
+                      JOIN   pg_catalog.pg_proc p
+                        ON   p.pronamespace = n.oid
+                      WHERE  n.nspname = 'public'
+                      ORDER BY proname ")
     :keywords (fn [& _]
                 "SELECT word FROM pg_get_keywords()")}})
 
