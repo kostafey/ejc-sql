@@ -636,11 +636,11 @@ List of other interactive functions
 
 List of snippets:
 
-__select__ | __where__
------------|------------
-__insert__ | __begin__
-__update__ | __grant__
-__delete__ | __revoke__
+__select__ | __where__ | __inner__
+-----------|-----------|------------
+__insert__ | __begin__ | __left__
+__update__ | __grant__ | __right__
+__delete__ | __revoke__|
 
 
 ## Troubleshooting
