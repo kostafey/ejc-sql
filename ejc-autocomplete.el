@@ -67,12 +67,14 @@ Uppercase by default, set to nil to use downcase candidates."
                           (search-backward "." nil t)
                           (ejc-get-prefix-word)))
               (result (funcall ,cand-fn
-                               ejc-db
-                               (apply
-                                'buffer-substring
-                                (ejc-get-sql-boundaries-at-point))
-                               prefix-1
-                               prefix-2))
+                               :db ejc-db
+                               :sql (apply
+                                     'buffer-substring
+                                     (ejc-get-sql-boundaries-at-point))
+                               :prefix-1 prefix-1
+                               :prefix-2 prefix-2
+                               :buffer-name (buffer-name)
+                               :point (point)))
               (pending (car result))
               (candidates-cache (cdr result)))
          (if (ejc-not-nil-str pending)

@@ -671,6 +671,21 @@ any SQL buffer to connect to exact database, as always. "
       (ejc-message-query-done start-time status))
   nil)
 
+(cl-defun ejc-complete-auto-complete (buffer-name point)
+  "Called by Clojure side when db structure cache creation process completes.
+When the user typed some chars, the request for autocompletion is passed to
+Clojure side. If Clojure side has the database structure cache, autocompletion
+variants returned immediately. If not, the database structure cache creation
+process starts. It's async, so the process of Emacs is not blocked and the
+user can move point (cursor), edit SQL and so on. After Clojure side cache
+creation process finishes, it calls this `ejc-complete-auto-complete'
+function. If the user waits for autocompletion and doesn't move point
+(cursor), he will get autocompletion variants."
+  (switch-to-buffer buffer-name)
+  (if (equal point (point))
+      (auto-complete))
+  nil)
+
 (cl-defun ejc-cancel-query (&key start-time)
   "Terminate current (long) running query. Aimed to cancel SELECT queries.
 Unsafe for INSERT/UPDATE/CREATE/ALTER queries."

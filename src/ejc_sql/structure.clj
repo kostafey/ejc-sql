@@ -17,7 +17,8 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.structure
-  (:use [ejc-sql.lib])
+  (:use [ejc-sql.lib]
+        [clomacs])
   (:require
    [clojure.java.jdbc :as j]
    [clojure.string :as s]
@@ -27,6 +28,10 @@
    [ejc-sql.keywords :as k]))
 
 (def cache (atom {}))
+
+(def cache-creation-promises
+  "Signs of database structure cache created."
+  (atom {}))
 
 (defn- safe-query [db sql & {:keys [row-fn]}]
   "Return `sql` query result or nil in case of error."
@@ -458,42 +463,49 @@ Possible cases for namespace:
      (get-in queries [db-type :owners]) :owners
      :else nil)))
 
+(defn get-or-create-cache [db path sql force? & [col-getter]]
+  (let [full-path (into [db] path)]
+    (if (not (get->in @cache full-path))
+      (let [col-getter (or col-getter db->column)
+            flat-path [db (keyword (s/join "-" (map name path)))]
+            c-promise (promise)]
+        (swap! cache-creation-promises assoc-in flat-path c-promise)
+        (swap! cache assoc-in full-path
+               (future (try
+                         (let [result (sort (col-getter db sql))]
+                           (deliver c-promise :ok)
+                           result)
+                         (catch Exception e
+                           (deliver c-promise e)
+                           (list)))))))
+    (get? (get-in @cache full-path) force?)))
+
 (defn get-owners [db & [force?]]
   "Return owners list from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [namespace (get-namespace db)]
     (if namespace
-      (do
-        (if (not (get-in @cache [db namespace]))
-          (swap! cache assoc-in [db namespace]
-                 (future ((fn [db]
-                            (let [sql (select-db-meta-script
-                                       db namespace)]
-                              (sort (db->column db sql)))) db))))
-        (get? (get-in @cache [db namespace]) force?))
+      (get-or-create-cache db
+                           [namespace]
+                           (select-db-meta-script db namespace)
+                           force?)
+      ;; Schemas or owners are not applicable to this database type.
       (list))))
 
 (defn get-tables [db & [owner_ force?]]
   "Return tables list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [owner (get-this-owner db owner_)]
-    (if (not (get->in @cache [db :tables owner]))
-      (swap! cache assoc-in [db :tables owner]
-             (future ((fn [db owner]
-                        (let [sql (select-db-meta-script db :tables
-                                                         :owner owner)]
-                          (db->column db sql)))
-                      db owner))))
     (if owner_
-      (get? (get->in @cache [db :tables owner]) force?)
-      (do (if (not (get-in @cache [db :all-tables]))
-            (swap! cache assoc-in [db :all-tables]
-                   (future ((fn [db]
-                              (let [sql (select-db-meta-script
-                                         db :all-tables)]
-                                (sort (db->>column db sql))))
-                            db))))
-          (get? (get-in @cache [db :all-tables]) force?)))))
+      (get-or-create-cache db
+                           [:tables owner]
+                           (select-db-meta-script db :tables :owner owner)
+                           force?)
+      (get-or-create-cache db
+                           [:all-tables]
+                           (select-db-meta-script db :all-tables)
+                           force?
+                           db->>column))))
 
 (defn get-views [db & [force?]]
   "Return views list from cache if already received from DB,
@@ -550,9 +562,27 @@ check if receiveing process is not running, then start it."
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
 
-(defn autocomplete-loading []
+(clomacs-defn
+ complete-auto-complete
+ ejc-complete-auto-complete
+ :doc "Call Emacs auto-complete if point is the same as before loading.")
+
+(defn run-autocomplete [db buffer-name point]
+  (future
+    ;; Wait for all cache building promises ready.
+    (mapv deref (vals (get-in @cache-creation-promises [db])))
+    ;; Remove them from memory.
+    (swap! cache-creation-promises assoc-in [db] nil)
+    ;; Pass to Emacs a note that db structure cache ready (try to autocomplete).
+    (complete-auto-complete buffer-name point)))
+
+(defn autocomplete-loading
   "Not loaded tables yet. Output pending db structure data..."
-  (list "t"))
+  ([db buffer-name point]
+   (run-autocomplete db buffer-name point)
+   (autocomplete-loading))
+  ([]
+   (list "t")))
 
 (defn autocomplete-result [result]
   "Output autocomplete result."
@@ -562,7 +592,7 @@ check if receiveing process is not running, then start it."
   "Output autocomplete nothing."
   (list "nil"))
 
-(defn get-owners-candidates [db sql prefix-1 & _]
+(defn get-owners-candidates [& {:keys [db sql prefix-1 buffer-name point]}]
   "Return owners candidates autocomplete list from the database structure
 cache, async request to fill it, if not yet.
 The result list has the following structure:
@@ -577,9 +607,9 @@ if `pending` is nil - no request is running, return result immediately."
       (if owners
         (autocomplete-result owners)
         ;; pending owners...
-        (autocomplete-loading)))))
+        (autocomplete-loading db buffer-name point)))))
 
-(defn get-tables-candidates [db sql prefix-1 & _]
+(defn get-tables-candidates [& {:keys [db sql prefix-1 buffer-name point]}]
   "Return tables candidates autocomplete list."
   (let [tables (if (not prefix-1)
                  ;; something#
@@ -595,14 +625,14 @@ if `pending` is nil - no request is running, return result immediately."
       ;; pending tables...
       (autocomplete-loading))))
 
-(defn get-views-candidates [db sql & _]
+(defn get-views-candidates [& {:keys [db sql buffer-name point]}]
   "Return views candidates autocomplete list."
   (if-let [views (get-views db)]
     (autocomplete-result views)
     ;; pending views...
     (autocomplete-loading)))
 
-(defn get-packages-candidates [db sql & _]
+(defn get-packages-candidates [& {:keys [db sql buffer-name point]}]
   "Return packages candidates autocomplete list."
   (if-let [packages (get-packages db)]
     (autocomplete-result packages)
@@ -644,7 +674,8 @@ Otherwise return nil."
 records. Otherwise return nil."
   (second (re-find update-re sql)))
 
-(defn get-colomns-candidates [db sql prefix-1 & [prefix-2]]
+(defn get-colomns-candidates [& {:keys [db sql prefix-1 prefix-2
+                                        buffer-name point]}]
   "Return colomns candidates autocomplete list."
   ;; Possible cases:
   ;; 1. [owner|schema.]table.#<colomns-list>
@@ -847,4 +878,5 @@ records. Otherwise return nil."
 
 (defn invalidate-cache [db]
   "Clean your current connection cache (database owners and tables list)."
-  (swap! cache assoc-in [db] nil))
+  (swap! cache assoc-in [db] nil)
+  (swap! cache-creation-promises assoc-in [db] nil))
