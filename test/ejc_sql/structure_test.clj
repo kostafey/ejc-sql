@@ -68,15 +68,21 @@
         (and
          (= '("nil" "id" "name")
             (let [sql "SELECT users. FROM users"]
-              (get-colomns-candidates nil sql "users")))
+              (get-colomns-candidates :db nil
+                                      :sql sql
+                                      :prefix-1 "users")))
          ;; Table alias
          (= '("nil" "id" "name")
             (let [sql "SELECT a. FROM users AS a"]
-              (get-colomns-candidates nil sql "a")))
+              (get-colomns-candidates :db nil
+                                      :sql sql
+                                      :prefix-1 "a")))
          ;; Table alias: spaces + tabs near to "AS"
          (= '("nil" "id" "name")
             (let [sql "SELECT a. FROM users  AS     a"]
-              (get-colomns-candidates nil sql "a"))))))))
+              (get-colomns-candidates :db nil
+                                      :sql sql
+                                      :prefix-1 "a"))))))))
 
 (deftest check-if-insert-sql-test
   (testing "insert-sql? fn test."
