@@ -342,6 +342,21 @@
                         ON   p.pronamespace = n.oid
                       WHERE  n.nspname = 'public'
                       ORDER BY proname ")
+    :entity-type (fn [& {:keys [entity-name]}]
+                   ;; TODO: implement for other types
+                   (format "
+                    SELECT 'procedure'
+                    FROM   pg_catalog.pg_namespace n
+                    JOIN   pg_catalog.pg_proc p
+                      ON   p.pronamespace = n.oid
+                    WHERE  upper(p.proname) = '%s' "
+                           (s/upper-case entity-name)))
+    :parameters (fn [& {:keys [entity-name]}]
+                  (format "
+                      SELECT pg_catalog.pg_get_function_identity_arguments(
+                               p.oid)
+                      FROM   pg_catalog.pg_proc p
+                      WHERE  p.proname = '%s'" entity-name))
     :keywords (fn [& _]
                 "SELECT word FROM pg_get_keywords()")}})
 
@@ -530,6 +545,16 @@ check if receiveing process is not running, then start it."
   (get? (get->in @cache [db :colomns table])
         force?))
 
+(defn get-parameters [db stored-procedure & [force?]]
+  "Return parameters list of `stored-procedure` from cache if already received
+from DB, check if receiveing process is not running, then start it."
+  (get-or-create-cache db
+                       [:stored-procedures stored-procedure]
+                       (select-db-meta-script
+                        db :parameters
+                        :entity-name stored-procedure)
+                       force?))
+
 (defn get-keywords [db force?]
   "Return keywords list for this database type from cache if already received
 from DB, check if receiveing process is not running, then start it."
@@ -550,14 +575,11 @@ from DB, check if receiveing process is not running, then start it."
   "Return packages list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [owner (get-this-owner db owner_)]
-    (if (not (get->in @cache [db :packages owner]))
-      (swap! cache assoc-in [db :packages owner]
-             (future ((fn [db owner]
-                        (let [sql (select-db-meta-script db :procedures
-                                                         :owner owner)]
-                          (db->column db sql)))
-                      db owner))))
-    (get? (get->in @cache [db :packages owner]) force?)))
+    (get-or-create-cache db
+                         [:packages owner]
+                         (select-db-meta-script db :procedures
+                                                :owner owner)
+                         force?)))
 
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
@@ -778,6 +800,9 @@ records. Otherwise return nil."
           first
           s/lower-case
           keyword))))
+
+(defn get-entity-type-fmt [db entity-name]
+  (clomacs/format-result (get-entity-type db entity-name)))
 
 (def creation-headers
   {:oracle {:view (fn [db view]

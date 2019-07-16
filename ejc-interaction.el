@@ -96,6 +96,18 @@
                :lib-name "ejc-sql"
                :namespace ejc-sql.structure)
 
+(clomacs-defun ejc-get-entity-type
+               get-entity-type-fmt
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :eval)
+
+(clomacs-defun ejc-get-parameters
+               get-parameters
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.structure
+               :return-type :list)
+
 (clomacs-defun ejc-get-entity-description
                get-entity-description
                :lib-name "ejc-sql"

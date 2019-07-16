@@ -100,23 +100,6 @@ IMENU-INDEX - imenu index tree."
        (list x)))
    imenu-index))
 
-(defun ejc-get-word-at-point (pos)
-  "Return SQL word around the point."
-  (interactive "d")
-  (let* ((char (char-after pos))
-         (str (char-to-string char)))
-    (save-excursion
-      (let* ((end (if (member str '(" " ")" "<" ">" "="))
-                      (point)
-                    (progn
-                      (forward-sexp 1)
-                      (point))))
-             (beg (progn
-                    (forward-sexp -1)
-                    (point)))
-             (sql-word (buffer-substring beg end)))
-        sql-word))))
-
 (provide 'ejc-lib)
 
 ;;; ejc-lib.el ends here

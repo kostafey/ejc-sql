@@ -279,6 +279,37 @@ boundaries."
            (insert "\\n\" +"))
          (setq curr-line (1+ curr-line)))))))
 
+(defun ejc-get-word-at-point (pos)
+  "Return SQL word around the point."
+  (interactive "d")
+  (let* ((char (char-after pos))
+         (str (char-to-string char)))
+    (save-excursion
+      (let* ((end (if (member str '(" " ")" "<" ">" "="))
+                      (point)
+                    (progn
+                      (forward-sexp 1)
+                      (point))))
+             (beg (progn
+                    (forward-sexp -1)
+                    (point)))
+             (sql-word (buffer-substring beg end)))
+        sql-word))))
+
+(defun ejc-get-word-before-point ()
+  "Return SQL word before the point."
+  (interactive)
+  (save-excursion
+    (goto-char (nth 2 (syntax-ppss)))
+    (thing-at-point 'symbol)))
+
+(defun ejc-get-procedure-before-point ()
+  "Return stored procedure before the point."
+  (interactive)
+  (save-excursion
+    (goto-char (nth 1 (syntax-ppss)))
+    (thing-at-point 'symbol)))
+
 (provide 'ejc-format)
 
 ;;; ejc-format.el ends here

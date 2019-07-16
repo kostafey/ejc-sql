@@ -20,7 +20,7 @@
 
 (require 'dash)
 (require 'eldoc)
-(require 'ejc-lib)
+(require 'ejc-format)
 
 (defun ejc-replace-property-mark (text fmt face)
   (while (string-match fmt text)
@@ -33,9 +33,9 @@
 
 (defun ejc-propertize (text)
   (-> text
-      (ejc-replace-property-mark "\\%\\w+"
+      (ejc-replace-property-mark "\\%\\(\\w+_?\\)+"
                                  'font-lock-keyword-face)
-      (ejc-replace-property-mark "\\#\\w+"
+      (ejc-replace-property-mark "\\#\\(\\w+_?\\)+"
                                  'eldoc-highlight-function-argument)))
 
 (defconst ejc-sql-expressions
@@ -49,9 +49,21 @@
 
 (defun ejc-eldoc-function ()
   "Returns a doc string appropriate for the current context, or nil."
-  (let ((word (trim-string (ejc-get-word-at-point (point)))))
-    (if-let ((sql-expression (lax-plist-get ejc-sql-expressions word)))
-        (ejc-propertize sql-expression))))
+  (if-let ((sql-word (condition-case nil
+                         (ejc-get-word-before-point)
+                       (error nil))))
+      (if-let ((sql-expression (lax-plist-get ejc-sql-expressions sql-word)))
+          (ejc-propertize sql-expression))
+    (if-let ((stored-procedure (condition-case nil
+                                   (ejc-get-procedure-before-point)
+                                 (error nil))))
+        (let ((type (ejc-get-entity-type ejc-db stored-procedure)))
+          (if (or (eq type :procedure)
+                  (eq type :function))
+              (let ((params (ejc-get-parameters ejc-db stored-procedure t)))
+                (ejc-propertize (format "%%%s%s"
+                                        stored-procedure
+                                        params))))))))
 
 ;;;###autoload
 (defun ejc-eldoc-setup ()
