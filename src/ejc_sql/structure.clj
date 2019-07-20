@@ -331,25 +331,63 @@
    ;;-------
    :postgresql
    ;;-------
-   {:owners  (default-queries :owners)
+   {:procedure (fn [& {:keys [entity-name]}]
+                 (format "
+                  SELECT pg_get_functiondef(p.oid)
+                  FROM   pg_catalog.pg_proc p
+                  WHERE  upper(p.proname) = '%s' "
+                         (s/upper-case entity-name)))
+    :table (fn [& {:keys [entity-name]}]
+             (format "
+              SELECT 'CREATE TABLE %s (\n' ||
+                  string_agg(column_list.column_expr, ', \n') ||
+                  '\n);'
+              FROM (
+                SELECT '  ' || column_name || ' ' || data_type ||
+                     coalesce('(' || character_maximum_length || ')', '') ||
+                     case when is_nullable = 'YES'
+                            then ''
+                            else ' NOT NULL'
+                          end as column_expr
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND upper(table_name) = '%s'
+                ORDER BY ordinal_position) column_list"
+                     entity-name
+                     (s/upper-case entity-name)))
+    :owners  (default-queries :owners)
     :tables  (default-queries :tables)
     :all-tables (default-queries :all-tables)
     :columns (default-queries :columns)
     :procedures (fn [& _] "
-                      SELECT p.proname
-                      FROM   pg_catalog.pg_namespace n
-                      JOIN   pg_catalog.pg_proc p
-                        ON   p.pronamespace = n.oid
-                      WHERE  n.nspname = 'public'
-                      ORDER BY proname ")
+                    SELECT p.proname
+                    FROM   pg_catalog.pg_namespace n
+                    JOIN   pg_catalog.pg_proc p
+                      ON   p.pronamespace = n.oid
+                    WHERE  n.nspname = 'public'
+                    ORDER BY proname ")
     :entity-type (fn [& {:keys [entity-name]}]
-                   ;; TODO: implement for other types
                    (format "
+                    SELECT 'namespace'
+                    FROM   pg_catalog.pg_namespace n
+                    WHERE  upper(n.nspname) = '%s'
+                    UNION
+                    SELECT 'table'
+                    FROM   information_schema.tables
+                    WHERE  upper(table_name) = '%s'
+                    UNION
+                    SELECT 'view'
+                    FROM   information_schema.views
+                    WHERE  upper(table_name) = '%s'
+                    UNION
                     SELECT 'procedure'
                     FROM   pg_catalog.pg_namespace n
                     JOIN   pg_catalog.pg_proc p
                       ON   p.pronamespace = n.oid
                     WHERE  upper(p.proname) = '%s' "
+                           (s/upper-case entity-name)
+                           (s/upper-case entity-name)
+                           (s/upper-case entity-name)
                            (s/upper-case entity-name)))
     :parameters (fn [& {:keys [entity-name]}]
                   (format "
@@ -791,7 +829,7 @@ records. Otherwise return nil."
 
 (defn get-entity-type [db entity-name]
   "Determine DB entity type, whether it is a `:view`, `:type`,
-`:package` or `:procedure`."
+`:package`, `:namespace` or `:procedure`."
   (if-let [sql (and entity-name
                     (select-db-meta-script db :entity-type
                                            :entity-name entity-name))]
@@ -828,37 +866,44 @@ records. Otherwise return nil."
   "Get DB entity or view creation SQL."
   (let [sql-object (or prefix entity-name)]
     (if-let [type (get-entity-type db sql-object)]
-      (if-let [entity-obtainig-sql (select-db-meta-script
-                                    db
-                                    type
-                                    :entity-name sql-object)]
-        (if-let [entity-sql (s/join
-                             ""
-                             (db->column
-                              db
-                              entity-obtainig-sql
-                              :row-fn (fn [row]
-                                        (mapv #(if (is-clob? %)
-                                                 (clob-to-string %)
-                                                 %)
-                                              row))))]
-          (c/complete (add-creation-header
-                       db
-                       type
-                       sql-object
-                       (o/format-sql-if-required entity-sql))
-                      :mode 'sql-mode
-                      :connection-name connection-name
-                      :db db
-                      :result-file result-file
-                      :goto-symbol (if prefix entity-name))
-          (c/complete (format "Can't find %s named %s."
-                              (name type) sql-object)
-                      :result-file result-file))
-        (c/complete (format (str "Script for obtaining DB entity of type %s "
-                                 "was not added for this database type.")
-                            (name type))
-                    :result-file result-file))
+      (if (and prefix (= :namespace type))
+        ;; Omit prefix if it's a `:namespace`.
+        (get-entity-description :db db
+                                :connection-name connection-name
+                                :prefix nil
+                                :entity-name entity-name
+                                :result-file result-file)
+        (if-let [entity-obtainig-sql (select-db-meta-script
+                                      db
+                                      type
+                                      :entity-name sql-object)]
+          (if-let [entity-sql (s/join
+                               ""
+                               (db->column
+                                db
+                                entity-obtainig-sql
+                                :row-fn (fn [row]
+                                          (mapv #(if (is-clob? %)
+                                                   (clob-to-string %)
+                                                   %)
+                                                row))))]
+            (c/complete (add-creation-header
+                         db
+                         type
+                         sql-object
+                         (o/format-sql-if-required entity-sql))
+                        :mode 'sql-mode
+                        :connection-name connection-name
+                        :db db
+                        :result-file result-file
+                        :goto-symbol (if prefix entity-name))
+            (c/complete (format "Can't find %s named %s."
+                                (name type) sql-object)
+                        :result-file result-file))
+          (c/complete (format (str "Script for obtaining DB entity of type %s "
+                                   "was not added for this database type.")
+                              (name type))
+                      :result-file result-file)))
       (c/complete (format "Can't determine type of %s." sql-object)
                   :result-file result-file))))
 
