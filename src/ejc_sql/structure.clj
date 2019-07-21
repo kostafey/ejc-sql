@@ -27,7 +27,20 @@
    [ejc-sql.output :as o]
    [ejc-sql.keywords :as k]))
 
-(def cache (atom {}))
+(def cache
+  "Keep information about structure of databases used for autocomplete & eldoc.
+  This data contains (depends on database type):
+  ├── owners/schemas
+  |   ├── tables
+  |   |   └── columns
+  |   └── views
+  ├── packages
+  |   └── stored procedures & functions
+  |       └── parameters
+  └── keywords
+  It's global: same database structure information shared beetween
+  different buffers connected to the same database."
+  (atom {}))
 
 (def cache-creation-promises
   "Signs of database structure cache created."
@@ -109,6 +122,7 @@
                       (s/upper-case entity-name)))})
 
 (def queries
+  "Database - specific queries used for obtain data about database structure."
   {
    ;;--------
    :oracle
@@ -516,21 +530,52 @@ Possible cases for namespace:
      (get-in queries [db-type :owners]) :owners
      :else nil)))
 
-(defn get-or-create-cache [db path sql force? & [col-getter]]
+(defn get-or-create-cache [& {:keys [db
+                                     path
+                                     sql
+                                     force?
+                                     direct-value
+                                     exec-fn
+                                     filter-fn
+                                     handler-fn]
+                              :or {exec-fn db->column}}]
+  "Fill `cache` atom with database structure data, then get data from it.
+Parameters:
+- `db` - database connection map
+- `path` - the keys used to define the place to store data in `cache` atom
+- `sql` - query to obtain the desired data from the database
+- `force?` - when true, eval `sql` immediately and return data
+- `direct-value` - sometimes there is no need to eval `sql` to obtain some
+                   data,and value of this parameter, if it's defined, can be
+                   used as-is
+- `exec-fn` - SQL execution function (`db->column` by default)
+- `filter-fn` - filer function applied to SQL execution results
+- `handler-fn` - additional processing applied to SQL execution results."
   (let [full-path (into [db] path)]
     (if (not (get->in @cache full-path))
-      (let [col-getter (or col-getter db->column)
-            flat-path [db (keyword (s/join "-" (map name path)))]
+      (let [flat-path [db (keyword (s/join "-" (map name path)))]
             c-promise (promise)]
         (swap! cache-creation-promises assoc-in flat-path c-promise)
         (swap! cache assoc-in full-path
-               (future (try
-                         (let [result (sort (col-getter db sql))]
-                           (deliver c-promise :ok)
-                           result)
-                         (catch Exception e
-                           (deliver c-promise e)
-                           (list)))))))
+               (if direct-value
+                 (future (deliver c-promise :ok)
+                         direct-value)
+                 (future (try
+                           (let [result (exec-fn db sql)
+                                 result (if filter-fn
+                                          (filter filter-fn result)
+                                          result)
+                                 result (if handler-fn
+                                          (mapv handler-fn result)
+                                          result)
+                                 result (if (vector? result)
+                                          (sort result)
+                                          result)]
+                             (deliver c-promise :ok)
+                             result)
+                           (catch Exception e
+                             (deliver c-promise e)
+                             (list))))))))
     (get? (get-in @cache full-path) force?)))
 
 (defn get-owners [db & [force?]]
@@ -538,10 +583,10 @@ Possible cases for namespace:
 check if receiveing process is not running, then start it."
   (let [namespace (get-namespace db)]
     (if namespace
-      (get-or-create-cache db
-                           [namespace]
-                           (select-db-meta-script db namespace)
-                           force?)
+      (get-or-create-cache :db db
+                           :path [namespace]
+                           :sql (select-db-meta-script db namespace)
+                           :force? force?)
       ;; Schemas or owners are not applicable to this database type.
       (list))))
 
@@ -550,15 +595,15 @@ check if receiveing process is not running, then start it."
 check if receiveing process is not running, then start it."
   (let [owner (get-this-owner db owner_)]
     (if owner_
-      (get-or-create-cache db
-                           [:tables owner]
-                           (select-db-meta-script db :tables :owner owner)
-                           force?)
-      (get-or-create-cache db
-                           [:all-tables]
-                           (select-db-meta-script db :all-tables)
-                           force?
-                           db->>column))))
+      (get-or-create-cache :db db
+                           :path [:tables owner]
+                           :sql (select-db-meta-script db :tables :owner owner)
+                           :force? force?)
+      (get-or-create-cache :db db
+                           :path [:all-tables]
+                           :sql (select-db-meta-script db :all-tables)
+                           :force? force?
+                           :exec-fn db->>column))))
 
 (defn get-views [db & [force?]]
   "Return views list from cache if already received from DB,
@@ -583,41 +628,54 @@ check if receiveing process is not running, then start it."
   (get? (get->in @cache [db :colomns table])
         force?))
 
+(def postgresql-type-aliases
+  "Some of PostgreSQL type aliases used for show in eldoc."
+  {"character varying" "varchar"
+   "bit varying" "varbit"})
+
 (defn get-parameters [db stored-procedure & [force?]]
   "Return parameters list of `stored-procedure` from cache if already received
 from DB, check if receiveing process is not running, then start it."
-  (get-or-create-cache db
-                       [:stored-procedures stored-procedure]
-                       (select-db-meta-script
-                        db :parameters
-                        :entity-name stored-procedure)
-                       force?))
+  (get-or-create-cache
+   :db db
+   :path [:stored-procedures stored-procedure]
+   :sql (select-db-meta-script db :parameters
+                               :entity-name stored-procedure)
+   :force? force?
+   :exec-fn (fn [db sql]
+              ;; Use only first possible list of parameters if many.
+              (list (db->value db sql)))
+   :handler-fn (if (= :postgresql (get-db-type db))
+                 (fn [types]
+                   (s/join ", "
+                           (mapv
+                            (fn [type]
+                              (let [type (s/trim type)]
+                                (or (postgresql-type-aliases type)
+                                    type)))
+                            (s/split types #",")))))))
 
 (defn get-keywords [db force?]
   "Return keywords list for this database type from cache if already received
 from DB, check if receiveing process is not running, then start it."
   (if-let [keywords-query (get-in queries [(get-db-type db) :keywords])]
-    (if (not (get->in @cache [db :keywords]))
-      (swap! cache assoc-in [db :keywords]
-             (if (vector? keywords-query)
-               (future (identity keywords-query))
-               (future ((fn [db]
-                          (let [sql (select-db-meta-script db :keywords)]
-                            (sort
-                             (filter #(not (nil? %))
-                                     (db->column db sql)))))
-                        db))))))
-  (get? (get->in @cache [db :keywords]) force?))
+    (get-or-create-cache :db db
+                         :path [:keywords]
+                         :direct-value (if (vector? keywords-query)
+                                         keywords-query)
+                         :sql (select-db-meta-script db :keywords)
+                         :force? force?
+                         :filter-fn #(not (nil? %)))))
 
 (defn get-packages [db & [owner_ force?]]
   "Return packages list for this owner from cache if already received from DB,
 check if receiveing process is not running, then start it."
   (let [owner (get-this-owner db owner_)]
-    (get-or-create-cache db
-                         [:packages owner]
-                         (select-db-meta-script db :procedures
-                                                :owner owner)
-                         force?)))
+    (get-or-create-cache :db db
+                         :path [:packages owner]
+                         :sql (select-db-meta-script db :procedures
+                                                     :owner owner)
+                         :force? force?)))
 
 (defn is-owner? [db prefix]
   (in? (get-owners db) prefix :case-sensitive false))
