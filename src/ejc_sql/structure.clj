@@ -647,13 +647,12 @@ from DB, check if receiveing process is not running, then start it."
               (list (db->value db sql)))
    :handler-fn (if (= :postgresql (get-db-type db))
                  (fn [types]
-                   (s/join ", "
-                           (mapv
-                            (fn [type]
-                              (let [type (s/trim type)]
-                                (or (postgresql-type-aliases type)
-                                    type)))
-                            (s/split types #",")))))))
+                   (map
+                    (fn [type]
+                      (let [type (s/trim type)]
+                        (or (postgresql-type-aliases type)
+                            type)))
+                    (s/split types #","))))))
 
 (defn get-keywords [db force?]
   "Return keywords list for this database type from cache if already received

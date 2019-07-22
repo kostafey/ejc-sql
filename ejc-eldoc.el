@@ -33,6 +33,8 @@
 
 (defun ejc-propertize (text)
   (-> text
+      (ejc-replace-property-mark "\\@\\(\\w+_?\\)+"
+                                 'font-lock-function-name-face)
       (ejc-replace-property-mark "\\%\\(\\w+_?\\)+"
                                  'font-lock-keyword-face)
       (ejc-replace-property-mark "\\#\\(\\w+_?\\)+"
@@ -47,23 +49,57 @@
    "WHERE"
    "%WHERE #predicate [%OR predicate] [%AND predicate]"))
 
+(defun ejc-get-procedure-before-point ()
+  "Return stored procedure name before the point."
+  (interactive)
+  (save-excursion
+    (goto-char (nth 1 (syntax-ppss)))
+    (thing-at-point 'symbol)))
+
+(defun ejc-get-parameter-index ()
+  "Return parameter number around the point."
+  (interactive)
+  (let ((index 0)
+        (ch (string (preceding-char))))
+    (save-excursion
+      (while (nth 2 (syntax-ppss))
+        (let ((pss (nth 2 (syntax-ppss))))
+          (if (member ch (list " " "\t" ","))
+              (setq index (1+ index)))
+          (goto-char pss)
+          (setq index (1+ index)))))
+    (max (1- index) 0)))
+
 (defun ejc-eldoc-function ()
   "Returns a doc string appropriate for the current context, or nil."
-  (if-let ((sql-word (condition-case nil
-                         (ejc-get-word-before-point)
-                       (error nil))))
-      (if-let ((sql-expression (lax-plist-get ejc-sql-expressions sql-word)))
-          (ejc-propertize sql-expression))
-    (if-let ((stored-procedure (condition-case nil
-                                   (ejc-get-procedure-before-point)
-                                 (error nil))))
-        (let ((type (ejc-get-entity-type ejc-db stored-procedure)))
-          (if (or (eq type :procedure)
-                  (eq type :function))
-              (let ((params (ejc-get-parameters ejc-db stored-procedure t)))
-                (ejc-propertize (format "%%%s%s"
-                                        stored-procedure
-                                        params))))))))
+  (if-let ((stored-procedure (condition-case nil
+                                 (ejc-get-procedure-before-point)
+                               (error nil))))
+      (let ((type (ejc-get-entity-type ejc-db stored-procedure)))
+        (if (or (eq type :procedure)
+                (eq type :function))
+            (let ((params (car (ejc-get-parameters ejc-db
+                                                   stored-procedure
+                                                   t)))
+                  (p-index (ejc-get-parameter-index)))
+              (ejc-propertize
+               (format "@%s: (%s)"
+                       stored-procedure
+                       (string-join
+                        (-map
+                         (lambda (p) (if (eql (cdr p) p-index)
+                                    (concat "#" (car p))
+                                  (car p)))
+                         (-zip params
+                               (number-sequence 0 (1- (length params)))))
+                        ", "))))))
+    (if-let ((sql-word (condition-case nil
+                           (ejc-get-word-before-point)
+                         (error nil))))
+        (if-let ((sql-expression (lax-plist-get
+                                  ejc-sql-expressions
+                                  sql-word)))
+            (ejc-propertize sql-expression)))))
 
 ;;;###autoload
 (defun ejc-eldoc-setup ()

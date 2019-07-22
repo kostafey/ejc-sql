@@ -303,13 +303,6 @@ boundaries."
     (goto-char (nth 2 (syntax-ppss)))
     (thing-at-point 'symbol)))
 
-(defun ejc-get-procedure-before-point ()
-  "Return stored procedure before the point."
-  (interactive)
-  (save-excursion
-    (goto-char (nth 1 (syntax-ppss)))
-    (thing-at-point 'symbol)))
-
 (provide 'ejc-format)
 
 ;;; ejc-format.el ends here
