@@ -64,7 +64,7 @@
     (save-excursion
       (while (nth 2 (syntax-ppss))
         (let ((pss (nth 2 (syntax-ppss))))
-          (if (member ch (list " " "\t" ","))
+          (if (member ch (list " " "\t" "\n" ","))
               (setq index (1+ index)))
           (goto-char pss)
           (setq index (1+ index)))))
@@ -88,7 +88,9 @@
                        (string-join
                         (-map
                          (lambda (p) (if (eql (cdr p) p-index)
-                                    (concat "#" (car p))
+                                    (ejc-split-and-join
+                                     (lambda (s) (concat "#" s ))
+                                     " ")
                                   (car p)))
                          (-zip params
                                (number-sequence 0 (1- (length params)))))

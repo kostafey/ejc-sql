@@ -18,6 +18,8 @@
 
 ;;; Code:
 
+(require 'dash)
+
 (defvar-local ejc-connection-name nil
   "Buffer-local connection name created with `ejc-create-connection'.")
 
@@ -99,6 +101,13 @@ IMENU-INDEX - imenu index tree."
                  (ejc-flatten-index (cdr x)))
        (list x)))
    imenu-index))
+
+(defun ejc-split-and-join (fn split &optional join)
+  "Split string by SPLIT, apply FN to each substring, than join by JOIN."
+  (let ((join (or join split)))
+    (string-join
+     (-map fn (split-string (car p) split))
+     join)))
 
 (provide 'ejc-lib)
 
