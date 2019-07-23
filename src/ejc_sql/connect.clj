@@ -109,9 +109,15 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   "Handle cases where separator is a part of string in SQL query.
 E.g. you can use default separator char `/` in this query:
 SELECT * FROM urls WHERE path like '%http://localhost%'"
-  (String/format
-   "%s(?<!\\s{0,1000}--.{0,1000})(?=(([^\"']*[\"']){2})*[^\"']*$)"
-   (into-array separator)))
+  (re-pattern
+   (format
+    "%s(?<!\\s{0,1000}--.{0,1000})(?=(([^\"']*[\"']){2})*[^\"']*$)"
+    ;; Escape chars for `$$` separators.
+    (.replace separator "$" "\\$"))))
+
+(def delimiter-re
+  "Regex to search a `delimiter` command in SQL expression."
+  (re-pattern "(?i)delimiter\\s+(.+)"))
 
 (defn eval-sql-core
   "The core SQL evaluation function."
@@ -119,10 +125,19 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
       :or {db @ejc-sql.connect/db}}]
   (set-db db)
   (java.util.Locale/setDefault (java.util.Locale. "UK"))
-  (let [statement-separator (or (:separator db) ";")]
+  (let [[sql manual-separator]
+        (if (s/starts-with? (s/lower-case sql) "delimiter")
+          ;; User defined statement separator manually
+          ;; before SQL expression.
+          ;; Remove `delimiter` command from SQL expression.
+          [(s/trim (s/replace-first sql delimiter-re ""))
+           (second (re-find delimiter-re sql))]
+          [sql nil])
+        statement-separator (or manual-separator (:separator db) ";")]
     (last
-     (for [sql-part (seq (.split (handle-special-cases db sql)
-                                 (get-separator-re statement-separator)))]
+     (for [sql-part (s/split
+                     (handle-special-cases db sql)
+                     (get-separator-re statement-separator))]
        (try
          (let [sql-query-word (determine-dml sql-part)]
            (if (and sql-query-word (or (.equals sql-query-word "SELECT")
