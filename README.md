@@ -109,6 +109,11 @@ Enable ElDoc for `ejc-sql` minor mode:
             (ejc-eldoc-setup)))
 ```
 
+ElDoc for functions and procedures is available for the following databases:
+
+* PostgreSQL
+* MySQL
+
 <a id="performance-output-customization"></a>
 ### Performance & output customization
 

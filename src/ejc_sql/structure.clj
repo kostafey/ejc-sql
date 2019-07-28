@@ -46,18 +46,26 @@
   "Signs of database structure cache created."
   (atom {}))
 
-(defn- safe-query [db sql & {:keys [row-fn]}]
+(defn- safe-query [db sql & {:keys [row-fn column-name]
+                             :or {row-fn identity}}]
   "Return `sql` query result or nil in case of error."
   (try
-    (j/query db (list sql) {:as-arrays? true
-                            :row-fn row-fn})
+    (if column-name
+      [[(keyword column-name)]
+       (mapv (keyword column-name)
+             (row-fn (j/query db (list sql) {:as-arrays? false})))]
+      (j/query db (list sql) {:as-arrays? true
+                              :row-fn row-fn}))
     (catch Exception _)))
 
-(defn- db->column [db sql & {:keys [row-fn]
+(defn- db->column [db sql & {:keys [row-fn column-name]
                              :or {row-fn identity}}]
-  "Execute `sql`, return first column of result set as result list."
+  "Execute `sql`, return `column-name` or first column
+(if `column-name` is not passed) of result set as result list."
   (if sql
-    (rest (map first (safe-query db sql :row-fn row-fn)))))
+    (rest (map first (safe-query db sql
+                                 :row-fn row-fn
+                                 :column-name column-name)))))
 
 (defn- db->>column [db sql]
   "Execute `sql`, return last column of result set as result list."
@@ -266,8 +274,32 @@
                        information_schema.tables AS t
                   WHERE t.table_schema = s.schema_name ")
     :columns (default-queries :columns)
-    :keywords (fn [& _]
-                "SELECT name FROM mysql.help_keyword")}
+    :keywords (fn [& _] "
+                  SELECT name FROM mysql.help_keyword")
+    :entity-type (fn [& {:keys [entity-name]}]
+                   (format "
+                    SELECT routine_type
+                    FROM information_schema.routines
+                    WHERE UPPER(routine_name) = '%s' "
+                           (s/upper-case entity-name)))
+    :procedures (fn [& _] "
+                  SELECT routine_schema, routine_name
+                  FROM information_schema.routines ")
+    :procedure (fn [& {:keys [entity-name]}]
+                 (format "
+                  SHOW CREATE PROCEDURE %s "
+                         entity-name))
+    :function (fn [& {:keys [entity-name]}]
+                (format "
+                  SHOW CREATE FUNCTION %s "
+                        entity-name))
+    :parameters (fn [& {:keys [entity-name]}]
+                  (format "
+                      SELECT data_type, parameter_name
+                      FROM information_schema.parameters
+                      WHERE parameter_mode = 'IN'
+                        AND UPPER(specific_name) = '%s'"
+                          (s/upper-case entity-name)))}
    ;;--------
    :h2
    ;;--------
@@ -636,23 +668,33 @@ check if receiveing process is not running, then start it."
 (defn get-parameters [db stored-procedure & [force?]]
   "Return parameters list of `stored-procedure` from cache if already received
 from DB, check if receiveing process is not running, then start it."
-  (get-or-create-cache
-   :db db
-   :path [:stored-procedures stored-procedure]
-   :sql (select-db-meta-script db :parameters
-                               :entity-name stored-procedure)
-   :force? force?
-   :exec-fn (fn [db sql]
-              ;; Use only first possible list of parameters if many.
-              (list (db->value db sql)))
-   :handler-fn (if (= :postgresql (get-db-type db))
-                 (fn [types]
-                   (map
-                    (fn [type]
-                      (let [type (s/trim type)]
-                        (or (postgresql-type-aliases type)
-                            type)))
-                    (s/split types #","))))))
+  (let [db-type (get-db-type db)]
+    (get-or-create-cache
+     :db db
+     :path [:stored-procedures stored-procedure]
+     :sql (select-db-meta-script db :parameters
+                                 :entity-name stored-procedure)
+     :force? force?
+     :exec-fn
+     (case db-type
+       :postgresql (fn [db sql]
+                     ;; Use only first possible list of parameters if many.
+                     (list (db->value db sql)))
+       :mysql (fn [db sql]
+                (list (rest (safe-query db sql))))
+       nil)
+     :handler-fn
+     (case db-type
+       :postgresql (fn [types]
+                     (map
+                      (fn [type]
+                        (let [type (s/trim type)]
+                          (or (postgresql-type-aliases type)
+                              type)))
+                      (s/split types #",")))
+       :mysql (fn [types]
+                (map #(s/join " " %) types))
+       nil))))
 
 (defn get-keywords [db force?]
   "Return keywords list for this database type from cache if already received
@@ -920,7 +962,13 @@ records. Otherwise return nil."
                                         prefix
                                         entity-name
                                         result-file]}]
-  "Get DB entity or view creation SQL."
+  "Get DB entity creation SQL.
+Database entity types:
+- `:table`
+- `:view`
+- `:package`
+- `:function`
+- `:procedure`."
   (let [sql-object (or prefix entity-name)]
     (if-let [type (get-entity-type db sql-object)]
       (if (and prefix (= :namespace type))
@@ -943,7 +991,14 @@ records. Otherwise return nil."
                                           (mapv #(if (is-clob? %)
                                                    (clob-to-string %)
                                                    %)
-                                                row))))]
+                                                row))
+                                :column-name
+                                (case (get-db-type db)
+                                  :mysql (case type
+                                           :function "create function"
+                                           :procedure "create procedure"
+                                           nil)
+                                  nil)))]
             (c/complete (add-creation-header
                          db
                          type
