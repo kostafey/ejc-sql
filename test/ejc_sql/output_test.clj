@@ -36,4 +36,34 @@
                (binding [*out* out
                          *add-outside-borders* false]
                  (print-table [["a" "b"] [1 2]])
+                 (str out)))))
+      (is (= (str "|description                                 |" nl
+                  "|--------------------------------------------|" nl
+                  "|Lorem ipsum dolor sit amet, consectetur     |" nl
+                  "|adipiscing elit, sed do eiusmod tempor      |" nl
+                  "|incididunt ut labore et dolore magna aliqua.|" nl)
+             (with-open [out (java.io.StringWriter.)]
+               (binding [*out* out
+                         *add-outside-borders* true]
+                 (print-table
+                  [["description"]
+                   [(str
+                     "Lorem ipsum dolor sit amet, consectetur" nl
+                     "adipiscing elit, sed do eiusmod tempor" nl
+                     "incididunt ut labore et dolore magna aliqua.")]])
+                 (str out)))))
+      (is (= (str "description                                 " nl
+                  "--------------------------------------------" nl
+                  "Lorem ipsum dolor sit amet, consectetur" nl
+                  "adipiscing elit, sed do eiusmod tempor" nl
+                  "incididunt ut labore et dolore magna aliqua." nl)
+             (with-open [out (java.io.StringWriter.)]
+               (binding [*out* out
+                         *add-outside-borders* false]
+                 (print-table
+                  [["description"]
+                   [(str
+                     "Lorem ipsum dolor sit amet, consectetur" nl
+                     "adipiscing elit, sed do eiusmod tempor" nl
+                     "incididunt ut labore et dolore magna aliqua.")]])
                  (str out))))))))

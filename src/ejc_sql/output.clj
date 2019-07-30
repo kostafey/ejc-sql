@@ -158,16 +158,35 @@ E.g. transtofm from: a | b | c into: a | 1
            [headers rows] [(map name (first rows)) (rest rows)]
            [rows rotated] (if (and (= (count rows) 1)
                                    (> (count (first rows)) 1))
+                            ;; Rotatate result set table representation
+                            ;; if it has 1 row and many columns.
                             [(rotate-table [headers (first rows)]) true]
                             [rows false])
-           [headers rows] (if (not rotated)
+           single-column-and-row (and (= (count rows) 1)
+                                      (= (count (first rows)) 1))
+           [headers rows] (if (or rotated single-column-and-row)
+                            ;; Do not restrict column width if result
+                            ;; set has only 1 row or 1 column & 1 row.
+                            [headers rows]
                             [(map trim-max-width headers)
-                             (map #(map trim-max-width %) rows)]
-                            [headers rows])
+                             (map #(map trim-max-width %) rows)])
            rows (for [row rows]
-                  (map #(if (string? %) (clojure.string/replace % #"[\n\r]" " ") %) row))
-           widths (for [col (rotate-table (conj rows headers))]
-                    (apply max (map #(count (str %)) col)))
+                  (map #(if (or (not (string? %))
+                                single-column-and-row)
+                          ;; Do not remove [\n\r] if result set is not
+                          ;; a string or has only 1 column & 1 row.
+                          %
+                          (s/replace % #"[\n\r]" " "))
+                       row))
+           widths (if single-column-and-row
+                    (list
+                     (apply max
+                            (cons
+                             (count (first headers))
+                             (map count (s/split (ffirst rows)
+                                                 #"[\n\r]")))))
+                    (for [col (rotate-table (conj rows headers))]
+                      (apply max (map #(count (str %)) col))))
            spacers (map #(apply str (repeat % "-")) widths)
            aob *add-outside-borders*
            ;; TODO: #(str "%" % "d") for numbers
@@ -178,9 +197,10 @@ E.g. transtofm from: a | b | c into: a | 1
                   (map #(str "%-" % "s") widths))
            fmt-row (fn [leader divider trailer row]
                      (str leader
-                          (apply str (interpose divider
-                                                (for [[col fmt] (map vector row fmts)]
-                                                  (format fmt (str col)))))
+                          (apply str (interpose
+                                      divider
+                                      (for [[col fmt] (map vector row fmts)]
+                                        (format fmt (str col)))))
                           trailer))]
        (when (not-empty msg)
          (println msg)
@@ -189,7 +209,9 @@ E.g. transtofm from: a | b | c into: a | 1
          (do
            (println (fmt-row (if aob "|" "") " | " (if aob "|" "") headers))
            (println (fmt-row (if aob "|" "") "-+-" (if aob "|" "") spacers))))
-       (doseq [row rows]
+       (doseq [row (if (and aob single-column-and-row)
+                     (map list (s/split (ffirst rows) #"[\n\r]"))
+                     rows)]
          (println (fmt-row (if aob "|" "") " | " (if aob "|" "") row))))))
   ([rows] (print-table rows @rows-limit)))
 
