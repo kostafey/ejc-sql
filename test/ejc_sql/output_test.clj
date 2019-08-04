@@ -14,8 +14,9 @@
                          *add-outside-borders* true]
                  (print-table [["a" "b"] [1 2] [3 4]])
                  (str out)))))
-      (is (= (str "|a | 1|" nl
-                  "|b | 2|" nl)
+      (is (= (str "|a | b|" nl
+                  "|--+--|" nl
+                  "|1 | 2|" nl)
              (with-open [out (java.io.StringWriter.)]
                (binding [*out* out
                          *add-outside-borders* true]

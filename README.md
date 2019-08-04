@@ -121,18 +121,16 @@ ElDoc for functions and procedures is available for the following databases:
 default). Set to `nil` if you want to disable this limit.
 
 `ejc-set-column-width-limit` set limit for the number of chars per column to
-output (`30` by default). Set to nil if you want to disable this limit.
-This setting is applied to the text representation of any field type, but
-especially useful for `varchar` and `CLOB` fields. If you want to see the full
-text of some field (e.g. the full text of `CLOB` field) despite
-`ejc-set-column-width-limit`, you can select single-record result set
-(e.g. `SELECT * FROM table WHERE id = 1`).
+output (`30` by default). The rest chars will be replaced by `...`. Set to
+`nil` if you want to disable this limit. This setting is applied to the text
+representation of any field type, but especially useful for `varchar` and
+`CLOB` fields.
 
-Both of this functions change Clojure variables, so if you want to change
+Both of these functions change Clojure variables, so if you want to change
 defaults, to avoid Clojure nREPL launch on Emacs start, you should add
 them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
 ```lisp
-(add-hook 'ejc-sql-connected-hook 
+(add-hook 'ejc-sql-connected-hook
           (lambda ()
             (ejc-set-rows-limit 50)
             (ejc-set-column-width-limit 25)))
@@ -143,8 +141,108 @@ functionality for post-processing and browsing the query results.
 ```lisp
 (setq ejc-result-table-impl 'orgtbl-mode)
 ```
-If you need a simple and bare result set mode to maximize the buffer
-perfomance, you can set `ejc-result-table-impl` to `'ejc-result-mode`.
+Alternatively, you can use a simple and bare result set mode to maximize the
+buffer performance by setting `ejc-result-table-impl` to `'ejc-result-mode`.
+
+If you want to see the full text of some field (e.g. the full text of `CLOB`
+field) despite `ejc-set-column-width-limit`, and your `ejc-result-table-impl`
+is `'ejc-result-mode` you can select single-record result set
+(e.g. `SELECT * FROM table WHERE id = 1`).
+
+If you want to see the full text of some field with newlines in case of
+multiline fields, you should select single-record and single-column result set
+(e.g. `SELECT field FROM table WHERE id = 1`). So, you will get a field value
+**as-is** despite `ejc-set-column-width-limit` and `ejc-result-table-impl`.
+
+Here is some output examples depends on query results and configuration to
+illustrate the description above.
+
+Assume you have the following database (this example uses MySQL):
+
+```sql
+CREATE TABLE product (
+  id    INT UNSIGNED  NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name  VARCHAR(30)   NOT NULL,
+  quantity INT,
+  price DECIMAL(7,2),
+  description VARCHAR(255)
+);
+INSERT INTO product (name, price, quantity, description)
+VALUES ('socks', 1.25, 10, CONCAT('A sock is an item of clothing worn\n',
+                                  'on the feet and often covering the\n',
+                                  'ankle or some part of the calf.\n',
+                                  'Some type of shoe or boot is\n',
+                                  'typically worn over socks.'));
+INSERT INTO product (name, price, quantity, description)
+VALUES ('sweater', 14.56, 5, CONCAT('A sweater, also called a jumper\n'
+                                    'in British English, is a piece\n'
+                                    'of clothing, typically with long\n'
+                                    'sleeves, made of knitted or\n'
+                                    'crocheted material that covers\n'
+                                    'the upper part of the body.'));
+```
+**output examples for** `orgtbl-mode`:
+```sql
+SELECT * FROM product
+```
+```
+| id | name    | quantity | price | description                    |
+|----+---------+----------+-------+--------------------------------|
+|  1 | socks   |       10 |  1.25 | A sock is an item of clothi... |
+|  2 | sweater |        5 | 14.56 | A sweater, also called a ju... |
+```
+```sql
+SELECT * FROM product WHERE id = 1
+```
+```
+| id | name  | quantity | price | description                    |
+|----+-------+----------+-------+--------------------------------|
+|  1 | socks |       10 |  1.25 | A sock is an item of clothi... |
+```
+```sql
+SELECT description FROM product WHERE id = 1
+```
+```
+| description                        |
+|------------------------------------|
+| A sock is an item of clothing worn |
+| on the feet and often covering the |
+| ankle or some part of the calf.    |
+| Some type of shoe or boot is       |
+| typically worn over socks.         |
+```
+**output examples for** `ejc-result-mode`:
+```sql
+SELECT * FROM product
+```
+```
+id | name    | quantity | price | description
+---+---------+----------+-------+-------------------------------
+1  | socks   | 10       | 1.25  | A sock is an item of clothi...
+2  | sweater | 5        | 14.56 | A sweater, also called a ju...
+```
+```sql
+SELECT * FROM product WHERE id = 1
+```
+```
+id          | 1
+name        | socks
+quantity    | 10
+price       | 1.25
+description | A sock is an item of clothing worn on the feet and often covering the ankle or some part of the calf. Some type of shoe or boot is typically worn over socks.
+```
+```sql
+SELECT description FROM product WHERE id = 1
+```
+```
+description
+----------------------------------
+A sock is an item of clothing worn
+on the feet and often covering the
+ankle or some part of the calf.
+Some type of shoe or boot is
+typically worn over socks.
+```
 
 <a id="create-connections-interactively"></a>
 ## Create connections interactively

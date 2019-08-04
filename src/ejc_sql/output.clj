@@ -156,7 +156,9 @@ E.g. transtofm from: a | b | c into: a | 1
                                  row-limit (count rows))]
                         [rows ""])
            [headers rows] [(map name (first rows)) (rest rows)]
-           [rows rotated] (if (and (= (count rows) 1)
+           aob *add-outside-borders*
+           [rows rotated] (if (and (not aob)
+                                   (= (count rows) 1)
                                    (> (count (first rows)) 1))
                             ;; Rotatate result set table representation
                             ;; if it has 1 row and many columns.
@@ -188,7 +190,6 @@ E.g. transtofm from: a | b | c into: a | 1
                     (for [col (rotate-table (conj rows headers))]
                       (apply max (map #(count (str %)) col))))
            spacers (map #(apply str (repeat % "-")) widths)
-           aob *add-outside-borders*
            ;; TODO: #(str "%" % "d") for numbers
            fmts (if (and rotated (not aob))
                   ;; Remove trailing spaces for data column of single-row
