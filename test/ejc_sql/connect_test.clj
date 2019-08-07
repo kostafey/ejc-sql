@@ -5,14 +5,14 @@
             [ejc-sql.lib :refer :all]))
 
 (deftest determine-dml-test
-  (testing "determine-dml fn test."
+  (testing "dml? fn test."
     (is (= "SELECT"
-           (determine-dml "select * from table")))
+           (dml? "select * from table")))
     (is (= "SELECT"
-           (determine-dml "(select * from table)")))
+           (dml? "(select * from table)")))
     (is (= "SELECT"
-           (determine-dml "-- comment
-                           select * from table")))))
+           (dml? "-- comment
+                  select * from table")))))
 
 (deftest sql-statement-separators-test
   (testing "get-separator-re fn test."

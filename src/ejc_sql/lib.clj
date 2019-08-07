@@ -17,7 +17,6 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.lib
-  (:import (java.io File))
   (:require [clojure.string :as s]
             [clojure.reflect :refer [resolve-class]]))
 
@@ -50,47 +49,17 @@
                             (conj (into [] (butlast path))
                                   (s/lower-case (last path))))))))
 
-(defn array? [x]
-  (-> x .getClass .isArray))
-
-(defn trim [s]
-  (if (instance? java.lang.String s)
-    (.trim s)
-    s))
-
-(defn filter-data [rs]
-  (map #(map trim %) rs))
-
-(defn get-rs-data [rs]
-  (map vals rs))
-
-(defn get-rs-headers [rs]
-  (for [[k _] (first rs)]
-    (subs (str k) 1)))
-
-(defn transpose [m]
-  (apply mapv vector m))
-
-(defn find-longest-list
-  "Returns the list of the longest lengths per column."
-  [lst]
-  (map #(apply max %) (transpose lst)))
-
 (defn simple-join [n s]
-  (clojure.string/join
+  (s/join
    (for [x (range 0 n)] s)))
-
-(defn str-length [s]
-  (.length (str s)))
-
-(defn get-rs-lengths [rs]
-  (map #(map str-length %) rs))
-
-(defn get-absolute-file-path [relative-file-path]
-  (-> (java.io.File. relative-file-path) .getAbsolutePath))
 
 (defn class-exists? [c]
   (resolve-class (.getContextClassLoader (Thread/currentThread)) c))
+
+(defn is-clob? [x]
+  (or (instance? java.sql.Clob x)
+      (and (class-exists? 'oracle.sql.CLOB)
+           (instance? (Class/forName "oracle.sql.CLOB") x))))
 
 (defn clob-to-string
   "Turn an Oracle Clob into a String"
@@ -108,11 +77,6 @@
            (str (subs result 0 (- *max-column-width* 3)) "...")
            result))))))
 
-(defn is-clob? [x]
-  (or (instance? java.sql.Clob x)
-      (and (class-exists? 'oracle.sql.CLOB)
-           (instance? (Class/forName "oracle.sql.CLOB") x))))
-
 (defn clob-to-string-row [row single-record?]
   "Check all data in row if it's a CLOB and convert CLOB to string."
   (mapv (fn [field]
@@ -126,26 +90,43 @@
       (s/replace #"(--).*\n" "")
       (s/replace #"(  )|( \t)|\t" " ")
       (s/replace "^\n" "")
-      trim))
+      s/trim))
 
-(def dml-set
-  #{"SELECT"
-    "INSERT"
-    "UPDATE"
-    "DELETE"})
+(def select-words
+  '("SELECT"
+    "SHOW"))
 
-(def ignore-set #{\( \[})
+(def dml-words
+  (concat
+   select-words
+   '("INSERT"
+     "UPDATE"
+     "DELETE")))
 
-(defn determine-dml [sql]
-  "Determine if current SQL is Data Manipulation Language (DML) case."
+(def ddl-words
+  '("CREATE"
+    "ALTER"
+    "DROP"
+    "RENAME"))
+
+(defn determine-query [sql words]
+  "Determine if current SQL starts with one of the words from `words` list."
   (let [sql (clean-sql sql)
+        ignore-set #{\( \[}
         pos (loop [pos 0]
               (if (ignore-set (get sql pos))
                 (recur (inc pos))
-                pos))]
-    (or (and
-         (> (count sql) (+ 6 pos))
-         (dml-set (.toUpperCase (subs sql pos (+ 6 pos)))))
-        (and
-         (> (count sql) (+ 4 pos))
-         (#{"SHOW"} (.toUpperCase (subs sql pos (+ 4 pos))))))))
+                pos))
+        sql (s/upper-case (subs sql pos))]
+    (first (filter (fn [w] (s/starts-with? sql w)) words))))
+
+(defn select? [sql]
+  (determine-query sql select-words))
+
+(defn dml? [sql]
+  "Determine if current SQL is Data Manipulation Language (DML) case."
+  (determine-query sql dml-words))
+
+(defn ddl? [sql]
+  "Determine if current SQL is Data Definition Language (DDL) case."
+  (determine-query sql ddl-words))

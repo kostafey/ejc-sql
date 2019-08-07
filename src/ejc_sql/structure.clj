@@ -18,6 +18,7 @@
 
 (ns ejc-sql.structure
   (:use [ejc-sql.lib]
+        [ejc-sql.cache]
         [clomacs])
   (:require
    [clojure.java.jdbc :as j]
@@ -26,25 +27,6 @@
    [ejc-sql.connect :as c]
    [ejc-sql.output :as o]
    [ejc-sql.keywords :as k]))
-
-(def cache
-  "Keep information about structure of databases used for autocomplete & eldoc.
-  This data contains (depends on database type):
-  ├── owners/schemas
-  |   ├── tables
-  |   |   └── columns
-  |   └── views
-  ├── packages
-  |   └── stored procedures & functions
-  |       └── parameters
-  └── keywords
-  It's global: same database structure information shared beetween
-  different buffers connected to the same database."
-  (atom {}))
-
-(def cache-creation-promises
-  "Signs of database structure cache created."
-  (atom {}))
 
 (defn- safe-query [db sql & {:keys [row-fn column-name]
                              :or {row-fn identity}}]
@@ -1054,11 +1036,3 @@ Database entity types:
    :db db
    :result-file result-file))
 
-(defn get-cache []
-  "Output actual cache."
-  @cache)
-
-(defn invalidate-cache [db]
-  "Clean your current connection cache (database owners and tables list)."
-  (swap! cache assoc-in [db] nil)
-  (swap! cache-creation-promises assoc-in [db] nil))

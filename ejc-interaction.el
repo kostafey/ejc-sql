@@ -227,7 +227,7 @@
 (clomacs-defun ejc-invalidate-cache-inner
                invalidate-cache
                :lib-name "ejc-sql"
-               :namespace ejc-sql.structure
+               :namespace ejc-sql.cache
                :doc (concat "Clean your current connection cache "
                             "(database owners and tables list)."))
 

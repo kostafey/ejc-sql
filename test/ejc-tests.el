@@ -186,7 +186,7 @@
     ;; Create table
     (should
      (equal
-      "Records affected: 0"
+      "Executed"
       (ejc-test:run-sql
        (concat
         "CREATE TABLE IF NOT EXISTS users (           \n"

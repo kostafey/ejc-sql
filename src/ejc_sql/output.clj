@@ -219,7 +219,7 @@ E.g. transtofm from: a | b | c into: a | 1
 (defn format-sql [sql]
   (s/trim
    (let [sql (s/trim sql)]
-     (.format (if (determine-dml sql)
+     (.format (if (dml? sql)
                 (BasicFormatterImpl.)
                 (DDLFormatterImpl.))
               sql))))

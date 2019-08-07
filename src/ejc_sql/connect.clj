@@ -19,6 +19,7 @@
 (ns ejc-sql.connect
   (:use [clojure.java.io]
         [ejc-sql.lib]
+        [ejc-sql.cache]
         [clomacs])
   (:require [clojure.java.jdbc :as j]
             [clojure.java.io :as io]
@@ -139,28 +140,30 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                      (handle-special-cases db sql)
                      (get-separator-re statement-separator))]
        (try
-         (let [sql-query-word (determine-dml sql-part)]
-           (if (and sql-query-word (or (.equals sql-query-word "SELECT")
-                                       (.equals sql-query-word "SHOW")))
-             (list :result-set
-                   (with-open [conn (j/get-connection db)]
-                     (let [stmt (j/prepare-statement
-                                 conn sql-part
-                                 {:fetch-size (or @o/rows-limit 0)})]
-                       (swap! current-query assoc
-                              :stmt stmt
-                              :conn conn)
-                       (j/query db stmt
-                                {:as-arrays? true
-                                 :result-set-fn
-                                 (fn [rs]
-                                   (let [single-record? (not (next (next rs)))]
-                                     (mapv
-                                      #(clob-to-string-row % single-record?)
-                                      rs)))}))))
-             (list :message
-                   (str "Records affected: "
-                        (first (j/execute! db (list sql-part)))))))
+         (if (select? sql-part)
+           (list :result-set
+                 (with-open [conn (j/get-connection db)]
+                   (let [stmt (j/prepare-statement
+                               conn sql-part
+                               {:fetch-size (or @o/rows-limit 0)})]
+                     (swap! current-query assoc
+                            :stmt stmt
+                            :conn conn)
+                     (j/query db stmt
+                              {:as-arrays? true
+                               :result-set-fn
+                               (fn [rs]
+                                 (let [single-record? (not (next (next rs)))]
+                                   (mapv
+                                    #(clob-to-string-row % single-record?)
+                                    rs)))}))))
+           (let [result (first (j/execute! db (list sql-part)))
+                 msg (if (> result 0)
+                       (str "Records affected: " result)
+                       "Executed")]
+             (if (ddl? sql-part)
+               (invalidate-cache db))
+             (list :message msg)))
          (catch SQLException e
            (list :message
                  (str "Error: "(.getMessage e)))))))))
