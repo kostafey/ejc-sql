@@ -94,7 +94,8 @@
 
 (def select-words
   '("SELECT"
-    "SHOW"))
+    "SHOW"
+    "WITH"))
 
 (def dml-words
   (concat
