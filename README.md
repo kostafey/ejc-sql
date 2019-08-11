@@ -81,6 +81,22 @@ Autocompletion is available for the following databases:
 * H2
 * SQLite
 
+Autocompletion data is stored in the database structure cache. This cache is
+located on Clojure side, so it's global: same database structure information
+shared between different buffers connected to the same database.
+An attempt to autocomplete requires data from it or lanches a thread aimed to
+create this cache. If Clojure side has the database structure cache,
+autocompletion variants returned immediately. If not, the database structure
+cache creation process starts. It's async, so the process of Emacs is not
+blocked and the user can move point (cursor), edit SQL and so on. If the user
+waits for autocompletion and doesn't move point (cursor) during this process,
+he will get autocompletion variants.
+
+Any successfully executed DDL query (`CREATE`, `ALTER`, `DROP`, `RENAME`) clears
+current connection cache, so next autocompletion attempt will recreate it.
+To clean the current  connection cache manually, you can run
+`ejc-invalidate-cache`.
+
 <a id="fuzzy-matching"></a>
 ### Fuzzy matching
 
