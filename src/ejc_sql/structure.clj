@@ -262,7 +262,16 @@
                    (format "
                     SELECT routine_type
                     FROM information_schema.routines
-                    WHERE UPPER(routine_name) = '%s' "
+                    WHERE UPPER(routine_name) = '%s'
+                    UNION
+                    SELECT 'standard-function' FROM mysql.help_topic t
+                    INNER JOIN mysql.help_category AS c
+                      ON c.help_category_id = t.help_category_id
+                      AND c.parent_category_id IN (SELECT help_category_id
+                                                  FROM mysql.help_category
+                                                  WHERE name = 'Functions')
+                    WHERE UPPER(t.name) = '%s'"
+                           (s/upper-case entity-name)
                            (s/upper-case entity-name)))
     :procedures (fn [& _] "
                   SELECT routine_schema, routine_name
@@ -275,6 +284,11 @@
                 (format "
                   SHOW CREATE FUNCTION %s "
                         entity-name))
+    :standard-function (fn [& {:keys [entity-name]}]
+                         (format "
+                  SELECT description FROM mysql.help_topic
+                  WHERE UPPER(name) = '%s' "
+                                 (s/upper-case entity-name)))
     :parameters (fn [& {:keys [entity-name]}]
                   (format "
                       SELECT data_type, parameter_name
@@ -950,8 +964,10 @@ Database entity types:
 - `:view`
 - `:package`
 - `:function`
-- `:procedure`."
-  (let [sql-object (or prefix entity-name)]
+- `:procedure`
+- `:standard-function`."
+  (let [sql-object (or prefix entity-name)
+        db-type (get-db-type db)]
     (if-let [type (get-entity-type db sql-object)]
       (if (and prefix (= :namespace type))
         ;; Omit prefix if it's a `:namespace`.
@@ -986,7 +1002,10 @@ Database entity types:
                          type
                          sql-object
                          (o/format-sql-if-required entity-sql))
-                        :mode 'sql-mode
+                        :mode (if (and (= type :standard-function)
+                                       (= db-type :mysql))
+                                'rst-mode
+                                'sql-mode)
                         :connection-name connection-name
                         :db db
                         :result-file result-file
