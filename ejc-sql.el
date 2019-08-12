@@ -680,7 +680,7 @@ process starts. It's async, so the process of Emacs is not blocked and the
 user can move point (cursor), edit SQL and so on. After Clojure side cache
 creation process finishes, it calls this `ejc-complete-auto-complete'
 function. If the user waits for autocompletion and doesn't move point
-(cursor), he will get autocompletion variants."
+(cursor) during this process, he will get autocompletion variants."
   (switch-to-buffer buffer-name)
   (if (equal point (point))
       (auto-complete))
