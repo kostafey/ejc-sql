@@ -93,9 +93,6 @@
 When nil no limit."
   (reset! column-width-limit val))
 
-(defn fmap [f m]
-  (reduce (fn [altered-map [k v]] (assoc altered-map k (f v))) {} m))
-
 (defn rotate-table [data]
   "Rotate result set to show fields list vertically.
 Applied to single-record result set.
@@ -176,8 +173,10 @@ E.g. transtofm from: a | b | c into: a | 1
                   (map #(if (or (not (string? %))
                                 single-column-and-row)
                           ;; Do not remove [\n\r] if result set is not
-                          ;; a string or has only 1 column & 1 row.
-                          %
+                          ;; a string or has only 1 column & 1 row but unify
+                          ;; them to system line break.
+                          (s/replace % #"[\n\r]"
+                                     (System/getProperty "line.separator"))
                           (s/replace % #"[\n\r]" " "))
                        row))
            widths (if single-column-and-row
