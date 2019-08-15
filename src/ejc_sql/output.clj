@@ -169,23 +169,25 @@ E.g. transtofm from: a | b | c into: a | 1
                             [headers rows]
                             [(map trim-max-width headers)
                              (map #(map trim-max-width %) rows)])
+           rn #"(\r\n)|\n|\r"
+           nl (System/getProperty "line.separator")
            rows (for [row rows]
-                  (map #(if (or (not (string? %))
-                                single-column-and-row)
-                          ;; Do not remove [\n\r] if result set is not
-                          ;; a string or has only 1 column & 1 row but unify
-                          ;; them to system line break.
-                          (s/replace % #"[\n\r]"
-                                     (System/getProperty "line.separator"))
-                          (s/replace % #"[\n\r]" " "))
+                  (map #(if (string? %)
+                          (if single-column-and-row
+                            ;; In case of only 1 column & 1 row unify
+                            ;; newline separators to system line break.
+                            (s/replace % rn nl)
+                            (s/replace % rn " "))
+                          ;; Do not remove newline separators if result
+                          ;; set cell is not a string.
+                          %)
                        row))
            widths (if single-column-and-row
                     (list
                      (apply max
                             (cons
                              (count (first headers))
-                             (map count (s/split (ffirst rows)
-                                                 #"[\n\r]")))))
+                             (map count (s/split (ffirst rows) rn)))))
                     (for [col (rotate-table (conj rows headers))]
                       (apply max (map #(count (str %)) col))))
            spacers (map #(apply str (repeat % "-")) widths)
@@ -207,12 +209,12 @@ E.g. transtofm from: a | b | c into: a | 1
          (println))
        (if (not rotated)
          (do
-           (println (fmt-row (if aob "|" "") " | " (if aob "|" "") headers))
-           (println (fmt-row (if aob "|" "") "-+-" (if aob "|" "") spacers))))
+           (println (fmt-row (if aob "| " "") " | " (if aob " |" "") headers))
+           (println (fmt-row (if aob "|-" "") "-+-" (if aob "-|" "") spacers))))
        (doseq [row (if (and aob single-column-and-row)
-                     (map list (s/split (ffirst rows) #"[\n\r]"))
+                     (map list (s/split (ffirst rows) (re-pattern nl)))
                      rows)]
-         (println (fmt-row (if aob "|" "") " | " (if aob "|" "") row))))))
+         (println (fmt-row (if aob "| " "") " | " (if aob " |" "") row))))))
   ([rows] (print-table rows @rows-limit)))
 
 (defn format-sql [sql]
