@@ -145,7 +145,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                  (with-open [conn (j/get-connection db)]
                    (let [stmt (j/prepare-statement
                                conn sql-part
-                               {:fetch-size (or @o/rows-limit 0)})]
+                               {:fetch-size (or @o/fetch-size 0)
+                                :max-rows (or @o/max-rows 0)})]
                      (swap! current-query assoc
                             :stmt stmt
                             :conn conn)

@@ -148,12 +148,19 @@
                :namespace ejc-sql.output
                :return-value :stdout)
 
-(clomacs-defun ejc-set-rows-limit
-               set-rows-limit
+(clomacs-defun ejc-set-fetch-size
+               set-fetch-size
                :lib-name "ejc-sql"
                :namespace ejc-sql.output
                :doc (concat "Set limit for number of records to output. "
                             "When nil no limit."))
+
+(clomacs-defun ejc-set-max-rows
+               set-max-rows
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.output
+               :doc (concat "Set limit for number of records to contain "
+                            "in ResultSet. When nil no limit."))
 
 (clomacs-defun ejc-set-column-width-limit
                set-column-width-limit

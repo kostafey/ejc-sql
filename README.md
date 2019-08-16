@@ -133,8 +133,15 @@ ElDoc for functions and procedures is available for the following databases:
 <a id="performance-output-customization"></a>
 ### Performance & output customization
 
-`ejc-set-rows-limit` set limit for the number of records to output (`100` by
+`ejc-set-fetch-size` set limit for the number of records to output (`100` by
 default). Set to `nil` if you want to disable this limit.
+
+`ejc-set-max-rows` set limit for the number of records to contain in ResultSet
+(`999` by default). Set to `nil` if you want to disable this limit.
+Also, you can set it the same value as `ejc-set-fetch-size`. In this case,
+if your select query returns more rows than passed to `ejc-set-fetch-size` you
+will not receive messages like `"Too many rows. Only 100 from 999+ are shown."`,
+but it will increase select query execution performance.
 
 `ejc-set-column-width-limit` set limit for the number of chars per column to
 output (`30` by default). The rest chars will be replaced by `...`. Set to
@@ -142,13 +149,14 @@ output (`30` by default). The rest chars will be replaced by `...`. Set to
 representation of any field type, but especially useful for `varchar` and
 `CLOB` fields.
 
-Both of these functions change Clojure variables, so if you want to change
+All these functions change Clojure variables, so if you want to change
 defaults, to avoid Clojure nREPL launch on Emacs start, you should add
 them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
 ```lisp
 (add-hook 'ejc-sql-connected-hook
           (lambda ()
-            (ejc-set-rows-limit 50)
+            (ejc-set-fetch-size 50)
+            (ejc-set-max-rows 50)
             (ejc-set-column-width-limit 25)))
 ```
 
