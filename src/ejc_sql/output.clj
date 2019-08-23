@@ -240,6 +240,15 @@ E.g. transtofm from: a | b | c into: a | 1
          (println (fmt-row (if aob "| " "") " | " (if aob " |" "") row))))))
   ([rows] (print-table rows @fetch-size)))
 
+(defn unify-str [& s]
+  "Concatenate stings, unify newline separators to the system line break."
+  (if (empty? (filter not-empty s))
+    ""
+    (apply str (map #(s/replace %
+                                #"(\r\n)|\n|\r"
+                                (System/getProperty "line.separator"))
+                    s))))
+
 (defn format-sql [sql]
   (s/trim
    (let [sql (s/trim sql)]
@@ -263,5 +272,5 @@ E.g. transtofm from: a | b | c into: a | 1
   (spit result-file text :append append)
   result-file)
 
-(defn clear-result-file []
-  (write-result-file ""))
+(defn clear-result-file [& {:keys [result-file]}]
+  (write-result-file "" :result-file result-file))

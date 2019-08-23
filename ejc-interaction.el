@@ -82,15 +82,6 @@
                :interactive t
                :return-type :list)
 
-(clomacs-defun ejc--eval-sql-get-column
-               eval-sql-internal-get-column
-               :lib-name "ejc-sql"
-               :return-type :list
-               :namespace ejc-sql.connect
-               :doc "Get `sql', return list.")
-
-(defalias 'ejc--eval-get-list 'ejc--eval-sql-get-column)
-
 (clomacs-defun ejc--describe-table
                describe-table
                :lib-name "ejc-sql"

@@ -120,54 +120,12 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
   "Regex to search a `delimiter` command in SQL expression."
   (re-pattern "(?i)delimiter\\s+(.+)"))
 
-(defn eval-sql-core
-  "The core SQL evaluation function."
-  [& {:keys [db sql]
-      :or {db @ejc-sql.connect/db}}]
-  (set-db db)
-  (java.util.Locale/setDefault (java.util.Locale. "UK"))
-  (let [[sql manual-separator]
-        (if (s/starts-with? (s/lower-case sql) "delimiter")
-          ;; User defined statement separator manually
-          ;; before SQL expression.
-          ;; Remove `delimiter` command from SQL expression.
-          [(s/trim (s/replace-first sql delimiter-re ""))
-           (second (re-find delimiter-re sql))]
-          [sql nil])
-        statement-separator (or manual-separator (:separator db) ";")]
-    (last
-     (for [sql-part (s/split
-                     (handle-special-cases db sql)
-                     (get-separator-re statement-separator))]
-       (try
-         (if (select? sql-part)
-           (list :result-set
-                 (with-open [conn (j/get-connection db)]
-                   (let [stmt (j/prepare-statement
-                               conn sql-part
-                               {:fetch-size (or @o/fetch-size 0)
-                                :max-rows (or @o/max-rows 0)})]
-                     (swap! current-query assoc
-                            :stmt stmt
-                            :conn conn)
-                     (j/query db stmt
-                              {:as-arrays? true
-                               :result-set-fn
-                               (fn [rs]
-                                 (let [single-record? (not (next (next rs)))]
-                                   (mapv
-                                    #(clob-to-string-row % single-record?)
-                                    rs)))}))))
-           (let [result (first (j/execute! db (list sql-part)))
-                 msg (if (> result 0)
-                       (str "Records affected: " result)
-                       "Executed")]
-             (if (ddl? sql-part)
-               (invalidate-cache db))
-             (list :message msg)))
-         (catch SQLException e
-           (list :message
-                 (str "Error: "(.getMessage e)))))))))
+(def comments-re
+  "Regex to search comments in SQL expression."
+  (java.util.regex.Pattern/compile
+   "(?:/\\*.*?\\*/)|(?:--.*?$)",
+   (bit-or java.util.regex.Pattern/DOTALL
+           java.util.regex.Pattern/MULTILINE)))
 
 (clomacs-defn complete-query ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
@@ -200,29 +158,92 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                        append
                                        display-result
                                        result-file]}]
-  (let [clear-sql (.trim sql)]
-    (o/log-sql (str clear-sql "\n"))
-    (let [[result-type result] (eval-sql-core
-                                :db  db
-                                :sql clear-sql)]
-      (complete
-       (if (= result-type :result-set)
-         (o/print-table result rows-limit)
-         result)
-       :append append
-       :start-time (:start-time @current-query)
-       :status (if (and
-                    (not (= result-type :result-set))
-                    (= (s/lower-case (subs result 0
-                                           (min 5 (count result))))
-                       "error"))
-                 (if (.contains (s/lower-case result)
-                                "closed connection")
-                   :terminated
-                   :error)
-                 :done)
-       :display-result display-result
-       :result-file result-file))))
+  (set-db db)
+  (java.util.Locale/setDefault (java.util.Locale. "UK"))
+  (let [sql (.trim sql)
+        _ (do (o/log-sql (str sql "\n"))
+              (o/clear-result-file :result-file result-file))
+        [sql
+         manual-separator] (if (s/starts-with? (s/lower-case sql) "delimiter")
+                             ;; User defined statement separator manually
+                             ;; before SQL expression.
+                             ;; Remove `delimiter` command from SQL expression.
+                             [(s/trim (s/replace-first sql delimiter-re ""))
+                              (second (re-find delimiter-re sql))]
+                             [sql nil])
+        statement-separator (or manual-separator (:separator db) ";")
+        results (doall
+                 (for [sql-part (filter
+                                 ;; Remove parts contains comments only.
+                                 (fn [part]
+                                   (not (empty?
+                                         (s/trim
+                                          (s/replace part comments-re "")))))
+                                 (s/split
+                                  (handle-special-cases db sql)
+                                  (get-separator-re statement-separator)))]
+                   (->
+                    (try
+                      (if (select? sql-part)
+                        (list
+                         :result-set
+                         (with-open [conn (j/get-connection db)]
+                           (let [stmt (j/prepare-statement
+                                       conn sql-part
+                                       {:fetch-size (or @o/fetch-size 0)
+                                        :max-rows (or @o/max-rows 0)})]
+                             (swap! current-query assoc
+                                    :stmt stmt
+                                    :conn conn)
+                             (j/query db stmt
+                                      {:as-arrays? true
+                                       :result-set-fn
+                                       (fn [rs]
+                                         (let [single-record?
+                                               (not (next (next rs)))]
+                                           (mapv
+                                            #(clob-to-string-row
+                                              % single-record?)
+                                            rs)))}))))
+                        (let [result (first (j/execute! db (list sql-part)))
+                              msg (if (> result 0)
+                                    (str "Records affected: " result)
+                                    "Executed")]
+                          (if (ddl? sql-part)
+                            (invalidate-cache db))
+                          (list :message msg)))
+                      (catch SQLException e
+                        (list :message
+                              (o/unify-str "Error: " (.getMessage e)))))
+                    ((fn [[result-type result]]
+                       (if (= result-type :result-set)
+                         (o/print-table result rows-limit)
+                         (println result))
+                       [result-type result])))))]
+    (complete
+     nil
+     :start-time (:start-time @current-query)
+     :status (if (or
+                  (every? (fn [[result-type result]]
+                            (= result-type :result-set))
+                          results)
+                  (not (some (fn [[result-type result]]
+                               (and
+                                (not (= result-type :result-set))
+                                (s/starts-with? (s/lower-case result)
+                                                "error")))
+                             results)))
+               :done
+               (if (and
+                    (= (count results) 1)
+                    (some (fn [[result-type result]]
+                            (.contains (s/lower-case result)
+                                       "closed connection"))
+                          results))
+                 :terminated
+                 :error))
+     :display-result display-result
+     :result-file result-file)))
 
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
@@ -260,11 +281,6 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
       (swap! current-query assoc
              :runner (future (run-query))
              :start-time start-time))))
-
-(defn eval-sql-internal-get-column [db sql]
-  (let [[result-type result] (eval-sql-core :db db
-                                            :sql sql)]
-    result))
 
 (defn query-meta [db sql]
   "Get metadata for `sql` result dataset."
