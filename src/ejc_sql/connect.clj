@@ -154,12 +154,50 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
    :db db
    :goto-symbol goto-symbol))
 
+(defn eval-sql-core
+  "The core SQL evaluation function."
+  [& {:keys [db sql fetch-size max-rows]
+      :or {db @ejc-sql.connect/db}}]
+  (set-db db)
+  (java.util.Locale/setDefault (java.util.Locale. "UK"))
+  (try
+    (if (select? sql)
+      (list
+       :result-set
+       (with-open [conn (j/get-connection db)]
+         (let [stmt (j/prepare-statement
+                     conn sql
+                     {:fetch-size (or fetch-size @o/fetch-size 0)
+                      :max-rows (or max-rows @o/max-rows 0)})]
+           (swap! current-query assoc
+                  :stmt stmt
+                  :conn conn)
+           (j/query db stmt
+                    {:as-arrays? true
+                     :result-set-fn
+                     (fn [rs]
+                       (let [single-record?
+                             (not (next (next rs)))]
+                         (mapv
+                          #(clob-to-string-row
+                            % single-record?)
+                          rs)))}))))
+      (let [result (first (j/execute! db (list sql)))
+            msg (if (> result 0)
+                  (str "Records affected: " result)
+                  "Executed")]
+        (if (ddl? sql)
+          (invalidate-cache db))
+        (list :message msg)))
+    (catch SQLException e
+      (list :message
+            (o/unify-str "Error: " (.getMessage e))))))
+
 (defn- eval-user-sql [db sql & {:keys [rows-limit
                                        append
                                        display-result
                                        result-file]}]
-  (set-db db)
-  (java.util.Locale/setDefault (java.util.Locale. "UK"))
+  "Receive raw SQL from the user, log it, divide by statements and eval them."
   (let [sql (.trim sql)
         _ (do (o/log-sql (str sql "\n"))
               (o/clear-result-file :result-file result-file))
@@ -182,44 +220,12 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                  (s/split
                                   (handle-special-cases db sql)
                                   (get-separator-re statement-separator)))]
-                   (->
-                    (try
-                      (if (select? sql-part)
-                        (list
-                         :result-set
-                         (with-open [conn (j/get-connection db)]
-                           (let [stmt (j/prepare-statement
-                                       conn sql-part
-                                       {:fetch-size (or @o/fetch-size 0)
-                                        :max-rows (or @o/max-rows 0)})]
-                             (swap! current-query assoc
-                                    :stmt stmt
-                                    :conn conn)
-                             (j/query db stmt
-                                      {:as-arrays? true
-                                       :result-set-fn
-                                       (fn [rs]
-                                         (let [single-record?
-                                               (not (next (next rs)))]
-                                           (mapv
-                                            #(clob-to-string-row
-                                              % single-record?)
-                                            rs)))}))))
-                        (let [result (first (j/execute! db (list sql-part)))
-                              msg (if (> result 0)
-                                    (str "Records affected: " result)
-                                    "Executed")]
-                          (if (ddl? sql-part)
-                            (invalidate-cache db))
-                          (list :message msg)))
-                      (catch SQLException e
-                        (list :message
-                              (o/unify-str "Error: " (.getMessage e)))))
-                    ((fn [[result-type result]]
+                   (let [[result-type result] (eval-sql-core :db db
+                                                             :sql sql-part)]
                        (if (= result-type :result-set)
                          (o/print-table result rows-limit)
                          (println result))
-                       [result-type result])))))]
+                       [result-type result])))]
     (complete
      nil
      :start-time (:start-time @current-query)

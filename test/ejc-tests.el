@@ -186,7 +186,7 @@
     ;; Create table
     (should
      (equal
-      "Executed"
+      "Executed\n"
       (ejc-test:run-sql
        (concat
         "CREATE TABLE IF NOT EXISTS users (           \n"
@@ -204,7 +204,9 @@
     ;; Insert data
     (should
      (equal
-      "Records affected: 1"
+      (concat "Records affected: 1\n"
+              "Records affected: 1\n"
+              "Records affected: 1\n")
       (ejc-test:run-sql
        (concat
         "/                                                       \n"
@@ -218,7 +220,7 @@
     ;; Update data
     (should
      (equal
-      "Records affected: 3"
+      "Records affected: 3\n"
       (ejc-test:run-sql
        (concat
         "/                                                       \n"

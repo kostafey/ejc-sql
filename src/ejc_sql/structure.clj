@@ -997,11 +997,12 @@ Database entity types:
                                            :procedure "create procedure"
                                            nil)
                                   nil)))]
-            (c/complete (add-creation-header
-                         db
-                         type
-                         sql-object
-                         (o/format-sql-if-required entity-sql))
+            (c/complete (o/unify-str
+                         (add-creation-header
+                          db
+                          type
+                          sql-object
+                          (o/format-sql-if-required entity-sql)))
                         :mode (if (and (= type :standard-function)
                                        (= db-type :mysql))
                                 'rst-mode
@@ -1047,7 +1048,10 @@ Database entity types:
           (println)
           (println "Constraints:")
           (println)
-          (o/print-table (second (c/eval-sql-core :db db :sql sql)))))))
+          (o/print-table (second (c/eval-sql-core :db db
+                                                  :sql sql
+                                                  :fetch-size 0
+                                                  :max-rows 0)))))))
   (c/complete
    nil
    :display-result true
