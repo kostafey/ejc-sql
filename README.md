@@ -133,14 +133,14 @@ ElDoc for functions and procedures is available for the following databases:
 <a id="performance-output-customization"></a>
 ### Performance & output customization
 
-`ejc-set-fetch-size` set limit for the number of records to output (`100` by
+`ejc-set-fetch-size` set limit for the number of records to output (`50` by
 default). Set to `nil` if you want to disable this limit.
 
 `ejc-set-max-rows` set limit for the number of records to contain in ResultSet
-(`999` by default). Set to `nil` if you want to disable this limit.
+(`99` by default). Set to `nil` if you want to disable this limit.
 Also, you can set it the same value as `ejc-set-fetch-size`. In this case,
 if your select query returns more rows than passed to `ejc-set-fetch-size` you
-will not receive messages like `"Too many rows. Only 100 from 999+ are shown."`,
+will not receive messages like `"Too many rows. Only 50 from 99+ are shown."`,
 but it will increase select query execution performance.
 
 `ejc-set-column-width-limit` set limit for the number of chars per column to
@@ -545,7 +545,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 <a id="basic-use-case"></a>
 ### Basic use case
 
-First of all, open your SQL buffer file (or any `sql-mode` buffer).
+First of all, open your SQL file (or any `sql-mode` buffer).
 
 On the other hand, there is a handy function to create temporary `sql-mode`
 buffers for playing with SQL: `ejc-get-temp-editor-buffer`.

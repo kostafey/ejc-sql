@@ -82,7 +82,9 @@
 (defcustom ejc-result-table-impl 'orgtbl-mode
   "Set mode for result-set table. Possible values are one of:
 'orgtbl-mode
-'ejc-result-mode.")
+'ejc-result-mode."
+  :group 'ejc-sql
+  :type 'symbol)
 
 (defcustom ejc-org-mode-babel-wrapper t
   "Add wrapper around org-mode default `org-babel-execute:sql'."
@@ -612,6 +614,7 @@ any SQL buffer to connect to exact database, as always. "
                                 &key
                                 start-time
                                 rows-limit
+                                column-width-limit
                                 append
                                 sync
                                 display-result
@@ -625,6 +628,7 @@ any SQL buffer to connect to exact database, as always. "
        prepared-sql
        :start-time start-time
        :rows-limit rows-limit
+       :column-width-limit column-width-limit
        :append append
        :sync sync
        :display-result display-result
@@ -693,7 +697,7 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   (ejc-spinner-stop)
   (if (and (clomacs-get-connection "ejc-sql")
            (ejc--is-query-running-p))
-      (let ((start-time (ejc--cancel-query)))
+      (let ((start-time (or start-time (ejc--cancel-query))))
         (ejc-message-query-done start-time :terminated))
     (keyboard-quit)))
 
@@ -742,12 +746,17 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
                               :entity-name entity-name
                               :result-file (ejc-next-result-file-path)))
 
-(cl-defun ejc-eval-user-sql (sql &key rows-limit sync display-result)
+(cl-defun ejc-eval-user-sql (sql &key
+                                 rows-limit
+                                 column-width-limit
+                                 sync
+                                 display-result)
   "User starts SQL evaluation process."
   (message "Processing SQL query...")
   (ejc-eval-sql-and-log  ejc-db
                          sql
                          :rows-limit rows-limit
+                         :column-width-limit column-width-limit
                          :start-time (current-time)
                          :sync sync
                          :display-result display-result))
@@ -785,6 +794,7 @@ boundaries."
   (ejc-eval-user-sql
    (ejc-select-db-meta-script ejc-db :all-tables)
    :rows-limit 0
+   :column-width-limit 0
    :display-result t))
 
 ;;;###autoload
@@ -795,6 +805,7 @@ boundaries."
   (ejc-eval-user-sql
    (ejc-select-db-meta-script ejc-db :views)
    :rows-limit 0
+   :column-width-limit 0
    :display-result t))
 
 ;;;###autoload
@@ -823,6 +834,7 @@ boundaries."
    (ejc-select-db-meta-script ejc-db :procedures
                               :owner (ejc-get-this-owner ejc-db))
    :rows-limit 0
+   :column-width-limit 0
    :display-result t))
 
 ;;;###autoload
@@ -831,7 +843,6 @@ boundaries."
   "Switch to buffer dedicated to ad-hoc edit and SQL scripts.
 If the buffer is not exists - create it.
 Buffer can be saved to file with `ejc-temp-editor-file' path."
-  (interactive)
   (let* ((tmp-file-name (if num
                             (format "%s-%s"
                                     ejc-temp-editor-buffer-name
@@ -860,7 +871,7 @@ Buffer can be saved to file with `ejc-temp-editor-file' path."
 (defun ejc-open-log ()
   (interactive)
   (find-file-read-only (ejc-get-log-file-path))
-  (end-of-buffer))
+  (goto-char (point-max)))
 
 ;;;###autoload
 (defun ejc-version ()

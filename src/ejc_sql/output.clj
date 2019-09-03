@@ -78,11 +78,11 @@
 
 (def fetch-size
   "Limit number of records to output."
-  (atom 100))
+  (atom 50))
 
 (def max-rows
   "Limit number of records to contain in ResultSet."
-  (atom 999))
+  (atom 99))
 
 (def column-width-limit
   "Limit number of chars per column to output."
@@ -147,7 +147,9 @@ E.g. transtofm from: a | b | c into: a | 1
 
 (defn trim-max-width [x]
   (let [s (str x)]
-    (if (and *max-column-width* (> (count s) *max-column-width*))
+    (if (and *max-column-width*
+             (> *max-column-width* 0)
+             (> (count s) *max-column-width*))
       (str (subs s 0 (- *max-column-width* 3)) "...")
       s)))
 
@@ -165,10 +167,10 @@ E.g. transtofm from: a | b | c into: a | 1
                         [(take (+ row-limit 1) rows)
                          (format "Too many rows. Only %s from %s%s are shown."
                                  row-limit
-                                 (- (count rows) 1)
+                                 (min @max-rows (- (count rows) 1))
                                  (if (and @max-rows
                                           (> @max-rows 0)
-                                          (= @max-rows (- (count rows) 1)))
+                                          (> (- (count rows) 1) @max-rows))
                                    "+" ""))]
                         [rows ""])
            [headers rows] [(map name (first rows)) (rest rows)]
