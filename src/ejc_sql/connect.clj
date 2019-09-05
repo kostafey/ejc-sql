@@ -168,9 +168,14 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
          (let [stmt (j/prepare-statement
                      conn sql
                      {:fetch-size (or fetch-size @o/fetch-size 0)
-                      ;; Get one more row to recognize that the actual
-                      ;; result set size is bigger than `max-rows`.
-                      :max-rows (or max-rows (+ @o/max-rows 1) 0)})]
+                      :max-rows (or max-rows
+                                    (if (> @o/max-rows 0)
+                                      ;; Get one more row to recognize that
+                                      ;; the actual result set size is bigger
+                                      ;; than `max-rows`.
+                                      (+ @o/max-rows 1)
+                                      @o/max-rows)
+                                    0)})]
            (swap! current-query assoc
                   :stmt stmt
                   :conn conn)

@@ -153,12 +153,16 @@ E.g. transtofm from: a | b | c into: a | 1
       (str (subs s 0 (- *max-column-width* 3)) "...")
       s)))
 
+(defn min-not-zero [x y]
+  (min (if (> x 0) x y)
+       y))
+
 (defn print-table
   ([rows limit]
    "Converts a seq of seqs to a textual table. Uses the first seq as the table
   headings and the remaining seqs as rows."
    (when (seq rows)
-     (let [row-limit (or limit @fetch-size)
+     (let [row-limit (or limit (min-not-zero @max-rows @fetch-size))
            [rows msg] (if (and row-limit
                                (> row-limit 0)
                                ;; Since `rows` parameter contains a header
@@ -167,7 +171,7 @@ E.g. transtofm from: a | b | c into: a | 1
                         [(take (+ row-limit 1) rows)
                          (format "Too many rows. Only %s from %s%s are shown."
                                  row-limit
-                                 (min @max-rows (- (count rows) 1))
+                                 (min-not-zero @max-rows (- (count rows) 1))
                                  (if (and @max-rows
                                           (> @max-rows 0)
                                           (> (- (count rows) 1) @max-rows))
