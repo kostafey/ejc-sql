@@ -169,7 +169,9 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                      conn sql
                      {:fetch-size (or fetch-size @o/fetch-size 0)
                       :max-rows (or max-rows
-                                    (if (> @o/max-rows 0)
+                                    (if (and
+                                         (> @o/max-rows 0)
+                                         (not (= @o/max-rows @o/fetch-size)))
                                       ;; Get one more row to recognize that
                                       ;; the actual result set size is bigger
                                       ;; than `max-rows`.
