@@ -127,6 +127,7 @@ Enable ElDoc for `ejc-sql` minor mode:
 
 ElDoc for functions and procedures is available for the following databases:
 
+* Oracle
 * PostgreSQL
 * MySQL
 

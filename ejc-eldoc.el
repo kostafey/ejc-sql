@@ -56,6 +56,16 @@
     (goto-char (nth 1 (syntax-ppss)))
     (thing-at-point 'symbol)))
 
+(defun ejc-get-package-before-point ()
+  "Return package name of stored procedure before the point."
+  (interactive)
+  (save-excursion
+    (goto-char (nth 1 (syntax-ppss)))
+    (beginning-of-thing 'symbol)
+    (when (equal (string (char-before)) ".")
+      (left-char)
+      (thing-at-point 'symbol))))
+
 (defun ejc-get-parameter-index ()
   "Return parameter number around the point."
   (interactive)
@@ -64,8 +74,9 @@
     (save-excursion
       (while (nth 2 (syntax-ppss))
         (let ((pss (nth 2 (syntax-ppss))))
-          (if (member ch (list " " "\t" "\n" ","))
-              (setq index (1+ index)))
+          (when (member ch (list " " "\t" "\n" ","))
+            (setq index (1+ index))
+            (setq ch nil))
           (goto-char pss)
           (setq index (1+ index)))))
     (max (1- index) 0)))
@@ -75,10 +86,12 @@
   (if-let ((stored-procedure (condition-case nil
                                  (ejc-get-procedure-before-point)
                                (error nil))))
-      (let ((type (ejc-get-entity-type ejc-db stored-procedure)))
+      (let ((type (ejc-get-entity-type ejc-db stored-procedure))
+            (package (ejc-get-package-before-point)))
         (if (or (eq type :procedure)
                 (eq type :function))
             (let ((params (car (ejc-get-parameters ejc-db
+                                                   package
                                                    stored-procedure
                                                    t)))
                   (p-index (ejc-get-parameter-index)))

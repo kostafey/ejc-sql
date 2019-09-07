@@ -128,8 +128,13 @@
                     SELECT object_type
                     FROM all_objects
                     WHERE UPPER(OBJECT_NAME) = '%s'
-                      AND object_type NOT IN ('SYNONYM', 'PACKAGE BODY')"
-                    (s/upper-case entity-name)))
+                      AND object_type NOT IN ('SYNONYM', 'PACKAGE BODY')
+                    UNION
+                    SELECT 'PROCEDURE' FROM dba_procedures
+                    WHERE UPPER(PROCEDURE_NAME) = '%s'
+                      AND rownum = 1"
+                           (s/upper-case entity-name)
+                           (s/upper-case entity-name)))
     :view        (fn [& {:keys [entity-name]}]
                    (format "
                     SELECT text
@@ -188,6 +193,17 @@
                     %s " (if owner
                            (format "WHERE owner = '%s' " owner)
                            "")))
+    :parameters (fn [& {:keys [package entity-name]}]
+                  (format "
+                      SELECT data_type, argument_name
+                      FROM SYS.ALL_ARGUMENTS
+                      WHERE object_name  = '%s'
+                        AND in_out = 'IN'
+                        %s "
+                          (s/upper-case entity-name)
+                          (if package
+                            (format "AND package_name = '%s'" package)
+                            "")))
     :package   (fn [& {:keys [entity-name]}]
                  ;; entity-name is a package name here
                  (format "
@@ -530,6 +546,7 @@
 (defn select-db-meta-script [db meta-type &
                              {:keys [owner
                                      table
+                                     package
                                      entity-name]}]
   "Return SQL request to obtain some database structure info."
   (let [db-type (get-db-type db)
@@ -541,6 +558,7 @@
                             :owner owner
                             :schema owner
                             :table table
+                            :package package
                             :entity-name entity-name
                             :db-name (get-db-name db)))]
     sql))
@@ -661,14 +679,17 @@ check if receiveing process is not running, then start it."
   {"character varying" "varchar"
    "bit varying" "varbit"})
 
-(defn get-parameters [db stored-procedure & [force?]]
+(defn get-parameters [db package stored-procedure & [force?]]
   "Return parameters list of `stored-procedure` from cache if already received
 from DB, check if receiveing process is not running, then start it."
   (let [db-type (get-db-type db)]
     (get-or-create-cache
      :db db
-     :path [:stored-procedures stored-procedure]
+     :path (if package
+             [:stored-procedures package stored-procedure]
+             [:stored-procedures stored-procedure])
      :sql (select-db-meta-script db :parameters
+                                 :package package
                                  :entity-name stored-procedure)
      :force? force?
      :exec-fn
@@ -678,6 +699,16 @@ from DB, check if receiveing process is not running, then start it."
                      (list (db->value db sql)))
        :mysql (fn [db sql]
                 (list (rest (safe-query db sql))))
+       :oracle (fn [db sql]
+                 (list
+                  (map
+                   (fn [[param-type param-name]]
+                     (format "%s %s" param-type param-name))
+                   (rest
+                    (safe-query db
+                                sql
+                                :row-fn identity
+                                :column-name nil)))))
        nil)
      :handler-fn
      (case db-type

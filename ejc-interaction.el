@@ -57,8 +57,7 @@
   (ejc-add-classpath (alist-get :classpath conn-struct))
   (if-let ((classname (alist-get :classname conn-struct)))
       (ejc-import (read classname)))
-  (ejc-sql-set-db conn-struct)
-  (setq-local ejc-connection-struct conn-struct))
+  (ejc-sql-set-db conn-struct))
 
 (clomacs-defun ejc--eval-sql-and-log-print
                eval-sql-and-log-print
@@ -238,7 +237,7 @@
 (defun ejc-invalidate-cache ()
   "Clean current connection cache (database owners and tables list)."
   (interactive)
-  (ejc-invalidate-cache-inner ejc-connection-struct))
+  (ejc-invalidate-cache-inner ejc-db))
 
 (clomacs-defun ejc-get-cache
                get-cache
