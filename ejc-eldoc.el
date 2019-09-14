@@ -81,11 +81,21 @@
           (setq index (1+ index)))))
     (max (1- index) 0)))
 
+(defun ejc-get-word-before-point ()
+  "Return SQL word before the point."
+  (interactive)
+  (save-excursion
+    (if (not (member (string (preceding-char)) (list " " "\t" "\n")))
+        (forward-same-syntax -1))
+    (goto-char (nth 2 (syntax-ppss)))
+    (thing-at-point 'symbol)))
+
 (defun ejc-eldoc-function ()
   "Returns a doc string appropriate for the current context, or nil."
-  (if-let ((stored-procedure (condition-case nil
-                                 (ejc-get-procedure-before-point)
-                               (error nil))))
+  (if-let ((stored-procedure (if (ejc-buffer-connected-p)
+                                 (condition-case nil
+                                     (ejc-get-procedure-before-point)
+                                   (error nil)))))
       (let ((type (ejc-get-entity-type ejc-db stored-procedure))
             (package (ejc-get-package-before-point)))
         (if (or (eq type :procedure)

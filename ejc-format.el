@@ -296,13 +296,6 @@ boundaries."
              (sql-word (buffer-substring beg end)))
         sql-word))))
 
-(defun ejc-get-word-before-point ()
-  "Return SQL word before the point."
-  (interactive)
-  (save-excursion
-    (goto-char (nth 2 (syntax-ppss)))
-    (thing-at-point 'symbol)))
-
 (provide 'ejc-format)
 
 ;;; ejc-format.el ends here
