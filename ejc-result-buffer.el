@@ -132,40 +132,41 @@ or error messages."
   "Popup buffer with last SQL execution result output."
   (interactive)
   (let ((output-buffer (ejc-get-output-buffer)))
-    (set-buffer output-buffer)
-    (read-only-mode -1)
-    (erase-buffer)
-    (when mode
-      (ejc-update-modes-ring mode)
-      (funcall mode))
-    (ejc-add-connection connection-name db)
-    (if result
-        ;; SQL evaluation result passed directly to fn
-        (insert result)
-      ;; SQL evaluation result rendered to file
-      (insert-file-contents (ejc-get-result-file-path)))
-    (ejc-output-mode-specific-customization)
-    (beginning-of-buffer)
-    (let* ((window (get-buffer-window output-buffer t))
-           (frame (window-frame window)))
-      (if (not window)
-          (display-buffer output-buffer))
-      (if (not (eq frame (selected-frame)))
-          (make-frame-visible frame))
-      (if goto-symbol
-          ;; Reversed, since if the result buffer is a package, it can
-          ;; contain 2 concatenated parts: header and implementation.
-          ;; Assume user wants to locate a point (cursor) in
-          ;; procedure implementation.
-          (if-let* ((items-list (reverse (delq imenu--rescan-item
-                                               (ejc-flatten-index
-                                                (condition-case nil
-	                                                (imenu--make-index-alist)
-	                                              (error nil))))))
-                    ;; Find symbol position (typically to locate the
-                    ;; beginning of procedure implementation in the package).
-                    (pos (alist-get goto-symbol items-list nil nil 'equal)))
-              (set-window-point window pos))))))
+    (with-current-buffer output-buffer
+      (read-only-mode -1)
+      (erase-buffer)
+      (when mode
+        (ejc-update-modes-ring mode)
+        (funcall mode))
+      (ejc-add-connection connection-name db)
+      (if result
+          ;; SQL evaluation result passed directly to fn
+          (insert result)
+        ;; SQL evaluation result rendered to file
+        (insert-file-contents (ejc-get-result-file-path)))
+      (ejc-output-mode-specific-customization)
+      (beginning-of-buffer)
+      (let* ((window (or (get-buffer-window output-buffer t)
+                         (progn
+                           (display-buffer output-buffer)
+                           (get-buffer-window output-buffer t))))
+             (frame (window-frame window)))
+        (if (not (eq frame (selected-frame)))
+            (make-frame-visible frame))
+        (if goto-symbol
+            ;; Reversed, since if the result buffer is a package, it can
+            ;; contain 2 concatenated parts: header and implementation.
+            ;; Assume user wants to locate a point (cursor) in
+            ;; procedure implementation.
+            (if-let* ((items-list (reverse (delq imenu--rescan-item
+                                                 (ejc-flatten-index
+                                                  (condition-case nil
+                                                      (imenu--make-index-alist)
+                                                    (error nil))))))
+                      ;; Find symbol position (typically to locate the
+                      ;; beginning of procedure implementation in the package).
+                      (pos (alist-get goto-symbol items-list nil nil 'equal)))
+                (set-window-point window pos)))))))
 
 (cl-defun ejc-show-ring-result (prev-or-next)
   (let ((output-buffer (ejc-get-output-buffer)))
