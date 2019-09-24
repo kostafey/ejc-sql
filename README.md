@@ -206,7 +206,7 @@ VALUES ('sweater', 14.56, 5, CONCAT('A sweater, also called a jumper\n'
                                     'crocheted material that covers\n'
                                     'the upper part of the body.'));
 ```
-**output examples for** `orgtbl-mode`:
+**output examples for** `orgtbl-mode` (by default):
 ```sql
 SELECT * FROM product
 ```
@@ -546,7 +546,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 <a id="basic-use-case"></a>
 ### Basic use case
 
-First of all, open your SQL file (or any `sql-mode` buffer).
+First of all, open your SQL source file (or any `sql-mode` buffer).
 
 On the other hand, there is a handy function to create temporary `sql-mode`
 buffers for playing with SQL: `ejc-get-temp-editor-buffer`.
