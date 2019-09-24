@@ -7,8 +7,7 @@ cache:
       - "$HOME/.cask/"
 
 env:
-  - EVM_EMACS=emacs-25.3-travis
-  - EVM_EMACS=emacs-26.1-travis
+  - EVM_EMACS=emacs-26.3-travis
 
 before_install:
     # Configure $PATH: Executables are installed to $HOME/bin
