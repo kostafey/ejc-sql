@@ -218,7 +218,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                              [(s/trim (s/replace-first sql delimiter-re ""))
                               (second (re-find delimiter-re sql))]
                              [sql nil])
-        statement-separator (or manual-separator (:separator db) ";")
+        sql (handle-special-cases db sql)
+        statement-separator (or manual-separator ";")
         results (doall
                  (for [sql-part (filter
                                  ;; Remove parts contains comments only.
@@ -226,9 +227,11 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                    (not (empty?
                                          (s/trim
                                           (s/replace part comments-re "")))))
-                                 (s/split
-                                  (handle-special-cases db sql)
-                                  (get-separator-re statement-separator)))]
+                                 (if (not (:separator db))
+                                   (s/split
+                                    sql
+                                    (get-separator-re statement-separator))
+                                   [sql]))]
                    (let [[result-type result] (eval-sql-core :db db
                                                              :sql sql-part)]
                        (if (= result-type :result-set)

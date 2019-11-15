@@ -27,7 +27,8 @@
   "The char with purpose to separate the SQL statement both other.")
 
 (defun ejc-sql-separator-re ()
-  (format "^\\s-*%s\\s-*" ejc-sql-separator))
+  (format "^\\s-*%s\\s-*" (or (alist-get :separator ejc-db)
+                              ejc-sql-separator)))
 
 (defun ejc-get-border-top ()
   "Get top position of batch statement(s) seperator `ejc-sql-separator'.
