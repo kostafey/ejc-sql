@@ -73,9 +73,10 @@ For debug purpose."
   (or (is-statement-not-closed?)
       (is-query-process-running?)))
 
-(defn cancel-query []
+(defn cancel-query
   "Terminate current (long) running query. Aimed to cancel SELECT queries.
-Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
+  Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
+  []
   (future
     (if (is-statement-not-closed?)
       (let [conn (:conn @current-query)]
@@ -106,10 +107,11 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
       (catch java.sql.SQLFeatureNotSupportedException e
         (abstract-is-valid (.getMessage e))))))
 
-(defn get-separator-re [separator]
+(defn get-separator-re
   "Handle cases where separator is a part of string in SQL query.
 E.g. you can use default separator char `/` in this query:
 SELECT * FROM urls WHERE path like '%http://localhost%'"
+  [separator]
   (re-pattern
    (format
     "%s(?<!\\s{0,1000}--.{0,1000})(?=(([^\"']*[\"']){2})*[^\"']*$)"
@@ -130,22 +132,24 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 (clomacs-defn complete-query ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
 
-(defn complete [text & {:keys [display-result
-                               result-file
-                               append
-                               mode
-                               start-time
-                               status
-                               connection-name
-                               db
-                               goto-symbol]
-                        :or {display-result true
-                             append false
-                             mode 'ejc-result-mode}}]
+(defn complete
   "Complete query and display `text` as a result."
+  [text & {:keys [display-result
+                  result-file
+                  append
+                  mode
+                  start-time
+                  status
+                  connection-name
+                  db
+                  goto-symbol]
+           :or {display-result true
+                append false
+                mode 'ejc-result-mode}}]
   (complete-query
-   (if text
+   (when text
      (o/write-result-file text :result-file result-file :append append))
+
    :start-time start-time
    :status status
    :display-result display-result
@@ -302,8 +306,9 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
              :runner (future (run-query))
              :start-time start-time))))
 
-(defn query-meta [db sql]
+(defn query-meta
   "Get metadata for `sql` result dataset."
+  [db sql]
   (try
     {:success true
      :result (j/db-query-with-resultset

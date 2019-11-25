@@ -37,12 +37,13 @@
   "Signs of database structure cache created."
   (atom {}))
 
-(defn get-cache []
+(defn get-cache
   "Output actual cache."
+  []
   @cache)
 
-(defn invalidate-cache [db]
+(defn invalidate-cache
   "Clean your current connection cache (database owners and tables list)."
+  [db]
   (swap! cache assoc-in [db] nil)
   (swap! cache-creation-promises assoc-in [db] nil))
-

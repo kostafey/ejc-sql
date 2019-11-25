@@ -30,14 +30,15 @@
   "true if `seq` contains `elm`.
   Search case insensitive wthen `case-sensitive` is false."
   [seq elm & {:keys [case-sensitive] :or {case-sensitive true}}]
-  (if (and elm seq)
+  (when (and elm seq)
     (if (not case-sensitive)
       (in? (mapv s/lower-case seq) (s/lower-case elm))
       (some #(= elm %) seq))))
 
-(defn get->in [obj path & {:keys [case-sensitive] :or {case-sensitive false}}]
+(defn get->in
   "Case insensitive `get-in` for last key in sequence."
-  (if case-sensitive
+  [obj path & {:keys [case-sensitive] :or {case-sensitive false}}]
+  (when case-sensitive
     (get-in obj path)
     (get-in obj
             (conj (into [] (butlast path))
@@ -51,7 +52,7 @@
 
 (defn simple-join [n s]
   (s/join
-   (for [x (range 0 n)] s)))
+   (for [_ (range 0 n)] s)))
 
 (defn class-exists? [c]
   (resolve-class (.getContextClassLoader (Thread/currentThread)) c))
@@ -77,8 +78,9 @@
            (str (subs result 0 (- *max-column-width* 3)) "...")
            result))))))
 
-(defn clob-to-string-row [row single-record?]
+(defn clob-to-string-row
   "Check all data in row if it's a CLOB and convert CLOB to string."
+  [row single-record?]
   (mapv (fn [field]
           (if (is-clob? field)
             (clob-to-string field single-record?)
@@ -110,8 +112,9 @@
     "DROP"
     "RENAME"))
 
-(defn determine-query [sql words]
+(defn determine-query
   "Determine if current SQL starts with one of the words from `words` list."
+  [sql words]
   (let [sql (clean-sql sql)
         ignore-set #{\( \[}
         pos (loop [pos 0]
@@ -124,10 +127,12 @@
 (defn select? [sql]
   (determine-query sql select-words))
 
-(defn dml? [sql]
+(defn dml?
   "Determine if current SQL is Data Manipulation Language (DML) case."
+  [sql]
   (determine-query sql dml-words))
 
-(defn ddl? [sql]
+(defn ddl?
   "Determine if current SQL is Data Definition Language (DDL) case."
+  [sql]
   (determine-query sql ddl-words))
