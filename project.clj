@@ -4,7 +4,7 @@
   :license {:name "GPL 2.0+"
             :url "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojars.kostafey/java.jdbc "0.7.10-SNAPSHOT"]
+                 [org.clojure/java.jdbc "0.7.10"]
                  [org.hibernate/hibernate-core "5.4.1.Final"]
                  [com.cemerick/pomegranate "1.1.0"]
                  [org.slf4j/slf4j-simple "1.7.26"]
