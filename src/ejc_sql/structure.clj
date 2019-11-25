@@ -28,9 +28,10 @@
    [ejc-sql.output :as o]
    [ejc-sql.keywords :as k]))
 
-(defn- safe-query [db sql & {:keys [row-fn column-name]
-                             :or {row-fn identity}}]
+(defn- safe-query
   "Return `sql` query result or nil in case of error."
+  [db sql & {:keys [row-fn column-name]
+             :or {row-fn identity}}]
   (try
     (if column-name
       [[(keyword column-name)]
@@ -40,25 +41,28 @@
                               :row-fn row-fn}))
     (catch Exception _)))
 
-(defn- db->column [db sql & {:keys [row-fn column-name]
-                             :or {row-fn identity}}]
+(defn- db->column
   "Execute `sql`, return `column-name` or first column
-(if `column-name` is not passed) of result set as result list."
-  (if sql
+  (if `column-name` is not passed) of result set as result list."
+  [db sql & {:keys [row-fn column-name]
+             :or {row-fn identity}}]
+  (when sql
     (rest (map first (safe-query db sql
                                  :row-fn row-fn
                                  :column-name column-name)))))
 
-(defn- db->>column [db sql]
+(defn- db->>column
   "Execute `sql`, return last column of result set as result list."
-  (if sql
+  [db sql]
+  (when sql
     (rest
      (map last
           (j/query db (list sql) {:as-arrays? true})))))
 
-(defn- db->value [db sql & {:keys [row-fn]
-                            :or {row-fn identity}}]
+(defn- db->value
   "Execute `sql`, return first value of first column of result set as result."
+  [db sql & {:keys [row-fn]
+             :or {row-fn identity}}]
   (first (db->column db sql :row-fn row-fn)))
 
 (defn get-ms-sql-server-version [ver]
@@ -517,11 +521,12 @@
     (keyword (or (product-assoc result) result))))
 
 (defn- get? [obj & [force?]]
-  (if (and obj (or force? (realized? obj)))
+  (when (and obj (or force? (realized? obj)))
     @obj))
 
-(defn get-this-owner [db & [owner]]
+(defn get-this-owner
   "Return current owner/schema."
+  [db & [owner]]
   (or owner
       (get? (get-in @cache [db :this-owner]) false)
       (do
@@ -543,12 +548,13 @@
                         (get-user db)))) db)))
         (get? (get-in @cache [db :this-owner]) true))))
 
-(defn select-db-meta-script [db meta-type &
-                             {:keys [owner
-                                     table
-                                     package
-                                     entity-name]}]
+(defn select-db-meta-script
   "Return SQL request to obtain some database structure info."
+  [db meta-type &
+   {:keys [owner
+           table
+           package
+           entity-name]}]
   (let [db-type (get-db-type db)
         meta-type (if (keyword? meta-type) meta-type (keyword meta-type))
         ;; owner (get-this-owner db owner)
@@ -563,40 +569,42 @@
                             :db-name (get-db-name db)))]
     sql))
 
-(defn get-namespace [db]
+(defn get-namespace
   "Find tables namespace for current database type.
-Possible cases for namespace:
-* schema is sutable (or both schema and owner)
+  Possible cases for namespace:
+  * schema is sutable (or both schema and owner)
   for this DB type - use `:schemas`
-* only owner is sutable, so use `:owners`
-* none of them is sutable - `nil`"
+  * only owner is sutable, so use `:owners`
+  * none of them is sutable - `nil`"
+  [db]
   (let [db-type (get-db-type db)]
-   (cond
-     (get-in queries [db-type :schemas]) :schemas
-     (get-in queries [db-type :owners]) :owners
-     :else nil)))
+    (cond
+      (get-in queries [db-type :schemas]) :schemas
+      (get-in queries [db-type :owners]) :owners
+      :else nil)))
 
-(defn get-or-create-cache [& {:keys [db
-                                     path
-                                     sql
-                                     force?
-                                     direct-value
-                                     exec-fn
-                                     filter-fn
-                                     handler-fn]
-                              :or {exec-fn db->column}}]
+(defn get-or-create-cache
   "Fill `cache` atom with database structure data, then get data from it.
-Parameters:
-- `db` - database connection map
-- `path` - the keys used to define the place to store data in `cache` atom
-- `sql` - query to obtain the desired data from the database
-- `force?` - when true, eval `sql` immediately and return data
-- `direct-value` - sometimes there is no need to eval `sql` to obtain some
+  Parameters:
+  - `db` - database connection map
+  - `path` - the keys used to define the place to store data in `cache` atom
+  - `sql` - query to obtain the desired data from the database
+  - `force?` - when true, eval `sql` immediately and return data
+  - `direct-value` - sometimes there is no need to eval `sql` to obtain some
                    data,and value of this parameter, if it's defined, can be
                    used as-is
-- `exec-fn` - SQL execution function (`db->column` by default)
-- `filter-fn` - filer function applied to SQL execution results
-- `handler-fn` - additional processing applied to SQL execution results."
+  - `exec-fn` - SQL execution function (`db->column` by default)
+  - `filter-fn` - filer function applied to SQL execution results
+  - `handler-fn` - additional processing applied to SQL execution results."
+  [& {:keys [db
+             path
+             sql
+             force?
+             direct-value
+             exec-fn
+             filter-fn
+             handler-fn]
+      :or {exec-fn db->column}}]
   (let [full-path (into [db] path)]
     (if (not (get->in @cache full-path))
       (let [flat-path [db (keyword (s/join "-" (map name path)))]
@@ -624,9 +632,10 @@ Parameters:
                              (list))))))))
     (get? (get-in @cache full-path) force?)))
 
-(defn get-owners [db & [force?]]
+(defn get-owners
   "Return owners list from cache if already received from DB,
-check if receiveing process is not running, then start it."
+  check if receiveing process is not running, then start it."
+  [db & [force?]]
   (let [namespace (get-namespace db)]
     (if namespace
       (get-or-create-cache :db db
@@ -636,9 +645,10 @@ check if receiveing process is not running, then start it."
       ;; Schemas or owners are not applicable to this database type.
       (list))))
 
-(defn get-tables [db & [owner_ force?]]
+(defn get-tables
   "Return tables list for this owner from cache if already received from DB,
-check if receiveing process is not running, then start it."
+  check if receiveing process is not running, then start it."
+  [db & [owner_ force?]]
   (let [owner (get-this-owner db owner_)]
     (if owner_
       (get-or-create-cache :db db
@@ -651,9 +661,10 @@ check if receiveing process is not running, then start it."
                            :force? force?
                            :exec-fn db->>column))))
 
-(defn get-views [db & [force?]]
+(defn get-views
   "Return views list from cache if already received from DB,
-check if receiveing process is not running, then start it."
+  check if receiveing process is not running, then start it."
+  [db & [force?]]
   (if (not (get-in @cache [db :views]))
     (swap! cache assoc-in [db :views]
            (future ((fn [db]
@@ -661,10 +672,11 @@ check if receiveing process is not running, then start it."
                         (sort (db->column db sql)))) db))))
   (get? (get-in @cache [db :views]) force?))
 
-(defn get-colomns [db table force?]
+(defn get-colomns
   "Return colomns list for this table from cache if already received from DB,
-check if receiveing process is not running, then start it."
-  (if (not (get->in @cache [db :colomns table]))
+  check if receiveing process is not running, then start it."
+  [db table force?]
+  (when (not (get->in @cache [db :colomns table]))
     (swap! cache assoc-in [db :colomns table]
            (future ((fn [db table]
                       (let [sql (select-db-meta-script db :columns
@@ -679,9 +691,10 @@ check if receiveing process is not running, then start it."
   {"character varying" "varchar"
    "bit varying" "varbit"})
 
-(defn get-parameters [db package stored-procedure & [force?]]
+(defn get-parameters
   "Return parameters list of `stored-procedure` from cache if already received
-from DB, check if receiveing process is not running, then start it."
+  from DB, check if receiveing process is not running, then start it."
+  [db package stored-procedure & [force?]]
   (let [db-type (get-db-type db)]
     (get-or-create-cache
      :db db
@@ -723,9 +736,10 @@ from DB, check if receiveing process is not running, then start it."
                 (map #(s/join " " %) types))
        nil))))
 
-(defn get-keywords [db force?]
+(defn get-keywords
   "Return keywords list for this database type from cache if already received
-from DB, check if receiveing process is not running, then start it."
+  from DB, check if receiveing process is not running, then start it."
+  [db force?]
   (if-let [keywords-query (get-in queries [(get-db-type db) :keywords])]
     (get-or-create-cache :db db
                          :path [:keywords]
@@ -735,9 +749,10 @@ from DB, check if receiveing process is not running, then start it."
                          :force? force?
                          :filter-fn #(not (nil? %)))))
 
-(defn get-packages [db & [owner_ force?]]
+(defn get-packages
   "Return packages list for this owner from cache if already received from DB,
-check if receiveing process is not running, then start it."
+  check if receiveing process is not running, then start it."
+  [db & [owner_ force?]]
   (let [owner (get-this-owner db owner_)]
     (get-or-create-cache :db db
                          :path [:packages owner]
@@ -770,21 +785,24 @@ check if receiveing process is not running, then start it."
   ([]
    (list "t")))
 
-(defn autocomplete-result [result]
+(defn autocomplete-result
   "Output autocomplete result."
+  [result]
   (cons "nil" result))
 
-(defn autocomplete-nothing []
+(defn autocomplete-nothing
   "Output autocomplete nothing."
+  []
   (list "nil"))
 
-(defn get-owners-candidates [& {:keys [db sql prefix-1 buffer-name point]}]
+(defn get-owners-candidates
   "Return owners candidates autocomplete list from the database structure
-cache, async request to fill it, if not yet.
-The result list has the following structure:
-(pending item1 item2 ...)
-If `pending` is t - the async request to get the structure is running
-if `pending` is nil - no request is running, return result immediately."
+  cache, async request to fill it, if not yet.
+  The result list has the following structure:
+  (pending item1 item2 ...)
+  If `pending` is t - the async request to get the structure is running
+  if `pending` is nil - no request is running, return result immediately."
+  [& {:keys [db sql prefix-1 buffer-name point]}]
   (let [owners (get-owners db)]
     (if prefix-1
       ;; Assume schema|table.#<schemas-list> is not applicable.
@@ -795,8 +813,9 @@ if `pending` is nil - no request is running, return result immediately."
         ;; pending owners...
         (autocomplete-loading db buffer-name point)))))
 
-(defn get-tables-candidates [& {:keys [db sql prefix-1 buffer-name point]}]
+(defn get-tables-candidates
   "Return tables candidates autocomplete list."
+  [& {:keys [db sql prefix-1 buffer-name point]}]
   (let [tables (if (not prefix-1)
                  ;; something#
                  (get-tables db)
@@ -811,22 +830,25 @@ if `pending` is nil - no request is running, return result immediately."
       ;; pending tables...
       (autocomplete-loading))))
 
-(defn get-views-candidates [& {:keys [db sql buffer-name point]}]
+(defn get-views-candidates
   "Return views candidates autocomplete list."
+  [& {:keys [db sql buffer-name point]}]
   (if-let [views (get-views db)]
     (autocomplete-result views)
     ;; pending views...
     (autocomplete-loading)))
 
-(defn get-packages-candidates [& {:keys [db sql buffer-name point]}]
+(defn get-packages-candidates
   "Return packages candidates autocomplete list."
+  [& {:keys [db sql buffer-name point]}]
   (if-let [packages (get-packages db)]
     (autocomplete-result packages)
     ;; pending packages...
     (autocomplete-loading)))
 
-(defn match-alias? [sql owner table probable-alias]
+(defn match-alias?
   "Check if prefix (`probable-alias`) is alias for `table` in this `sql`."
+  [sql owner table probable-alias]
   (let [sql (s/lower-case sql)
         owner (if owner
                 (str (s/lower-case owner) "\\.")
@@ -838,8 +860,9 @@ if `pending` is nil - no request is running, return result immediately."
                             "\\s+" probable-alias))]
     (not (nil? (re-find alias-pattern sql)))))
 
-(defn get-all-tables [db]
+(defn get-all-tables
   "Get all tables for all owners/schemas."
+  [db]
   (flatten
    (mapv #(get-tables db % true)
          (get-owners db true))))
@@ -847,22 +870,25 @@ if `pending` is nil - no request is running, return result immediately."
 (def insert-re
   (re-pattern (str "(?i)\\s*INSERT\\s+INTO\\s+(\\S+)\\s+")))
 
-(defn insert-sql? [sql]
+(defn insert-sql?
   "If `sql` is INSERT query, return a table name used to insert new records.
-Otherwise return nil."
+  Otherwise return nil."
+  [sql]
   (second (re-find insert-re sql)))
 
 (def update-re
   (re-pattern (str "(?i)\\s*UPDATE\\s(\\S+)\\s+\n*SET.*")))
 
-(defn update-sql? [sql]
+(defn update-sql?
   "If `sql` is UPDATE query, return a table name used to modify the existing
-records. Otherwise return nil."
+  records. Otherwise return nil."
+  [sql]
   (second (re-find update-re sql)))
 
-(defn get-colomns-candidates [& {:keys [db sql prefix-1 prefix-2
-                                        buffer-name point]}]
+(defn get-colomns-candidates
   "Return colomns candidates autocomplete list."
+  [& {:keys [db sql prefix-1 prefix-2
+             buffer-name point]}]
   ;; Possible cases:
   ;; 1. [owner|schema.]table.#<colomns-list>
   ;; 2. SELECT alias.#<colomns-list> FROM [owner|schema.]table AS alias
@@ -953,9 +979,10 @@ records. Otherwise return nil."
                   ;; nothing to complete
                   (autocomplete-nothing))))))))))
 
-(defn get-entity-type [db entity-name]
+(defn get-entity-type
   "Determine DB entity type, whether it is a `:view`, `:type`,
-`:package`, `:namespace` or `:procedure`."
+  `:package`, `:namespace` or `:procedure`."
+  [db entity-name]
   (if-let [sql (and entity-name
                     (select-db-meta-script db :entity-type
                                            :entity-name entity-name))]
@@ -984,19 +1011,20 @@ records. Otherwise return nil."
         (format header-format entity-name sql))
       sql)))
 
-(defn get-entity-description [& {:keys [db
-                                        connection-name
-                                        prefix
-                                        entity-name
-                                        result-file]}]
+(defn get-entity-description
   "Get DB entity creation SQL.
-Database entity types:
-- `:table`
-- `:view`
-- `:package`
-- `:function`
-- `:procedure`
-- `:standard-function`."
+  Database entity types:
+  - `:table`
+  - `:view`
+  - `:package`
+  - `:function`
+  - `:procedure`
+  - `:standard-function`."
+  [& {:keys [db
+             connection-name
+             prefix
+             entity-name
+             result-file]}]
   (let [sql-object (or prefix entity-name)
         db-type (get-db-type db)]
     (if-let [type (get-entity-type db sql-object)]
@@ -1089,4 +1117,3 @@ Database entity types:
    :connection-name connection-name
    :db db
    :result-file result-file))
-
