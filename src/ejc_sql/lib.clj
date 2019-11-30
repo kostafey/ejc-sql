@@ -38,7 +38,7 @@
 (defn get->in
   "Case insensitive `get-in` for last key in sequence."
   [obj path & {:keys [case-sensitive] :or {case-sensitive false}}]
-  (when case-sensitive
+  (if case-sensitive
     (get-in obj path)
     (get-in obj
             (conj (into [] (butlast path))

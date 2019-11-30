@@ -33,6 +33,30 @@ Uppercase by default, set to nil to use downcase candidates."
   :safe #'booleanp
   :group 'ejc-sql)
 
+(defvar ejc-ansi-sql-words
+  '("select" "where" "and" "or" "from" "insert" "update" "delete" "join"
+    "order by" "distinct" "create" "alter" "drop" "like"
+    "grant" "revoke" "deny" "commit" "rollback" "savepoint"))
+
+(defvar ejc-auxulary-sql-words
+  '("show" "errors" "desc" "count" "type" "table" "function" "procedure"
+    "begin" "end" "for" "return"))
+
+(cl-defun ejc-complete-auto-complete (buffer-name point)
+  "Called by Clojure side when db structure cache creation process completes.
+When the user typed some chars, the request for autocompletion is passed to
+Clojure side. If Clojure side has the database structure cache, autocompletion
+variants returned immediately. If not, the database structure cache creation
+process starts. It's async, so the process of Emacs is not blocked and the
+user can move point (cursor), edit SQL and so on. After Clojure side cache
+creation process finishes, it calls this `ejc-complete-auto-complete'
+function. If the user waits for autocompletion and doesn't move point
+(cursor) during this process, he will get autocompletion variants."
+  (switch-to-buffer buffer-name)
+  (if (equal point (point))
+      (auto-complete))
+  nil)
+
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
   (save-excursion
@@ -47,15 +71,6 @@ Uppercase by default, set to nil to use downcase candidates."
                (<= space-dist space)) ; is a dot completition
           (buffer-substring (1+ space) dot)
         nil))))
-
-(defvar ejc-ansi-sql-words
-  '("select" "where" "and" "or" "from" "insert" "update" "delete" "join"
-    "order by" "distinct" "create" "alter" "drop" "like"
-    "grant" "revoke" "deny" "commit" "rollback" "savepoint"))
-
-(defvar ejc-auxulary-sql-words
-  '("show" "errors" "desc" "count" "type" "table" "function" "procedure"
-    "begin" "end" "for" "return"))
 
 (defun ejc-not-nil-str (s)
   (not (equal s "nil")))
