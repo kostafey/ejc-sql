@@ -239,10 +239,17 @@
   (interactive)
   (ejc-invalidate-cache-inner ejc-db))
 
-(clomacs-defun ejc-get-cache
-               get-cache
+(clomacs-defun ejc-output-cache
+               output-cache
                :lib-name "ejc-sql"
-               :namespace ejc-sql.structure)
+               :namespace ejc-sql.cache
+               :return-type :eval)
+
+(defun ejc-print-cache ()
+  "Print current database connection cache when run from connected SQL buffer.
+Print all connections cache otherwise."
+  (interactive)
+  (pprint (ejc-output-cache ejc-db)))
 
 (clomacs-defun ejc-select-db-meta-script
                select-db-meta-script

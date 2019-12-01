@@ -417,10 +417,10 @@
                 ORDER BY ordinal_position) column_list"
                      entity-name
                      (s/upper-case entity-name)))
-    :owners  (default-queries :owners)
-    :tables  (default-queries :tables)
+    :schemas    (default-queries :schemas)
+    :tables     (default-queries :tables)
     :all-tables (default-queries :all-tables)
-    :columns (default-queries :columns)
+    :columns    (default-queries :columns)
     :procedures (fn [& _] "
                     SELECT p.proname
                     FROM   pg_catalog.pg_namespace n

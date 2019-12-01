@@ -90,7 +90,8 @@ autocompletion variants returned immediately. If not, the database structure
 cache creation process starts. It's async, so the process of Emacs is not
 blocked and the user can move point (cursor), edit SQL and so on. If the user
 waits for autocompletion and doesn't move point (cursor) during this process,
-he will get autocompletion variants.
+he will get autocompletion variants. To checkout the current database connection
+cache run `ejc-print-cache`.
 
 Any successfully executed DDL query (`CREATE`, `ALTER`, `DROP`, `RENAME`) clears
 current connection cache, so next autocompletion attempt will recreate it.
@@ -757,6 +758,7 @@ List of other interactive functions
  `ejc-show-constraints-list`        | Show constraints list
  `ejc-open-log`                     | Open log
  `ejc-get-temp-editor-buffer`       | Create ad-hoc SQL editor buffer, use prefix arg number to get many buffers
+ `ejc-print-cache`                  | Output current connection cache
  `ejc-invalidate-cache`             | Clean your current connection cache (database owners and tables list)
  `ejc-direx:pop-to-buffer`          | Create buffer with database structure tree
 

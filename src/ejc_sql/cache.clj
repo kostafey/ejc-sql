@@ -16,7 +16,8 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
-(ns ejc-sql.cache)
+(ns ejc-sql.cache
+  (:use [clomacs]))
 
 (def cache
   "Keep information about structure of databases used for autocomplete & eldoc.
@@ -38,9 +39,43 @@
   (atom {}))
 
 (defn get-cache
-  "Output actual cache."
+  "Get actual cache."
   []
   @cache)
+
+(defn deref-cache [db]
+  [db
+   (into
+    {}
+    (map
+     (fn [entity-k]
+       [entity-k
+        (let [item (get-in (get-cache) [db entity-k])]
+          (if (future? item)
+            (deref item)
+            (if (map? item)
+              (into
+               {}
+               (map
+                (fn [sub-entity-k]
+                  [sub-entity-k
+                   (let [sub-item (get-in (get-cache)
+                                          [db entity-k sub-entity-k])]
+                     (if (future? sub-item)
+                       (deref sub-item)
+                       sub-item))])
+                (keys item)))
+              item)))])
+     (keys
+      ((get-cache) db))))])
+
+(defn output-cache
+  "Output actual cache to printable format."
+  [db]
+  (clomacs/format-result
+   (if db
+     (second (deref-cache db))
+     (into {} (map deref-cache (keys (get-cache)))))))
 
 (defn invalidate-cache
   "Clean your current connection cache (database owners and tables list)."
