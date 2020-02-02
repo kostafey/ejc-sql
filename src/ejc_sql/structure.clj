@@ -417,6 +417,7 @@
                 ORDER BY ordinal_position) column_list"
                      entity-name
                      (s/upper-case entity-name)))
+    :owners     (default-queries :owners)
     :schemas    (default-queries :schemas)
     :tables     (default-queries :tables)
     :all-tables (default-queries :all-tables)
@@ -863,9 +864,10 @@
 (defn get-all-tables
   "Get all tables for all owners/schemas."
   [db]
-  (flatten
-   (mapv #(get-tables db % true)
-         (get-owners db true))))
+  (or (get-tables db nil true)
+      (flatten
+       (mapv #(get-tables db % true)
+             (distinct (get-owners db true))))))
 
 (def insert-re
   (re-pattern (str "(?i)\\s*INSERT\\s+INTO\\s+(\\S+)\\s+")))
