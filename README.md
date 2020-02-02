@@ -42,6 +42,8 @@ formatting of SQL scripts are also available.
 - [Requirements](#requirements)
 - [License](#license)
 
+![ejc-screenshot](https://user-images.githubusercontent.com/1282079/73612979-f35b9b00-4601-11ea-870b-9f4516bc97c8.png)
+
 ## Installation
 
 1. To run Clojure, install [Leiningen](http://leiningen.org) (assumes you have
