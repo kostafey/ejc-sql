@@ -33,6 +33,7 @@ formatting of SQL scripts are also available.
     - [PostgreSQL connection](#postgresqlconnection)
 - [Usage](#usage)
   - [Basic use case](#basic-use-case)
+  - [Separators & delimiters](#separators-delimiters)
   - [Use with org-mode](#use-with-org-mode)
   - [Use existing nREPL](#use-existing-nrepl)
   - [Goto definition & results ring](#goto-definition-results-ring)
@@ -42,7 +43,7 @@ formatting of SQL scripts are also available.
 - [Requirements](#requirements)
 - [License](#license)
 
-![ejc-screenshot](https://user-images.githubusercontent.com/1282079/73612979-f35b9b00-4601-11ea-870b-9f4516bc97c8.png)
+![ejc-screenshot](https://user-images.githubusercontent.com/1282079/73614659-476e7b80-4612-11ea-8681-1c37bda9422e.png)
 
 ## Installation
 
@@ -583,14 +584,23 @@ select something from my_table
 ```
 and press <kbd>C-c C-c</kbd> to run it.
 
+Have much fun!
+
+<a id="separators-delimiters"></a>
+### Separators & delimiters
+
 Use `/` char to separate expressions to evaluate (actually `\n/`), e.g.:
 ```SQL
 select something from my_table
 /
 select other from other_table
 ```
+So, you don't need to select SQL snippet, simply put point (cursor) into code
+snippet and press <kbd>C-c C-c</kbd> (or desired keybinding). Borders of SQL
+will be found by Emacs buffer begin/end or this `/` separator.
 
-It's possible to run multiple statements, you can use `;` to separate them:
+It's possible to pass multiple statements, you can use `;` delimiter to separate
+them:
 ```SQL
 insert into my_table (product, price) values ('socks', 1.25);
 insert into my_table (product, price) values ('sweater', 14.56);
@@ -598,8 +608,31 @@ insert into my_table (product, price) values ('jeans', 25.30);
 /
 select * from my_table
 ```
+Here, the first part is a single SQL snippet passed to `ejc-sql` backend but
+evaluated by 3 independent SQL statements (transactions). The output will looks
+like this:
+```
+Records affected: 1
+Records affected: 1
+Records affected: 1
+```
 
-Have much fun!
+Furthermore, you can change the delimiter inside SQL snippet. E.g. in this
+MySQL snippet `;` replaced by `$$` as transaction delimiter:
+```SQL
+DELIMITER $$
+CREATE PROCEDURE GetAllProducts()
+BEGIN
+  SELECT * FROM products;
+END $$
+/
+CALL GetAllProducts();
+```
+
+Since `;` symbols can be used very often as part of procedure syntax
+(e.g. in Oracle), you can disable splitting SQL code snippet to the sequence of
+separate transactions by setting `:separator` in DB connection configuration
+(see https://github.com/kostafey/ejc-sql#oracle-connection).
 
 <a id="use-with-org-mode"></a>
 ### Use with org-mode
@@ -802,7 +835,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 
 ## License
 
-Copyright © 2012-2019 Kostafey <kostafey@gmail.com> and
+Copyright © 2012-2020 Kostafey <kostafey@gmail.com> and
 [contributors](https://github.com/kostafey/ejc-sql/contributors)
 
 Distributed under the General Public License 2.0+
