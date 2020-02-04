@@ -687,27 +687,26 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
     (keyboard-quit)))
 
 (defun ejc-get-prompt-symbol-under-point (msg)
-  (let ((prefix (ejc-get-prefix-word))
-        (sql-symbol (if mark-active
-                        (buffer-substring (mark) (point))
-                      (ejc-get-word-at-point (point))))
-        (enable-recursive-minibuffers t)
-        val)
-    (setq val (completing-read
-               (if sql-symbol
-                   (format "%s (default %s): "
-                           msg
-                           (if prefix
-                               (format "%s.%s" prefix sql-symbol)
-                             sql-symbol))
-                 (format "%s: " msg))
-               obarray))
-    (if (equal val "")
+  (let* ((prefix (ejc-get-prefix-word))
+         (sql-symbol (if mark-active
+                         (buffer-substring (mark) (point))
+                       (ejc-get-word-at-point (point))))
+         (enable-recursive-minibuffers t)
+         (typed-data (completing-read
+                        (if sql-symbol
+                            (format "%s (default %s): "
+                                    msg
+                                    (if prefix
+                                        (format "%s.%s" prefix sql-symbol)
+                                      sql-symbol))
+                          (format "%s: " msg))
+                        obarray)))
+    (if (equal typed-data "")
         (list prefix sql-symbol)
-      (let ((split-val (split-string val "\\.")))
+      (let ((split-val (split-string typed-data "\\.")))
         (if (cadr split-val)
             split-val
-          (list nil val))))))
+          (list nil typed-data))))))
 
 (defun ejc-describe-table (prefix table-name)
   "Describe SQL table TABLE-NAME (default table name - word around the point)."
