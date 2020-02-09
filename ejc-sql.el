@@ -1,6 +1,6 @@
 ;;; ejc-sql.el --- Emacs SQL client uses Clojure JDBC. -*- lexical-binding: t -*-
 
-;;; Copyright © 2012-2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2020 - Kostafey <kostafey@gmail.com>
 
 ;; Author: Kostafey <kostafey@gmail.com>
 ;; URL: https://github.com/kostafey/ejc-sql
@@ -687,26 +687,30 @@ Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
     (keyboard-quit)))
 
 (defun ejc-get-prompt-symbol-under-point (msg)
-  (let* ((prefix (ejc-get-prefix-word))
+  "Read user typed string from minibuffer.
+MSG is a first part of the prompt message. The second optional part in
+brackets is a symbol under point (cursor). Return a list of two items:
+(schema|owner db-entity)."
+  (let* ((prefix (if (not mark-active)
+                     (ejc-get-prefix-word)))
          (sql-symbol (if mark-active
                          (buffer-substring (mark) (point))
                        (ejc-get-word-at-point (point))))
          (enable-recursive-minibuffers t)
-         (typed-data (completing-read
+         (typed-string (read-string
                         (if sql-symbol
                             (format "%s (default %s): "
                                     msg
                                     (if prefix
                                         (format "%s.%s" prefix sql-symbol)
                                       sql-symbol))
-                          (format "%s: " msg))
-                        obarray)))
-    (if (equal typed-data "")
+                          (format "%s: " msg)))))
+    (if (equal typed-string "")
         (list prefix sql-symbol)
-      (let ((split-val (split-string typed-data "\\.")))
-        (if (cadr split-val)
-            split-val
-          (list nil typed-data))))))
+      (let ((split-typed-string (split-string typed-string "\\.")))
+        (if (cadr split-typed-string)
+            split-typed-string
+          (list nil typed-string))))))
 
 (defun ejc-describe-table (prefix table-name)
   "Describe SQL table TABLE-NAME (default table name - word around the point)."
