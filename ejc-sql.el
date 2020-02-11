@@ -605,7 +605,7 @@ any SQL buffer to connect to exact database, as always. "
     sql))
 
 (defun ejc-add-outside-borders-p ()
-  (case ejc-result-table-impl
+  (cl-case ejc-result-table-impl
     (orgtbl-mode     t)
     (ejc-result-mode nil)))
 
