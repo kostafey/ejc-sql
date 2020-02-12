@@ -763,6 +763,7 @@ New keybindings defined in `ejc-sql-mode` minor mode:
  <kbd>C-c e c</kbd>  | `ejc-connect`                   | Select DB connection (configured by `ejc-create-connection`) and connect to it.
  <kbd>C-c e i</kbd>  | `ejc-connect-interactive`       | Create new connection interactively and connect to it.
  <kbd>C-c C-c</kbd>  | `ejc-eval-user-sql-at-point`    | Evaluate SQL script bounded by the `ejc-sql-separator` or/and buffer boundaries.
+ <kbd>C-c C-r</kbd>  | `ejc-eval-user-sql-region`     | Evaluate region selected SQL code.
  <kbd>C-g</kbd>      | `ejc-cancel-query`              | Terminate current running query or run `keyboard-quit` if there is no running queries.
  <kbd>C-h t</kbd>    | `ejc-describe-table`            | Describe SQL table.
  <kbd>C-h d</kbd>    | `ejc-describe-entity`           | Get entity definition: show creation SQL of view, package, function, procedure or type.

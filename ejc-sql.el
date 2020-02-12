@@ -115,6 +115,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
 
 (defvar ejc-sql-mode-keymap (make-keymap) "ejc-sql-mode keymap.")
 (define-key ejc-sql-mode-keymap (kbd "C-c C-c") 'ejc-eval-user-sql-at-point)
+(define-key ejc-sql-mode-keymap (kbd "C-c C-r") 'ejc-eval-user-sql-region)
 (define-key ejc-sql-mode-keymap (kbd "C-h t") 'ejc-describe-table)
 (define-key ejc-sql-mode-keymap (kbd "C-h d") 'ejc-describe-entity)
 (define-key ejc-sql-mode-keymap (kbd "C-M-S-b") (lambda () (interactive) (ejc-previous-sql t)))
