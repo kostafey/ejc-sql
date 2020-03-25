@@ -130,7 +130,9 @@
 (defun ejc-eldoc-setup ()
   "Set up eldoc function and enable eldoc-mode."
   (interactive)
-  (setq-local eldoc-documentation-function #'ejc-eldoc-function)
+  (if (boundp 'eldoc-documentation-functions)
+      (add-hook 'eldoc-documentation-functions #'ejc-eldoc-function nil t)
+    (setq-local eldoc-documentation-function #'ejc-eldoc-function))
   (eldoc-mode +1))
 
 (provide 'ejc-eldoc)
