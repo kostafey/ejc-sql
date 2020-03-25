@@ -211,7 +211,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                        display-result
                                        result-file]}]
   "Receive raw SQL from the user, log it, divide by statements and eval them."
-  (let [sql (.trim sql)
+  (let [sql (s/trim sql)
         _ (do (o/log-sql (str sql "\n"))
               (o/clear-result-file :result-file result-file))
         [sql
@@ -223,7 +223,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                               (second (re-find delimiter-re sql))]
                              [sql nil])
         sql (handle-special-cases db sql)
-        statement-separator (or manual-separator ";")
+        statement-separator-re (get-separator-re (or manual-separator ";"))
         results (doall
                  (for [sql-part (filter
                                  ;; Remove parts contains comments only.
@@ -231,17 +231,15 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                    (not (empty?
                                          (s/trim
                                           (s/replace part comments-re "")))))
-                                 (if (not (:separator db))
-                                   (s/split
-                                    sql
-                                    (get-separator-re statement-separator))
+                                 (if (or (not (:separator db)) manual-separator)
+                                   (s/split sql statement-separator-re)
                                    [sql]))]
                    (let [[result-type result] (eval-sql-core :db db
                                                              :sql sql-part)]
-                       (if (= result-type :result-set)
-                         (o/print-table result rows-limit)
-                         (println result))
-                       [result-type result])))]
+                     (if (= result-type :result-set)
+                       (o/print-table result rows-limit)
+                       (println result))
+                     [result-type result])))]
     (complete
      nil
      :start-time (:start-time @current-query)
