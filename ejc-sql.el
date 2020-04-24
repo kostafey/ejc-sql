@@ -757,7 +757,9 @@ brackets is a symbol under point (cursor). Return a list of two items:
   (ejc-check-connection)
   (let ((sql (buffer-substring beg end)))
     (ejc-eval-user-sql sql
-                       :display-result t)))
+                       :display-result t))
+  (if (region-active-p)
+      (deactivate-mark)))
 
 ;;;###autoload
 (cl-defun ejc-eval-user-sql-at-point (&key
