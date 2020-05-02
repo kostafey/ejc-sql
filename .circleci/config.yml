@@ -1,0 +1,30 @@
+version: 2.1
+
+# Default actions to perform on each Emacs version
+default: &default-steps
+  steps:
+    - checkout
+    - run: apt-get update && apt-get install make leiningen -y
+    - run: make elpa
+    - run: emacs --version
+    - run: make test
+
+jobs:
+  test-emacs-26:
+    docker:
+      - image: silex/emacs:26.3-dev
+        entrypoint: bash
+    <<: *default-steps
+
+  test-emacs-master:
+    docker:
+      - image: silex/emacs:master-dev
+        entrypoint: bash
+    <<: *default-steps
+
+workflows:
+  version: 2
+  ci-test-matrix:
+    jobs:
+      - test-emacs-26
+      - test-emacs-master
