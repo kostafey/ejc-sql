@@ -173,6 +173,7 @@ If can't find any nREPL process return nil."
   ;; Type SQL query and eval it.
   (with-current-buffer (ejc-get-temp-editor-buffer "test")
     ;; Connect to test database, if bufer just created
+    (message "@@@ ejc-test:run-sql")
     (when connect
       (setq cider-boot-parameters "repl -s -H localhost wait")
       (setq cider-lein-parameters "repl :headless :host localhost")
@@ -213,6 +214,7 @@ If can't find any nREPL process return nil."
         (:subname . ,db-path)
         (:subprotocol . "h2"))
       (car conn)))
+    (message "@@@ ejc-test:get-connection")
     ;; Delete previous run temp database files
     (mapcar (lambda (x)
               (let ((path-to-x (expand-file-name x (ejc-test:get-temp-path))))
