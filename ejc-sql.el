@@ -536,7 +536,8 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
   (message "@@@ clomacs-launch-nrepl")
   (let* ((starting-msg (format
                         "Starting nREPL server for %s..."
-                        (propertize (or lib-name "current-buffer")
+                        (propertize ;;(or lib-name "current-buffer")
+                         "current-buffer"
                                     'face 'font-lock-keyword-face)))
          (project-dir (if-let* ((lib-file (if lib-name
                                               (find-library-name lib-name))))
