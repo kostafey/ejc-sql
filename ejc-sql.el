@@ -528,6 +528,35 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
   (message "@@@ clomacs-get-connection - 1")
   (cider-current-repl))
 
+(defun clomacs-launch-nrepl (lib-name
+                             wrapped-eval
+                             attributes
+                             nrepl-ready-callback
+                             backend)
+  (message "@@@ clomacs-launch-nrepl")
+  (let* ((starting-msg (format
+                        "Starting nREPL server for %s..."
+                        (propertize (or lib-name "current-buffer")
+                                    'face 'font-lock-keyword-face)))
+         (project-dir (if-let* ((lib-file (if lib-name
+                                              (find-library-name lib-name))))
+                          (clojure-project-dir
+                           (file-name-directory lib-file))))
+         (params (if project-dir (list :project-dir project-dir))))
+    ;; simple run lein
+    (pcase backend
+      (:clj (clomacs-jack-in-clj params
+                                 wrapped-eval
+                                 attributes
+                                 nrepl-ready-callback))
+      (:cljs (clomacs-jack-in-cljs params
+                                   wrapped-eval
+                                   attributes
+                                   nrepl-ready-callback))
+      (_ (error "Unknown backend %s" backend)))
+    (message starting-msg))
+  nil)
+
 ;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."
