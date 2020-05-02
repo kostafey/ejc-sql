@@ -5,6 +5,7 @@ default: &default-steps
   steps:
     - checkout
     - run: apt-get update && apt-get install make leiningen -y
+    - run: apt-get install maven -y
     - run: make elpa
     - run: emacs --version
     - run: make test
