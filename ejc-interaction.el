@@ -317,8 +317,8 @@ Print all connections cache otherwise."
 
 (defun ejc-buffer-connected-p ()
   "Check if current buffer is connected to database."
-  (message "@@@ ejc-buffer-connected-p \n%s\n%s\n"
-           (clomacs-get-connection "ejc-sql")
+  (message "@@@ ejc-buffer-connected-p \n%s\n%s\n%s"
+           (cider-current-repl)
            (boundp 'ejc-db)
            ejc-db)
   (and (clomacs-get-connection "ejc-sql") (boundp 'ejc-db) ejc-db))
