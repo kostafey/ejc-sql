@@ -55,6 +55,37 @@
    (equal "~/.m2/repository/com/oracle/jdbc/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar"
           (ejc-lein-artifact-to-path [com.oracle.jdbc/ojdbc8 "12.2.0.1"]))))
 
+(ert-deftest ejc-test:ejc-path-to-lein-artifact ()
+  :tags '(el)
+  (should
+   (equal [[org.xerial/sqlite-jdbc "3.23.1"]]
+          (ejc-path-to-lein-artifact
+           "~/.m2/repository/org/xerial/sqlite-jdbc/3.23.1/sqlite-jdbc-3.23.1.jar")))
+  (should
+   (equal [[com.h2database/h2 "1.4.199"]]
+          (ejc-path-to-lein-artifact
+           "~/.m2/repository/com/h2database/h2/1.4.199/h2-1.4.199.jar")))
+  (should
+   (equal [[mysql/mysql-connector-java "5.1.44"]]
+          (ejc-path-to-lein-artifact
+           "~/.m2/repository/mysql/mysql-connector-java/5.1.44/mysql-connector-java-5.1.44.jar")))
+  (should
+   (equal [[postgresql/postgresql "9.3-1102.jdbc41"]]
+          (ejc-path-to-lein-artifact
+           "~/.m2/repository/postgresql/postgresql/9.3-1102.jdbc41/postgresql-9.3-1102.jdbc41.jar")))
+  (should
+   (equal [[com.microsoft.sqlserver/mssql-jdbc "6.2.2.jre8"]]
+          (ejc-path-to-lein-artifact
+           "~/.m2/repository/com/microsoft/sqlserver/mssql-jdbc/6.2.2.jre8/mssql-jdbc-6.2.2.jre8.jar")))
+  (should
+   (equal [[com.oracle.jdbc/ojdbc8 "12.2.0.1"]]
+          (ejc-path-to-lein-artifact
+           "~/.m2/repository/com/oracle/jdbc/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar")))
+  (should
+   (equal [[com.ibm.informix/jdbc "4.50.3"]]
+          (ejc-path-to-lein-artifact
+           "~/.m2/repository/com/ibm/informix/jdbc/4.50.3/jdbc-4.50.3.jar"))))
+
 (defun ejc-test:get-boundaries (point-position sql)
   (with-temp-buffer
     (insert sql)
@@ -153,9 +184,10 @@
   :tags '(el+cl)
   (let* ((db-path (concat "file://" (ejc-test:get-temp-path)
                           "database;AUTO_SERVER=TRUE"))
-         (classpath (expand-file-name
-                     "repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
-                     (ejc-test:get-m2-path)))
+         (classpath (vector
+                     (expand-file-name
+                      "repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
+                      (ejc-test:get-m2-path))))
          (conn (ejc-create-connection
                 "H2-test-connection"
                 :classpath classpath

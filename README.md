@@ -31,6 +31,7 @@ formatting of SQL scripts are also available.
     - [H2 connection](#h2connection)
     - [SQLite connection](#sqliteconnection)
     - [PostgreSQL connection](#postgresqlconnection)
+    - [Informix connection](#informixconnection)
 - [Usage](#usage)
   - [Basic use case](#basic-use-case)
   - [Separators & delimiters](#separators-delimiters)
@@ -321,7 +322,51 @@ accomplish via manual connection creation.
 <a id="install-jdbc-drivers"></a>
 ### Install JDBC drivers
 
-If you are familiar with JDBC, please omit this section.
+In most cases, you don't need to install JDBC drivers manually.
+Simply put, you can set a parameter `:dependencies` in `ejc-create-connection`
+function as a vector of the required artifacts in Leiningen format.
+In this case, `ejc-sql` will resolve, download (if not yet) all
+required jar dependencies via [Aether](https://github.com/cemerick/pomegranate)
+and load them to `CLASSPATH` during the `ejc-connect` function run. E.g.:
+
+```lisp
+(ejc-create-connection
+ "Informix-db-connection"
+ :dependencies [[com.ibm.informix/jdbc "4.50.3"]]
+ ...
+ )
+```
+
+Alternatively, you can pass the exact JDBC driver jar file in the
+`:classpath` parameter of `ejc-create-connection` function. E.g.:
+
+```lisp
+(ejc-create-connection
+ "Informix-db-connection"
+ :classpath (concat "~/.m2/repository/com/ibm/informix/jdbc/4.50.3/"
+                    "jdbc-4.50.3.jar")
+ ...
+ )
+```
+
+`ejc-sql` will try to resolve all required dependencies if this JBDC driver
+requires some dependencies itself anyway. But you can pass all requred
+dependencies manually as a vector of jar files paths. E.g.:
+
+```lisp
+(ejc-create-connection
+ "Informix-db-connection"
+ :classpath (vector
+              (concat "~/.m2/repository/org/mongodb/bson/3.8.0/"
+                      "bson-3.8.0.jar")
+              (concat "~/.m2/repository/com/ibm/informix/jdbc/4.50.3/"
+                      "jdbc-4.50.3.jar"))
+ ...
+ )
+```
+
+The rest of this section describes how to download and install JDBC drivers
+manually. If you are familiar with JDBC, please omit it.
 
 The most common way is to install JDBC drivers to your `~/.m2` directory.
 Here is a list of such installation examples. Anyway, __it will become outdated
@@ -380,6 +425,9 @@ mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgre
 **SQLite**
 
 ```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=org.xerial:sqlite-jdbc:3.8.11.2```
+
+**Informix**
+```mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=com.ibm.informix:jdbc:4.50.3```
 
 Setup connections with `ejc-create-connection` function in your `.emacs`.
 It's first arg is your custom database connection name, the remaining args
@@ -543,6 +591,24 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
  :subname "//localhost:5432/my_db_name"
  :user "a_user"
  :password "secret")
+```
+
+<a id="informixconnection"></a>
+### Informix connection
+```lisp
+;; Informix example
+(ejc-create-connection
+ "Informix-db-connection"
+ :dependencies [[com.ibm.informix/jdbc "4.50.3"]]
+ :classname "com.informix.jdbc.IfxDriver"
+ :connection-uri (concat
+                  ;; In the case of IPv6, ::1 should be used
+                  ;; as the host instead of localhost.
+                  "jdbc:informix-sqli://localhost:8201/test:"
+                  "INFORMIXSERVER=myserver;"
+                  "user=a_user;"
+                  "password=secret;"))
+
 ```
 
 ## Usage

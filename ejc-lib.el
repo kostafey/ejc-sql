@@ -1,6 +1,6 @@
 ;;; ejc-lib.el -- ejc-sql shared objects (the part of ejc-sql).
 
-;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2020 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 ;;; Code:
 
+(require 's)
 (require 'dash)
 
 (defvar-local ejc-connection-name nil
@@ -25,6 +26,43 @@
 
 (defvar-local ejc-connection-struct nil
   "Buffer-local connection structure.")
+
+(defun ejc-lein-artifact-to-path (artifact)
+  "Get ~/.m2 jar file path of artifact."
+  (if (not (vectorp artifact))
+      (error
+       "Expect leiningen artifact, e.g. [com.h2database/h2 \"1.4.199\"]."))
+  (let* ((group (car (split-string
+                      (ejc-strip-text-properties (symbol-name (elt artifact 0)))
+                      "/")))
+         (name (or (cadr (split-string
+                          (ejc-strip-text-properties
+                           (symbol-name (elt artifact 0))) "/"))
+                   group))
+         (version (elt artifact 1)))
+    (format "~/.m2/repository/%s/%s/%s/%s-%s.jar"
+            (mapconcat 'identity (split-string group "\\.") "/")
+            name
+            version
+            name
+            version)))
+
+(defun ejc-path-to-lein-artifact (path)
+  "Get leiningen artifact from ~/.m2 jar file path."
+  (if (not (stringp path))
+      (error
+       "Expect jar file path."))
+  (let* ((path (s-replace "\\" "/" path))
+         (path (nth 1 (s-split ".m2/repository/" path)))
+         (path-elements (s-split "/" path))
+         (version (nth (- (length path-elements) 2) path-elements))
+         (name (nth (- (length path-elements) 3) path-elements))
+         (group (s-join "." (-> path-elements -butlast -butlast -butlast))))
+    (read
+     (format "[[%s/%s \"%s\"]]"
+             group
+             name
+             version))))
 
 (defun ejc-string-endswith-p (s ending)
   "Return non-nil if string S ends with ENDING."

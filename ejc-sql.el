@@ -5,7 +5,7 @@
 ;; Author: Kostafey <kostafey@gmail.com>
 ;; URL: https://github.com/kostafey/ejc-sql
 ;; Keywords: sql, jdbc
-;; Version: 0.3.3
+;; Version: 0.4.0
 ;; Package-Requires: ((emacs "26.3")(clomacs "0.0.4")(dash "2.16.0")(auto-complete "1.5.1")(spinner "1.7.3")(direx "1.0.0"))
 
 ;; This file is not part of GNU Emacs.
@@ -269,6 +269,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
                                  ;; Others:
                                  user
                                  password
+                                 dependencies
                                  classpath
                                  separator
                                  ;; ----------
@@ -300,7 +301,13 @@ For more details about parameters see `get-connection' function in jdbc.clj:
                         (cons :subname subname)
                         (cons :user user)
                         (cons :password password)
-                        (cons :classpath (file-truename classpath))
+                        (cons :dependencies dependencies)
+                        (cons :classpath
+                              (when classpath
+                                (if (vectorp classpath)
+                                    (apply 'vector
+                                           (-map 'file-truename classpath))
+                                  (vector (file-truename classpath)))))
                         (cons :separator separator)
                         (cons :classname classname)))
                  new-connection))
@@ -411,26 +418,6 @@ configuration."
               connection-params)))))
 
 (defalias 'ejc-save-connection-data 'ejc-insert-connection-data)
-
-(defun ejc-lein-artifact-to-path (artifact)
-  "Get ~/.m2 jar file path of artifact."
-  (if (not (vectorp artifact))
-      (error
-       "Expect leiningen artifact, e.g. [com.h2database/h2 \"1.4.199\"]."))
-  (let* ((group (car (split-string
-                      (ejc-strip-text-properties (symbol-name (elt artifact 0)))
-                      "/")))
-         (name (or (cadr (split-string
-                          (ejc-strip-text-properties
-                           (symbol-name (elt artifact 0))) "/"))
-                   group))
-         (version (elt artifact 1)))
-    (format "~/.m2/repository/%s/%s/%s/%s-%s.jar"
-            (mapconcat 'identity (split-string group "\\.") "/")
-            name
-            version
-            name
-            version)))
 
 (defun ejc-resolve-jdbc-driver (dbtype)
   "Resolve and download artifacts (JDBC drivers) for DBTYPE.

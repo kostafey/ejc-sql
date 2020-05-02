@@ -1,6 +1,6 @@
 ;;; ejc-interaction.el -- ejc-sql interact with Clojure. -*- lexical-binding: t -*-
 
-;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2020 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 ;;; Code:
 
+(require 'dash)
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'clomacs)
@@ -40,11 +41,6 @@
                :lib-name "ejc-sql"
                :namespace ejc-sql.classpath)
 
-(clomacs-defun ejc-resolve-dependencies
-               resolve-dependencies
-               :lib-name "ejc-sql"
-               :namespace cemerick.pomegranate.aether)
-
 (clomacs-defun ejc-require
                clojure.core/require
                :lib-name "ejc-sql")
@@ -53,10 +49,38 @@
                clojure.core/import
                :lib-name "ejc-sql")
 
+(clomacs-defun ejc-class-for-name
+               Class/forName
+               :lib-name "ejc-sql")
+
+(clomacs-defun ejc-get-dependeces-files-list
+               get-dependeces-files-list
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.deps-resolver
+               :return-type :list)
+
 (defun ejc-connect-to-db (conn-struct)
-  (ejc-add-classpath (alist-get :classpath conn-struct))
-  (if-let ((classname (alist-get :classname conn-struct)))
-      (ejc-import (read classname)))
+  (let* ((jars-to-load
+          (if-let (dependencies (alist-get :dependencies conn-struct))
+              ;; Resolve dependencies and prepare jars paths list to load.
+              (ejc-get-dependeces-files-list dependencies)
+            (let* ((classpath (alist-get :classpath conn-struct))
+                   (dependency-jars (-map
+                                     (lambda (jar-path)
+                                       (ejc-get-dependeces-files-list
+                                        (ejc-path-to-lein-artifact jar-path)))
+                                     classpath)))
+              ;; Join jar files paths from `:classpath' vector of
+              ;; `ejc-create-connection' and dependencies for this jars.
+              (delq nil
+                    (delete-dups
+                     (append
+                      (-flatten dependency-jars)
+                      (append classpath nil))))))))
+    (-map 'ejc-add-classpath jars-to-load))
+  (when-let ((classname (alist-get :classname conn-struct)))
+    (ejc-class-for-name classname)
+    (ejc-import (read classname)))
   (ejc-sql-set-db conn-struct))
 
 (clomacs-defun ejc--eval-sql-and-log-print
