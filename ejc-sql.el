@@ -524,6 +524,10 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
     (apply 'ejc-create-connection args)
     (ejc-connect connection-name)))
 
+(defun clomacs-get-connection (&optional library)
+  (message "@@@ clomacs-get-connection - 1")
+  (cider-current-repl))
+
 ;;;###autoload
 (defun ejc-connect (connection-name)
   "Connect to selected db."

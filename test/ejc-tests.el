@@ -8,10 +8,7 @@
 (require 'cl)
 
 (defun clomacs-get-connection (&optional library)
-  "Return buffer with nREPL process related to LIBRARY.
-If LIBRARY is nil, attempts to use \"clomacs\", \"localhost\" or
-any current connection.
-If can't find any nREPL process return nil."
+  (message "@@@ clomacs-get-connection - 2")
   (cider-current-repl))
 
 (when (require 'undercover nil t)
