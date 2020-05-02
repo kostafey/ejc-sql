@@ -530,6 +530,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
   (interactive (list
                 (or (and (boundp 'connection-name) connection-name)
                     (ejc-read-connection-name))))
+  (message "@@@ ejc-connect - %s" connection-name)
   (if-let ((db (cdr (ejc-find-connection connection-name))))
       (progn
         (ejc-update-conn-statistics connection-name)
