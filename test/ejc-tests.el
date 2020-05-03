@@ -305,6 +305,16 @@
 (ejc-test:run-maven-dependency-plugin)
 
 (when noninteractive
+  (let ((nrepl-output
+         (with-temp-buffer
+           (insert-file-contents ".nrepl")
+           (buffer-string)))
+        (port (car
+               (split-string
+                (cadr (split-string nrepl-output
+                                    "nREPL server started on port "))
+                " "))))
+    (ejc-connect-existing-repl "127.0.0.1" port))
   (clomacs-with-nrepl "ejc-sql"
     (lambda ()
       ;; (ert-run-tests-batch-and-exit '(tag el))

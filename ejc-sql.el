@@ -595,7 +595,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
     (ejc-connect-interactive connection-name)))
 
 ;;;###autoload
-(defun ejc-connect-existing-repl ()
+(defun ejc-connect-existing-repl (&optional host port)
   "Connect to existing ejc-sql nREPL running process.
 You can `cd` to your ejc-sql project folder (typically
 '~/.emacs.d/elpa/ejc-sql-<version>') and launch nREPL via `lein repl`.
@@ -603,9 +603,10 @@ Then run in Emacs `ejc-connect-existing-repl', type HOST and PORT
 from your `lein run` console output. Finally, use `ejc-connect' from
 any SQL buffer to connect to exact database, as always. "
   (interactive)
+  (echo "@@@ ejc-connect-existing-repl")
   (let* ((params (cider-select-endpoint))
-         (host (car params))
-         (port (cdr params))
+         (host (or host (car params)))
+         (port (or port (cdr params)))
          (current-repl-b-name (cider-connect (list :host host :port port)))
          (ejc-repl-b-name (nrepl-repl-buffer-name
                            (list
