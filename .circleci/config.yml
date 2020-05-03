@@ -8,6 +8,7 @@ default: &default-steps
     - run: apt-get install maven -y
     - run: make elpa
     - run: emacs --version
+    - run: lein repl
     - run: make test
 
 jobs:
