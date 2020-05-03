@@ -48,7 +48,7 @@ formatting of SQL scripts are also available.
 
 ## Installation
 
-1. To run Clojure, install [Leiningen](http://leiningen.org) (assumes you have
+1. To run Clojure, install [Leiningen](http://leiningen.org) (assuming you have
    already installed Java 7+).
 
 2. Add [MELPA](https://github.com/melpa/melpa#usage) (if not yet present) to your
@@ -86,15 +86,15 @@ Autocompletion is available for the following databases:
 * SQLite
 
 Autocompletion data is stored in the database structure cache. This cache is
-located on Clojure side, so it's global: same database structure information
-shared between different buffers connected to the same database.
-An attempt to autocomplete requires data from it or lanches a thread aimed to
-create this cache. If Clojure side has the database structure cache,
-autocompletion variants returned immediately. If not, the database structure
-cache creation process starts. It's async, so the process of Emacs is not
-blocked and the user can move point (cursor), edit SQL and so on. If the user
-waits for autocompletion and doesn't move point (cursor) during this process,
-he will get autocompletion variants. To checkout the current database connection
+located on Clojure side, so it's global: the same database structure information
+is shared between different buffers connected to the same database. An attempt
+to autocomplete requires data from cache or lanches a thread aimed to create
+it. If Clojure side has the database structure cache, autocompletion variants
+are returned immediately. If not, the database structure cache creation process
+starts. It's async, so the process of Emacs is not blocked, and the user can
+move the point (cursor), edit SQL, and so on. If the user waits for
+autocompletion and doesn't move point (cursor) during this process, he will get
+autocompletion variants. In order to checkout the current database connection
 cache run `ejc-print-cache`.
 
 Any successfully executed DDL query (`CREATE`, `ALTER`, `DROP`, `RENAME`) clears
@@ -114,8 +114,8 @@ be installed by your favorite approach. E.g. by `MEPLA`:
 (setq ejc-use-flx t)
 ```
 
-Customize the minimum number of typed chars required to use `flx` for
-autocompletion, 2 by default:
+To customize the minimum number of typed chars use `flx` for autocompletion,
+2 by default:
 
 ```lisp
 (setq ejc-flx-threshold 2)
@@ -139,24 +139,24 @@ ElDoc for functions and procedures is available for the following databases:
 <a id="performance-output-customization"></a>
 ### Performance & output customization
 
-`ejc-set-fetch-size` set limit for the number of records to output (`50` by
+`ejc-set-fetch-size` sets limit for the number of records to output (`50` by
 default). Set to `nil` if you want to disable this limit.
 
-`ejc-set-max-rows` set limit for the number of records to contain in ResultSet
+`ejc-set-max-rows` sets limit for the number of records to contain in ResultSet
 (`99` by default). Set to `nil` if you want to disable this limit.
 Also, you can set it the same value as `ejc-set-fetch-size`. In this case,
 if your select query returns more rows than passed to `ejc-set-fetch-size` you
 will not receive messages like `"Too many rows. Only 50 from 99+ are shown."`,
 but it will increase select query execution performance.
 
-`ejc-set-column-width-limit` set limit for the number of chars per column to
-output (`30` by default). The rest chars will be replaced by `...`. Set to
+`ejc-set-column-width-limit` sets limit for outputing the number of chars per
+column (`30` by default). The rest will be replaced by `...`. Set to
 `nil` if you want to disable this limit. This setting is applied to the text
-representation of any field type, but especially useful for `varchar` and
+representation of any field type, but it is especially useful for `varchar` and
 `CLOB` fields.
 
 All these functions change Clojure variables, so if you want to change
-defaults, to avoid Clojure nREPL launch on Emacs start, you should add
+defaults, to avoid Clojure nREPL autolaunch on Emacs start, you should add
 them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
 ```lisp
 (add-hook 'ejc-sql-connected-hook
@@ -176,7 +176,7 @@ buffer performance by setting `ejc-result-table-impl` to `'ejc-result-mode`.
 
 If you want to see the full text of some field (e.g. the full text of `CLOB`
 field) despite `ejc-set-column-width-limit`, and your `ejc-result-table-impl`
-is `'ejc-result-mode` you can select single-record result set
+is `'ejc-result-mode` you can select a single-record result set
 (e.g. `SELECT * FROM table WHERE id = 1`).
 
 If you want to see the full text of some field with newlines in case of
@@ -184,8 +184,8 @@ multiline fields, you should select single-record and single-column result set
 (e.g. `SELECT field FROM table WHERE id = 1`). So, you will get a field value
 **as-is** despite `ejc-set-column-width-limit` and `ejc-result-table-impl`.
 
-Here is some output examples depends on query results and configuration to
-illustrate the description above.
+To illustrate the description above here are some output examples of query
+results that depend on configuration.
 
 Assume you have the following database (this example uses MySQL):
 
