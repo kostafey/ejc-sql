@@ -10,4 +10,5 @@
                  [leiningen-core "2.9.3"]
                  [org.apache.commons/commons-lang3 "3.5"]
                  [org.apache.httpcomponents/httpclient "4.5.5"]
-                 [clomacs "0.0.4-SNAPSHOT"]])
+                 [clomacs "0.0.4-SNAPSHOT"]
+                 [com.github.kostafey/ascii-graphs_2.13 "0.0.6"]])
