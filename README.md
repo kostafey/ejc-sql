@@ -872,7 +872,7 @@ __select__ | __where__ | __inner__
 -----------|-----------|------------
 __insert__ | __begin__ | __left__
 __update__ | __grant__ | __right__
-__delete__ | __revoke__|
+__delete__ | __revoke__| __alter__
 
 
 ## Troubleshooting
