@@ -305,6 +305,7 @@
 (ejc-test:run-maven-dependency-plugin)
 
 (when noninteractive
+  (sit-for 30)
   (let ((nrepl-output
          (with-temp-buffer
            (insert-file-contents ".nrepl")
