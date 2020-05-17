@@ -32,6 +32,7 @@ formatting of SQL scripts are also available.
     - [SQLite connection](#sqliteconnection)
     - [PostgreSQL connection](#postgresqlconnection)
     - [Informix connection](#informixconnection)
+    - [Presto connection](#prestoconnection)
 - [Usage](#usage)
   - [Basic use case](#basic-use-case)
   - [Separators & delimiters](#separators-delimiters)
@@ -609,6 +610,19 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
                   "user=a_user;"
                   "password=secret;"))
 
+```
+
+<a id="prestoconnection"></a>
+### Presto connection
+```lisp
+;; Presto example
+(ejc-create-connection
+ "Presto-db-connection"
+ :subprotocol "presto"
+ :dependencies [[com.facebook.presto/presto-jdbc "0.232"]]
+ :connection-uri (concat
+                  "jdbc:presto://localhost:1234/dbName/schemaName?"
+                  "user=a_user"))
 ```
 
 ## Usage
