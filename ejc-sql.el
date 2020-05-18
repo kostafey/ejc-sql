@@ -153,6 +153,9 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
 (defvar ejc-sql-connected-hook nil
   "Hook run when nREPL started and some buffer connected to DataBase.")
 
+(defvar ejc-sql-complete-query-hook nil
+  "Hook run when SQL query executed and the result is outputted.")
+
 (defvar ejc-sql-mode nil)
 
 (defvar ejc-conn-statistics (list)
@@ -661,6 +664,7 @@ any SQL buffer to connect to exact database, as always. "
                             :goto-symbol goto-symbol))
   (if (and start-time status)
       (ejc-message-query-done start-time status))
+  (run-hooks 'ejc-sql-complete-query-hook)
   nil)
 
 (cl-defun ejc-cancel-query (&key start-time)
