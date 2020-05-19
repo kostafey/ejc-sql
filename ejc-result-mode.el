@@ -26,7 +26,10 @@
 (defconst ejc-result-font-lock-keywords
   '(("|" . 'ejc-result-table-borders-face)
     ("-" . 'ejc-result-table-borders-face)
-    ("+" . 'ejc-result-table-borders-face)))
+    ("+" . 'ejc-result-table-borders-face)
+    ("│" . 'ejc-result-table-borders-face)
+    ("─" . 'ejc-result-table-borders-face)
+    ("┼" . 'ejc-result-table-borders-face)))
 
 (defvar ejc-result-mode-hook nil
   "Functions to be called when `ejc-result-mode' is entered.")

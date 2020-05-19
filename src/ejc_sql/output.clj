@@ -112,10 +112,20 @@
   "Rotate result set to show fields list vertically.
   Applied to single-record result set.
   E.g. transtofm from: a | b | c into: a | 1
-                     --+---+--       b | 2
-                     1 | 2 | 3       c | 3"
+                       --+---+--       b | 2
+                       1 | 2 | 3       c | 3"
   [data]
   (apply mapv vector data))
+
+(def use-unicode (atom true))
+
+(defn set-use-unicode
+  "Set using unicode for grid borders."
+  [val]
+  (reset! use-unicode val))
+
+(defn u? [unicode-str ascii-str]
+  (if @use-unicode unicode-str ascii-str))
 
 (defn print-maps
   "Prints a collection of maps in a textual table. Prints table headings
@@ -128,7 +138,7 @@
                      (apply max (count (str k))
                             (map #(count (str (get % k))) rows)))
                    ks)
-           spacers (map #(apply str (repeat % "-")) widths)
+           spacers (map #(apply str (repeat % (u? "─" "-"))) widths)
            fmts (map #(str "%-" % "s") widths)
            fmt-row (fn [leader divider trailer row]
                      (str (if add-borders leader "")
@@ -140,12 +150,12 @@
                                     (format fmt (str col)))))
                           (if add-borders trailer "")))
            aob *add-outside-borders*]
-       (println (fmt-row (if aob "| " "") " | " (if aob " |" "")
+       (println (fmt-row (if aob (u? "│ " "| ") "") (u? " │ " " | ") (if aob (u? " │" " |") "")
                          (zipmap ks (map name ks))))
-       (println (fmt-row (if aob "|-" "") "-+-" (if aob "-|" "")
+       (println (fmt-row (if aob (u? "├─" "|-") "") (u? "─┼─" "-+-") (if aob (u? "─┤" "-|") "")
                          (zipmap ks spacers)))
        (doseq [row rows]
-         (println (fmt-row (if aob "| " "") " | " (if aob " |" "") row))))))
+         (println (fmt-row (if aob (u? "│ " "| ") "") (u? " │ " " | ") (if aob (u? " │" " |") "") row))))))
   ([rows add-borders]
    (print-maps (keys (first rows)) rows add-borders)))
 
@@ -179,7 +189,7 @@
                                  (if (and @max-rows
                                           (> @max-rows 0)
                                           (> (- (count rows) 1) @max-rows))
-                                   "+" ""))]
+                                   (u? "┼" "+") ""))]
                         [rows ""])
            [headers rows] [(map name (first rows)) (rest rows)]
            aob *add-outside-borders*
@@ -200,7 +210,7 @@
                             [headers rows]
                             [(map trim-max-width headers)
                              (map #(map trim-max-width %) rows)])
-           rn #"(\r\n)|\n|\r"
+           rn (u? #"(\r\n)│\n│\r" #"(\r\n)|\n|\r")
            nl (System/getProperty "line.separator")
            rows (for [row rows]
                   (map #(if (string? %)
@@ -223,7 +233,7 @@
                                (list (count (str cell-value)))))))
                     (for [col (rotate-table (conj rows headers))]
                       (apply max (map #(count (str %)) col))))
-           spacers (map #(apply str (repeat % "-")) widths)
+           spacers (map #(apply str (repeat % (u? "─" "-"))) widths)
            ;; TODO: #(str "%" % "d") for numbers
            fmts (if (and rotated (not aob))
                   ;; Remove trailing spaces for data column of single-row
@@ -242,12 +252,12 @@
          (println))
        (if (not rotated)
          (do
-           (println (fmt-row (if aob "| " "") " | " (if aob " |" "") headers))
-           (println (fmt-row (if aob "|-" "") "-+-" (if aob "-|" "") spacers))))
+           (println (fmt-row (if aob (u? "│ " "| ") "") (u? " │ " " | ") (if aob (u? " │" " |") "") headers))
+           (println (fmt-row (if aob (u? "├─" "|-") "") (u? "─┼─" "-+-") (if aob (u? "─┤" "-|") "") spacers))))
        (doseq [row (if (and aob single-column-and-row (string? cell-value))
                      (map list (s/split cell-value (re-pattern nl)))
                      rows)]
-         (println (fmt-row (if aob "| " "") " | " (if aob " |" "") row))))))
+         (println (fmt-row (if aob (u? "│ " "| ") "") (u? " │ " " | ") (if aob (u? " │" " |") "") row))))))
   ([rows] (print-table rows @fetch-size)))
 
 (defn unify-str

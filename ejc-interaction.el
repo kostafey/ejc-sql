@@ -183,6 +183,12 @@
                :doc (concat "Set limit for number of chars per column to "
                             "output to output. When nil no limit."))
 
+(clomacs-defun ejc-set-use-unicode
+               set-use-unicode
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.output
+               :doc "Set using unicode for grid borders.")
+
 (clomacs-defun ejc-get-stucture
                get-stucture
                :lib-name "ejc-sql"

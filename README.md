@@ -156,6 +156,9 @@ column (`30` by default). The rest will be replaced by `...`. Set to
 representation of any field type, but it is especially useful for `varchar` and
 `CLOB` fields.
 
+`ejc-set-use-unicode` sets using unicode for grid borders, e.g. use `─┼─`
+instead of `-+-` (`nil` by default).
+
 All these functions change Clojure variables, so if you want to change
 defaults, to avoid Clojure nREPL autolaunch on Emacs start, you should add
 them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
@@ -164,7 +167,8 @@ them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
           (lambda ()
             (ejc-set-fetch-size 50)
             (ejc-set-max-rows 50)
-            (ejc-set-column-width-limit 25)))
+            (ejc-set-column-width-limit 25)
+            (ejc-set-use-unicode t)))
 ```
 
 Current result set table minor-mode is `orgtbl-mode`. This mode provides some
