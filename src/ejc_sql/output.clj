@@ -189,7 +189,7 @@
                                  (if (and @max-rows
                                           (> @max-rows 0)
                                           (> (- (count rows) 1) @max-rows))
-                                   (u? "┼" "+") ""))]
+                                   "+" ""))]
                         [rows ""])
            [headers rows] [(map name (first rows)) (rest rows)]
            aob *add-outside-borders*

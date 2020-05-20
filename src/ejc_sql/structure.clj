@@ -427,7 +427,6 @@
                     FROM   pg_catalog.pg_namespace n
                     JOIN   pg_catalog.pg_proc p
                       ON   p.pronamespace = n.oid
-                    WHERE  n.nspname = 'public'
                     ORDER BY proname ")
     :entity-type (fn [& {:keys [entity-name]}]
                    (format "
@@ -869,6 +868,15 @@
        (mapv #(get-tables db % true)
              (distinct (get-owners db true))))))
 
+(def select-re
+  (re-pattern (str "(?i)\\s*SELECT\\s+(.*\\s+)?FROM\\s+(\\S+)")))
+
+(defn select-sql?
+  "If `sql` is SELECT query, return a table name used in FROM clause.
+  Otherwise return nil."
+  [sql]
+  (nth (re-find select-re sql) 2))
+
 (def insert-re
   (re-pattern (str "(?i)\\s*INSERT\\s+INTO\\s+(\\S+)\\s+")))
 
@@ -933,12 +941,15 @@
       (autocomplete-loading)
       ;; Tables list loaded:
       (if (not prefix-1)
-        (let [insert-or-update-table (or (insert-sql? sql)
+        (let [insert-or-update-table (or (select-sql? sql)
+                                         (insert-sql? sql)
                                          (update-sql? sql))]
           (cond
             (and (not-empty insert-or-update-table)
                  (in? tables-list insert-or-update-table
                       :case-sensitive false))
+            ;; SELECT # FROM table
+            ;; or
             ;; INSERT INTO table (field1, .#) values (123, 'text')
             ;; or
             ;; UPDATE table SET field1 = 123, .# = 'text' WHERE id = 1

@@ -84,6 +84,21 @@
                                       :sql sql
                                       :prefix-1 "a"))))))))
 
+(deftest check-if-select-sql-test
+  (testing "insert-sql? fn test."
+    (is (= "product"
+           (select-sql?
+            "SELECT FROM product")))
+    (is (= "product"
+           (select-sql?
+            "SELECT name FROM product")))
+    (is (= "product"
+           (select-sql?
+            "SELECT name, price FROM product")))
+    (is (= nil
+           (select-sql?
+            "INSERT INTO product (name, price) VALUES ('socks', 1.25);")))))
+
 (deftest check-if-insert-sql-test
   (testing "insert-sql? fn test."
     (is (= "product"
