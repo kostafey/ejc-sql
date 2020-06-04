@@ -460,6 +460,9 @@
     :keywords (fn [& _]
                 "SELECT word FROM pg_get_keywords()")}})
 
+;; Use the same database introspection queries for MariaDB as for MySQL.
+(def queries (assoc queries :mariadb (queries :mysql)))
+
 (defn autocomplete-available-for-db? [db-type]
   (queries db-type))
 
