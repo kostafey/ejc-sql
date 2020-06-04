@@ -26,6 +26,7 @@ formatting of SQL scripts are also available.
   - [Create connections manualy](#create-connections-manualy)
     - [Install JDBC drivers](#install-jdbc-drivers)
     - [MySQL connection](#mysqlconnection)
+    - [MariaDB connection](#mariadbconnection)
     - [MS SQL Server connection](#mssqlserverconnection)
     - [Oracle connection](#oracleconnection)
     - [H2 connection](#h2connection)
@@ -464,6 +465,19 @@ list, please provide access to `mysql.help_keyword` table
 for your user, e.g.:
 ```sql
 GRANT SELECT ON mysql.help_keyword TO a_user;
+```
+
+<a id="mariadbconnection"></a>
+### MariaDB connection
+```lisp
+;; MariaDB example
+(ejc-create-connection
+ "MariaDB-db-connection"
+ :dependencies [[org.mariadb.jdbc/mariadb-java-client "2.6.0"]]
+ :classname "org.mariadb.jdbc.Driver"
+ :connection-uri "jdbc:mariadb://localhost:3306/db_name"
+ :user "a_user"
+ :password "secret")
 ```
 
 <a id="mssqlserverconnection"></a>
