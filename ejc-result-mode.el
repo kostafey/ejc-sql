@@ -1,6 +1,6 @@
 ;;; ejc-result-mode.el
 
-;;; Copyright © 2017-2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2017-2020 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@
   (setq truncate-lines t)
   (setq major-mode 'ejc-result-mode
         mode-name "SQL-Result")
-  (case ejc-result-table-impl
+  (cl-case ejc-result-table-impl
     (orgtbl-mode     (orgtbl-mode 1))
     (ejc-result-mode (setq view-read-only t)))
   (setq font-lock-defaults '(ejc-result-font-lock-keywords))

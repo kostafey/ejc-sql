@@ -1,6 +1,6 @@
 ;;; ejc-result-buffer.el
 
-;;; Copyright © 2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2019-2020 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ or error messages."
   ejc-results-buffer)
 
 (defun ejc-output-mode-specific-customization ()
-  (case ejc-result-table-impl
+  (cl-case ejc-result-table-impl
     (orgtbl-mode     (when (org-table-p) (org-table-align)))
     (ejc-result-mode (read-only-mode 1))))
 

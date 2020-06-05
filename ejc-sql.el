@@ -500,7 +500,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
               memo
               (list
                (car p)
-               (case (car p)
+               (cl-case (car p)
                  (:dbtype (cdr p))
                  (:classpath (ejc-resolve-jdbc-driver dbtype))
                  (:classname (cdr p))
@@ -630,7 +630,7 @@ any SQL buffer to connect to exact database, as always. "
 (defun ejc-message-query-done (start-time status)
   (message
    "%s SQL query at %s. Exec time %.03f"
-   (case status
+   (cl-case status
      (:done (propertize "Done" 'face 'font-lock-keyword-face))
      (:error (propertize "Error" 'face 'error))
      (:terminated (propertize "Terminated" 'face 'font-lock-keyword-face)))
