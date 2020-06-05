@@ -59,6 +59,11 @@
                :namespace ejc-sql.deps-resolver
                :return-type :list)
 
+(clomacs-defun ejc-resolve-dependencies
+               resolve-dependencies
+               :lib-name "ejc-sql"
+               :namespace cemerick.pomegranate.aether)
+
 (defun ejc-connect-to-db (conn-struct)
   (let* ((jars-to-load
           (if-let (dependencies (alist-get :dependencies conn-struct))
