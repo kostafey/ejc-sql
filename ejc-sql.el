@@ -36,6 +36,7 @@
 (require 'sql)
 (require 'dash)
 (require 'cl-lib)
+(require 'org-table)
 (require 'ejc-lib)
 (require 'ejc-direx)
 (require 'ejc-eldoc)
