@@ -1,4 +1,4 @@
-;;; ejc-autocomplete.el -- SQL completitions at point (the part of ejc-sql).
+;;; ejc-autocomplete.el -- SQL completitions at point by auto-complete (the part of ejc-sql).
 
 ;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
 

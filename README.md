@@ -20,6 +20,7 @@ formatting of SQL scripts are also available.
 - [Configuration](#configuration)
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
+  - [Company mode](#company-mode)
   - [ElDoc](#eldoc)
   - [Performance & output customization](#performance-output-customization)
   - [Create connections interactively](#create-connections-interactively)
@@ -121,6 +122,18 @@ To customize the minimum number of typed chars use `flx` for autocompletion,
 
 ```lisp
 (setq ejc-flx-threshold 2)
+```
+
+<a id="company-mode"></a>
+### Company mode
+
+Install `company-mode` e.g. by the following command:
+<kbd>M-x package-install [RET] company-mode [RET]</kbd>
+Enable `company-mode` completion frontend for `ejc-sql` minor mode:
+
+```lisp
+(requre 'ejc-company)
+(push 'ejc-company-backend company-backends)
 ```
 
 ### ElDoc
@@ -929,7 +942,8 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 * [auto-complete](https://github.com/auto-complete/auto-complete)
 * [spinner.el](https://github.com/Malabarba/spinner.el)
 * [direx.el](https://github.com/m2ym/direx-el)
-* [flx-ido](https://github.com/lewang/flx) *(optional)*.
+* [company-mode](https://github.com/company-mode/company-mode) *(optional)*
+* [flx-ido](https://github.com/lewang/flx) *(optional)*
 * [yasnippet](https://github.com/joaotavora/yasnippet) *(optional)*.
 
 ## License
