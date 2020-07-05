@@ -10,6 +10,7 @@
 (when (require 'undercover nil t)
   (undercover "*.el"))
 (require 'ejc-sql)
+(require 'ejc-autocomplete)
 
 (defun ejc-test:run-maven-dependency-plugin ()
   (print "Run maven-dependency-plugin")
@@ -162,6 +163,17 @@
          dpath)
      (file-truename "~/tmp"))))
 
+(ert-deftest ejc-test:ejc-append-without-duplicates ()
+  :tags '(el)
+  (should (equal
+           '(("a" 1) ("b" 2) ("c" 4))
+           (ejc-append-without-duplicates
+            '(("a" 1) ("b" 2)) '(("a" 3) ("c" 4)) 'car :left)))
+  (should (equal
+           '(("a" 3) ("c" 4) ("b" 2))
+           (ejc-append-without-duplicates
+            '(("a" 1) ("b" 2)) '(("a" 3) ("c" 4)) 'car :right))))
+
 (cl-defun ejc-test:run-sql (sql &optional connect)
   ;; Type SQL query and eval it.
   (with-current-buffer (ejc-get-temp-editor-buffer "test")
@@ -278,6 +290,8 @@
       '("USERS")
       (progn
         (with-current-buffer (ejc-get-temp-editor-buffer "test")
+          (auto-complete-mode t)
+          (ejc-ac-setup)
           (insert "U")
           (auto-complete)
           ;; Wait for async cache creation.
@@ -291,6 +305,8 @@
                actual-columns-list
                (progn
                  (with-current-buffer (ejc-get-temp-editor-buffer "test")
+                   (auto-complete-mode t)
+                   (ejc-ac-setup)
                    (insert "SERS.")
                    (auto-complete)
                    (ejc-get-cached-colomns-list ejc-db "USERS" t)))))))))

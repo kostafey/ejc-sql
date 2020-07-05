@@ -147,6 +147,25 @@ IMENU-INDEX - imenu index tree."
      (-map fn (split-string (car p) split))
      join)))
 
+(defun ejc-not-nil-str (s)
+  (not (equal s "nil")))
+
+(defun ejc-append-without-duplicates (list-left list-right comparator lead)
+  "Unite LIST-LEFT and LIST-RIGHT without duplicates items.
+Check items equality by COMPARATOR function.
+In case if some item presents in both lists (in terms of COMPARATOR
+equality) get the item from LIST-LEFT if LEAD param is `:left'or
+get it from LIST-RIGHT if LEAD param is `:right'."
+  (let* ((a (if (eq lead :left) list-left list-right))
+         (b (if (eq lead :left) list-right list-left))
+         (a-results (-map comparator a)))
+    (append a
+            (-filter
+             (lambda (b-item)
+               (not (-contains-p a-results
+                                 (funcall comparator b-item))))
+             b))))
+
 (provide 'ejc-lib)
 
 ;;; ejc-lib.el ends here

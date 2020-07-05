@@ -4,4 +4,5 @@
 (package-file "ejc-sql.el")
 
 (development
-  (depends-on "undercover"))
+  (depends-on "undercover")
+  (depends-on "auto-complete"))

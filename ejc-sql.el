@@ -6,7 +6,7 @@
 ;; URL: https://github.com/kostafey/ejc-sql
 ;; Keywords: sql, jdbc
 ;; Version: 0.4.0
-;; Package-Requires: ((emacs "26.3")(clomacs "0.0.4")(dash "2.16.0")(auto-complete "1.5.1")(spinner "1.7.3")(direx "1.0.0"))
+;; Package-Requires: ((emacs "26.3")(clomacs "0.0.4")(dash "2.16.0")(spinner "1.7.3")(direx "1.0.0"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -44,7 +44,7 @@
 (require 'ejc-interaction)
 (require 'ejc-result-mode)
 (require 'ejc-result-buffer)
-(require 'ejc-autocomplete)
+(require 'ejc-completion-common)
 
 (defvar-local ejc-db nil
   "JDBC connection info for current SQL buffer.")
@@ -846,8 +846,6 @@ Buffer can be saved to file with `ejc-temp-editor-file' path."
         (rename-buffer tmp-buffer-name)
         (sql-mode)
         (auto-fill-mode t)
-        (auto-complete-mode t)
-        (ejc-ac-setup)
         (ejc-add-connection)
         (get-buffer tmp-buffer-name)))))
 

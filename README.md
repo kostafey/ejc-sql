@@ -70,8 +70,11 @@ First, load `ejc-sql` package:
 
 ### Autocomplete
 
+Install `auto-complete` e.g. by the following command:
+<kbd>M-x package-install [RET] auto-complete [RET]</kbd>
 Enable autocomplete for `ejc-sql` minor mode:
 ```lisp
+(require 'ejc-autocomplete)
 (add-hook 'ejc-sql-minor-mode-hook
           (lambda ()
             (auto-complete-mode t)
@@ -134,6 +137,9 @@ Enable `company-mode` completion frontend for `ejc-sql` minor mode:
 ```lisp
 (requre 'ejc-company)
 (push 'ejc-company-backend company-backends)
+(add-hook 'ejc-sql-minor-mode-hook
+          (lambda ()
+            (company-mode t)))
 ```
 
 ### ElDoc
@@ -939,9 +945,9 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 * [clomacs](https://github.com/clojure-emacs/clomacs)
 * [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.5.8
 * [dash](https://github.com/magnars/dash.el)
-* [auto-complete](https://github.com/auto-complete/auto-complete)
 * [spinner.el](https://github.com/Malabarba/spinner.el)
 * [direx.el](https://github.com/m2ym/direx-el)
+* [auto-complete](https://github.com/auto-complete/auto-complete) *(optional)*
 * [company-mode](https://github.com/company-mode/company-mode) *(optional)*
 * [flx-ido](https://github.com/lewang/flx) *(optional)*
 * [yasnippet](https://github.com/joaotavora/yasnippet) *(optional)*.
