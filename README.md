@@ -142,6 +142,15 @@ Enable `company-mode` completion frontend for `ejc-sql` minor mode:
             (company-mode t)))
 ```
 
+To show documentation quickhelp install `company-quickhelp` by:
+<kbd>M-x package-install [RET] company-quickhelp [RET]</kbd>
+
+To activate `company-quickhelp` add the following to your `.emacs`:
+
+```lisp
+(company-quickhelp-mode)
+```
+
 ### ElDoc
 
 Enable ElDoc for `ejc-sql` minor mode:
@@ -949,6 +958,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 * [direx.el](https://github.com/m2ym/direx-el)
 * [auto-complete](https://github.com/auto-complete/auto-complete) *(optional)*
 * [company-mode](https://github.com/company-mode/company-mode) *(optional)*
+* [company-quickhelp](https://github.com/company-mode/company-quickhelp) *(optional)*
 * [flx-ido](https://github.com/lewang/flx) *(optional)*
 * [yasnippet](https://github.com/joaotavora/yasnippet) *(optional)*.
 

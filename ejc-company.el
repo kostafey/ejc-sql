@@ -48,7 +48,7 @@
               (append
                (ejc-append-without-duplicates
                 (ejc-company-add-meta
-                 "ANSI SQL" (ejc-get-ansi-sql-words))
+                 "ansi sql" (ejc-get-ansi-sql-words))
                 (ejc-company-add-meta
                  "keyword" (ejc-get-keywords))
                 'car :right)
@@ -68,6 +68,9 @@
 (defun ejc-company-annotation (candidate)
   (format " %s" (get-text-property 0 'meta candidate)))
 
+(defun ejc-company-doc-buffer (candidate)
+  (company-doc-buffer (ac-ejc-documentation candidate)))
+
 (defun ejc-company-backend (command &optional arg &rest ignored)
   (interactive (list 'interactive))
   (cl-case command
@@ -75,6 +78,7 @@
     (prefix (and (bound-and-true-p ejc-sql-mode)
                  (company-grab-symbol)))
     (candidates (ejc-company-candidates arg))
+    (doc-buffer (ejc-company-doc-buffer arg))
     (annotation (ejc-company-annotation arg))))
 
 (provide 'ejc-company)
