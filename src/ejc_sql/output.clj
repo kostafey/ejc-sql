@@ -117,7 +117,7 @@
   [data]
   (apply mapv vector data))
 
-(def use-unicode (atom true))
+(def use-unicode (atom false))
 
 (defn set-use-unicode
   "Set using unicode for grid borders."
