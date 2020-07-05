@@ -95,7 +95,7 @@ function. If the user waits for autocompletion and doesn't move point
   (switch-to-buffer buffer-name)
   (if (equal point (point))
       (cond ((bound-and-true-p auto-complete-mode) (auto-complete))
-            ((bound-and-true-p company-mode) (company-manual-begin))))
+            ((bound-and-true-p company-mode) (company-complete))))
   nil)
 
 (defmacro ejc-candidates (cand-fn)
