@@ -131,7 +131,7 @@ To customize the minimum number of typed chars use `flx` for autocompletion,
 ### Company mode
 
 Install `company-mode` e.g. by the following command:
-<kbd>M-x package-install [RET] company-mode [RET]</kbd>
+<kbd>M-x package-install [RET] company [RET]</kbd>
 Enable `company-mode` completion frontend for `ejc-sql` minor mode:
 
 ```lisp
