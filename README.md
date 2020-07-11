@@ -63,6 +63,9 @@ formatting of SQL scripts are also available.
 
 ## Configuration
 
+Here is an full-fledged real-world `ejc-sql` configuration example:
+[ejc-sql-conf](https://github.com/kostafey/kostafeys-emacs-confik/blob/master/custom/ejc-sql-conf.el).
+
 First, load `ejc-sql` package:
 ```lisp
 (require 'ejc-sql)
@@ -428,40 +431,47 @@ Download JDBC driver manually from
 Fix your actual JDBC version number `-Dversion`, filepath `-Dfile` and run
 command like this:
 ```
-mvn install:install-file -Dfile="~/downloads/sqljdbc.jar" -DgroupId=com.microsoft.sqlserver  -DartifactId=sqljdbc -Dversion=6.0 -Dpackaging=jar -DgeneratePom=true
+mvn install:install-file -Dfile="~/downloads/sqljdbc.jar" -DgroupId=com.microsoft.sqlserver -DartifactId=sqljdbc -Dversion=6.0 -Dpackaging=jar -DgeneratePom=true
 ```
 or from Maven Central:
 ```
-mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=com.microsoft.sqlserver:mssql-jdbc:6.2.2.jre8
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=com.microsoft.sqlserver:mssql-jdbc:6.2.2.jre8
 ```
 
 **JTDS**
-
-```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=net.sourceforge.jtds:jtds:1.3.1```
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=net.sourceforge.jtds:jtds:1.3.1
+```
 
 **PostgreSQL**
 ```
-mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=postgresql:postgresql:9.3-1102.jdbc41 -DrepoUrl=http://clojars.org/repo/
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=postgresql:postgresql:9.3-1102.jdbc41 -DrepoUrl=http://clojars.org/repo/
 ```
 
 **MySQL**
-
-```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=mysql:mysql-connector-java:5.1.6```
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=mysql:mysql-connector-java:5.1.6
+```
 
 **MariaDB**
-
-```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=org.mariadb.jdbc:mariadb-java-client:1.1.7```
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=org.mariadb.jdbc:mariadb-java-client:1.1.7
+```
 
 **H2**
-
-```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=com.h2database:h2:1.4.192```
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=com.h2database:h2:1.4.192
+```
 
 **SQLite**
-
-```mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get -Dartifact=org.xerial:sqlite-jdbc:3.8.11.2```
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=org.xerial:sqlite-jdbc:3.8.11.2
+```
 
 **Informix**
-```mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=com.ibm.informix:jdbc:4.50.3```
+```
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=com.ibm.informix:jdbc:4.50.3
+```
 
 Setup connections with `ejc-create-connection` function in your `.emacs`.
 It's first arg is your custom database connection name, the remaining args
