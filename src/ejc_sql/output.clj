@@ -210,7 +210,7 @@
                             [headers rows]
                             [(map trim-max-width headers)
                              (map #(map trim-max-width %) rows)])
-           rn (u? #"(\r\n)│\n│\r" #"(\r\n)|\n|\r")
+           rn #"(\r\n)|\n|\r"
            nl (System/getProperty "line.separator")
            rows (for [row rows]
                   (map #(if (string? %)
