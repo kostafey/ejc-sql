@@ -173,12 +173,10 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                      conn sql
                      {:fetch-size (or fetch-size @o/fetch-size 0)
                       :max-rows (or max-rows
-                                    (if (and
-                                         (> @o/max-rows 0)
-                                         (not (= @o/max-rows @o/fetch-size)))
+                                    (if (> @o/max-rows 0)
                                       ;; Get one more row to recognize that
-                                      ;; the actual result set size is bigger
-                                      ;; than `max-rows`.
+                                      ;; the actual number of records from this
+                                      ;; query is bigger than `max-rows`.
                                       (+ @o/max-rows 1)
                                       @o/max-rows)
                                     0)})]
@@ -207,6 +205,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
             (o/unify-str "Error: " (.getMessage e))))))
 
 (defn- eval-user-sql [db sql & {:keys [rows-limit
+                                       fetch-size
                                        append
                                        display-result
                                        result-file]}]
@@ -235,9 +234,11 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                    (s/split sql statement-separator-re)
                                    [sql]))]
                    (let [[result-type result] (eval-sql-core :db db
-                                                             :sql sql-part)]
+                                                             :sql sql-part
+                                                             :max-rows rows-limit
+                                                             :fetch-size fetch-size)]
                      (if (= result-type :result-set)
-                       (o/print-table result rows-limit)
+                       (o/print-table result fetch-size)
                        (println result))
                      [result-type result])))]
     (complete
@@ -268,6 +269,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 (defn eval-sql-and-log-print
   "Write SQL to log file, evaluate it and print result."
   [db sql & {:keys [rows-limit
+                    fetch-size
                     column-width-limit
                     append
                     start-time
@@ -288,6 +290,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                                  @o/column-width-limit)]
                   (eval-user-sql db sql
                                  :rows-limit rows-limit
+                                 :fetch-size fetch-size
                                  :append append
                                  :display-result display-result
                                  :result-file result-file)))

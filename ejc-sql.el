@@ -601,33 +601,6 @@ any SQL buffer to connect to exact database, as always. "
     (orgtbl-mode     t)
     (ejc-result-mode nil)))
 
-(cl-defun ejc-eval-sql-and-log (db
-                                sql
-                                &key
-                                start-time
-                                rows-limit
-                                column-width-limit
-                                append
-                                sync
-                                display-result
-                                result-file)
-  (when sql
-    (spinner-start 'rotating-line)
-    (setq ejc-current-buffer-query (current-buffer))
-    (let* ((prepared-sql (ejc-get-sql-from-string sql)))
-      (ejc--eval-sql-and-log-print
-       db
-       prepared-sql
-       :start-time start-time
-       :rows-limit rows-limit
-       :column-width-limit column-width-limit
-       :append append
-       :sync sync
-       :display-result display-result
-       :result-file (or result-file
-                        (ejc-next-result-file-path))
-       :add-outside-borders (ejc-add-outside-borders-p)))))
-
 (defun ejc-message-query-done (start-time status)
   (message
    "%s SQL query at %s. Exec time %.03f"
@@ -729,18 +702,29 @@ brackets is a symbol under point (cursor). Return a list of two items:
 
 (cl-defun ejc-eval-user-sql (sql &key
                                  rows-limit
+                                 fetch-size
                                  column-width-limit
                                  sync
                                  display-result)
   "User starts SQL evaluation process."
   (message "Processing SQL query...")
-  (ejc-eval-sql-and-log  ejc-db
-                         sql
-                         :rows-limit rows-limit
-                         :column-width-limit column-width-limit
-                         :start-time (current-time)
-                         :sync sync
-                         :display-result display-result))
+  (when sql
+    (spinner-start 'rotating-line)
+    (setq ejc-current-buffer-query (current-buffer))
+    (let* ((prepared-sql (ejc-get-sql-from-string sql)))
+      (ejc--eval-sql-and-log-print
+       db
+       prepared-sql
+       :start-time (current-time)
+       :rows-limit rows-limit
+       :fetch-size fetch-size
+       :column-width-limit column-width-limit
+       :append append
+       :sync sync
+       :display-result display-result
+       :result-file (or result-file
+                        (ejc-next-result-file-path))
+       :add-outside-borders (ejc-add-outside-borders-p)))))
 
 ;;;###autoload
 (defun ejc-eval-user-sql-region (beg end)
@@ -777,6 +761,7 @@ boundaries."
   (ejc-eval-user-sql
    (ejc-select-db-meta-script ejc-db :all-tables)
    :rows-limit 0
+   :fetch-size 0
    :column-width-limit 0
    :display-result t))
 

@@ -174,6 +174,13 @@
                :doc (concat "Set limit for number of records to output. "
                             "When nil no limit."))
 
+(clomacs-defun ejc-set-show-too-many-rows-message
+               set-show-too-many-rows-message
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.output
+               :doc (concat "Show 'Too many rows...' message in case"
+                            "of ResultSet is bigger than `fetch-size'."))
+
 (clomacs-defun ejc-set-max-rows
                set-max-rows
                :lib-name "ejc-sql"

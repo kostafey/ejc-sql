@@ -175,12 +175,15 @@ ElDoc for functions and procedures is available for the following databases:
 `ejc-set-fetch-size` sets limit for the number of records to output (`50` by
 default). Set to `nil` if you want to disable this limit.
 
-`ejc-set-max-rows` sets limit for the number of records to contain in ResultSet
-(`99` by default). Set to `nil` if you want to disable this limit.
-Also, you can set it the same value as `ejc-set-fetch-size`. In this case,
-if your select query returns more rows than passed to `ejc-set-fetch-size` you
-will not receive messages like `"Too many rows. Only 50 from 99+ are shown."`,
-but it will increase select query execution performance.
+`ejc-set-max-rows` sets the limit for the number of records to contain in
+ResultSet (`99` by default). Set to `nil` if you want to disable this limit, or
+you can set it the same value as `ejc-set-fetch-size` to increase select query
+execution performance.
+
+Any time your ResultSet is bigger than `ejc-set-fetch-size` you will receive
+messages like `"Too many rows. Only 50 from 99+ are shown."`. To inhibit this
+messages you can set `ejc-set-show-too-many-rows-message` to `nil` (`t` by
+default).
 
 `ejc-set-column-width-limit` sets limit for outputing the number of chars per
 column (`30` by default). The rest will be replaced by `...`. Set to
@@ -199,6 +202,7 @@ them to the `ejc-sql-connected-hook` in your `.emacs`, e.g.:
           (lambda ()
             (ejc-set-fetch-size 50)
             (ejc-set-max-rows 50)
+            (ejc-set-show-too-many-rows-message t)
             (ejc-set-column-width-limit 25)
             (ejc-set-use-unicode t)))
 ```
