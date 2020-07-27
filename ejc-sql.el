@@ -701,11 +701,14 @@ brackets is a symbol under point (cursor). Return a list of two items:
                               :result-file (ejc-next-result-file-path)))
 
 (cl-defun ejc-eval-user-sql (sql &key
+                                 db
                                  rows-limit
                                  fetch-size
                                  column-width-limit
+                                 append
                                  sync
-                                 display-result)
+                                 display-result
+                                 result-file)
   "User starts SQL evaluation process."
   (message "Processing SQL query...")
   (when sql
@@ -713,7 +716,7 @@ brackets is a symbol under point (cursor). Return a list of two items:
     (setq ejc-current-buffer-query (current-buffer))
     (let* ((prepared-sql (ejc-get-sql-from-string sql)))
       (ejc--eval-sql-and-log-print
-       db
+       (or db ejc-db)
        prepared-sql
        :start-time (current-time)
        :rows-limit rows-limit
