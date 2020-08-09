@@ -40,6 +40,8 @@ formatting of SQL scripts are also available.
   - [Separators & delimiters](#separators-delimiters)
   - [Use with org-mode](#use-with-org-mode)
   - [Use existing nREPL](#use-existing-nrepl)
+    - [Dedicated ejc-sql nREPL](#dedicated-nrepl)
+    - [Different project nREPL](#different-nrepl)
   - [Goto definition & results ring](#goto-definition-results-ring)
 - [List of keybindings & functions](#keybindings)
 - [Yasnippet](#yasnippet)
@@ -852,6 +854,9 @@ Reference this [discussion](https://github.com/kostafey/ejc-sql/pull/74).
 <a id="use-existing-nrepl"></a>
 ### Use existing nREPL
 
+<a id="dedicated-nrepl"></a>
+#### Dedicated ejc-sql nREPL
+
 If you have to restart Emacs multiple times, you can keep the `ejc-sql` Clojure
 backend alive between Emacs restarts by running this backend out of Emacs, and
 connect to it from Emacs.
@@ -862,8 +867,42 @@ To accomplish that, you should `cd` to your ejc-sql project folder (typically
 Then run in Emacs `M-x ejc-connect-existing-repl`, type `Host` and `Port`
 from your `lein repl` console output.
 
-Finally, use `M-x ejc-connect` from any SQL buffer to connect to the exact database,
-as always.
+Finally, use `M-x ejc-connect` from any SQL buffer to connect to the exact
+database, as always.
+
+<a id="different-nrepl"></a>
+#### Different project nREPL
+
+You can use different nREPL for `ejc-sql`, e.g. if you develop a Clojure project
+via CIDER, you can use your project nREPL to interact with the database by JDBC
+and `ejc-sql`. To achieve this, enable using any CIDER nREPL for `clomacs`
+projects in your `.emacs`:
+```lisp
+(setq clomacs-allow-other-repl t)
+```
+
+Then add `ejc-sql` to your project as a dependency in `project.clj`:
+```clojure
+(defproject some-project "0.1.0-SNAPSHOT"
+  ...
+  :dependencies [[org.clojure/clojure "1.10.0"]
+                 ...
+                 [ejc-sql "0.4.1-SNAPSHOT"]]
+  ...
+  )
+```
+or if you don't want to change your `project.clj` file, you can add it globally
+in `~/.lein/profiles.clj`, e.g.:
+```edn
+{:user {:plugins [[cider/cider-nrepl "0.25.0-alpha1"]]
+        :dependencies [[ejc-sql "0.4.1-SNAPSHOT"]]}}
+```
+The actual version of `ejc-sql` backend in Clojars:&nbsp;
+[![Clojars Project](https://clojars.org/ejc-sql/latest-version.svg)](https://clojars.org/ejc-sql)
+
+So, when you start your project nREPL via `cider-jack-in`, you can open any SQL
+file (`sql-mode` or `org-mode` buffer) and connect to the database by
+`ejc-connect` as usual and it will reuse the existing nREPL.
 
 <a id="goto-definition-results-ring"></a>
 ### Goto definition & results ring
