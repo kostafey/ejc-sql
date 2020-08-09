@@ -227,7 +227,10 @@
                             ;; In case of only 1 column & 1 row unify
                             ;; newline separators to system line break.
                             (s/replace % rn nl)
-                            (s/replace % rn " "))
+                            (-> %
+                                (s/replace rn " ")
+                                ;; Tabs to spaces to align columns widths.
+                                (s/replace #"\t" " ")))
                           ;; Do not remove newline separators if result
                           ;; set cell is not a string.
                           %)
