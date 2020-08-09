@@ -22,8 +22,8 @@
   (:require [clojure.string :as s])
   (:import (java.io File)
            (java.lang.reflect Method)
-           (java.util.Date)
-           (java.text.SimpleDateFormat)
+           (java.util Date)
+           (java.text SimpleDateFormat)
            (org.apache.commons.lang3 StringUtils)
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl
                                                DDLFormatterImpl)))
