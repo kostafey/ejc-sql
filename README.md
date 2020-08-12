@@ -140,7 +140,7 @@ Install `company-mode` e.g. by the following command:
 Enable `company-mode` completion frontend for `ejc-sql` minor mode:
 
 ```lisp
-(requre 'ejc-company)
+(require 'ejc-company)
 (push 'ejc-company-backend company-backends)
 (add-hook 'ejc-sql-minor-mode-hook
           (lambda ()
