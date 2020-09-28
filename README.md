@@ -321,7 +321,10 @@ typically worn over socks.
 ## Create connections interactively
 
 The easiest way to create connections configuration is to use interactive
-connections creation.
+connections creation. By default `ido` is used as the completion
+system. You can change this to leverage another option by editing
+`ejc-completion-system` and selecting `default`.
+
 
 In any `sql-mode` buffer run (<kbd>C-c ei</kbd>):
 
