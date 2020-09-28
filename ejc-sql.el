@@ -111,6 +111,14 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
   :group 'ejc-sql
   :type '(plist :key-type string :value-type (vector symbol string)))
 
+(defcustom ejc-completion-system 'ido
+  "The completion system used by `ejc-connect'."
+  :group 'ejc-sql
+  :type '(radio
+          (const :tag "Ido" ido)
+          (const :tag "Default" default)
+          (function :tag "Custom function")))
+
 (defvar-local ejc-replace-double-quotes nil
   "When t replace double quotes with single ones in SQL before evaluation.")
 
@@ -317,6 +325,23 @@ For more details about parameters see `get-connection' function in jdbc.clj:
                  new-connection))
               ejc-connections)))
 
+(cl-defun ejc-completing-read (prompt choices &key initial-input)
+  "Present a PROMPT with CHOICES and optional INITIAL-INPUT."
+  (cond
+   ((eq ejc-completion-system 'ido)
+    (ido-completing-read prompt choices nil nil initial-input))
+   ((eq ejc-completion-system 'default)
+    (completing-read prompt choices nil nil initial-input))
+   (t (funcall ejc-completion-system prompt choices))))
+
+(defun ejc-read-file-name (prompt)
+  "Read file name, prompting with PROMPT."
+  (cond
+   ((eq ejc-completion-system 'ido)
+    (ido-read-file-name prompt))
+   (t
+    (read-file-name prompt))))
+
 (defun ejc-find-connection (connection-name)
   "Return pair with name CONNECTION-NAME and db connection structure from
 `ejc-connections'."
@@ -391,7 +416,7 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
 
 (defun ejc-read-connection-name ()
   "Read connection-name in minibuffer."
-  (ido-completing-read
+  (ejc-completing-read
    "DataBase connection name: "
    (let ((conn-list (mapcar 'car ejc-connections))
          (conn-statistics (ejc-load-conn-statistics)))
@@ -456,7 +481,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
                      ("SQLite" . "sqlite")
                      ("PostgreSQL" . "postgresql")))
          (dbtype (cdr (assoc-string
-                       (ido-completing-read
+                       (ejc-completing-read
                         "Database type: "
                         (cl-sort (-map 'car db-types)
                                  'string-lessp :key 'downcase))
@@ -509,7 +534,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
                  (:subname (if (member dbtype '("h2" "sqlite"))
                                (let ((fpath
                                       (file-truename
-                                       (ido-read-file-name "DB file: "))))
+                                       (ejc-read-file-name "DB file: "))))
                                  (if (equal "h2" dbtype)
                                      (concat "file://"
                                              (file-name-sans-extension
