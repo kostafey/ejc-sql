@@ -116,7 +116,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
   :group 'ejc-sql
   :type '(radio
           (const :tag "Ido" ido)
-          (const :tag "Default" default)
+          (const :tag "Standard" standard)
           (function :tag "Custom function")))
 
 (defvar-local ejc-replace-double-quotes nil
@@ -330,7 +330,7 @@ For more details about parameters see `get-connection' function in jdbc.clj:
   (cond
    ((eq ejc-completion-system 'ido)
     (ido-completing-read prompt choices nil nil initial-input))
-   ((eq ejc-completion-system 'default)
+   ((eq ejc-completion-system 'standard)
     (completing-read prompt choices nil nil initial-input))
    (t (funcall ejc-completion-system prompt choices))))
 

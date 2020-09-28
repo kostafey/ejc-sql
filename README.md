@@ -21,6 +21,7 @@ formatting of SQL scripts are also available.
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
   - [Company mode](#company-mode)
+  - [Minibuffer completion](#minibuffer-completion)
   - [ElDoc](#eldoc)
   - [Performance & output customization](#performance-output-customization)
   - [Create connections interactively](#create-connections-interactively)
@@ -154,6 +155,18 @@ To activate `company-quickhelp` add the following to your `.emacs`:
 
 ```lisp
 (company-quickhelp-mode)
+```
+
+<a id="minibuffer-completion"></a>
+### Minibuffer completion
+
+By default `ido` is used as minibuffer the completion system. You can change
+this to leverage another option by editing `ejc-completion-system` and
+selecting `standard`. This will allow you to use it with any configured
+completion mechanism for example, [ivy](https://github.com/abo-abo/swiper):
+
+```elisp
+(setq ejc-completion-system 'standard)
 ```
 
 ### ElDoc
@@ -321,10 +334,7 @@ typically worn over socks.
 ## Create connections interactively
 
 The easiest way to create connections configuration is to use interactive
-connections creation. By default `ido` is used as the completion
-system. You can change this to leverage another option by editing
-`ejc-completion-system` and selecting `default`.
-
+connections creation.
 
 In any `sql-mode` buffer run (<kbd>C-c ei</kbd>):
 
