@@ -18,6 +18,7 @@ formatting of SQL scripts are also available.
 
 - [Installation](#installation)
 - [Configuration](#configuration)
+  - [Set httpd port](#set-httpd-port)
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
   - [Company mode](#company-mode)
@@ -72,6 +73,20 @@ Here is an full-fledged real-world `ejc-sql` configuration example:
 First, load `ejc-sql` package:
 ```lisp
 (require 'ejc-sql)
+```
+
+## Set httpd port
+
+To achieve async SQL queries evaluation, both Emacs and JVM side is an HTTP
+client and HTTP server. Emacs as HTTP client via CIDER pass a SQL query to JVM
+and don't expect any data response from the database. The JVM part prints the
+result dataset to the file (in pain text table format). Then JVM as HTTP client
+notifies Emacs: "data printed into `filepath`, please refresh the output
+buffer". The JVM side port can be configured by related CIDER customizations,
+whereas the default Emacs side HTTP server port can be customized by
+`clomacs-httpd-default-port` variable (`8080` by default): 
+```lisp
+(setq clomacs-httpd-default-port 8090) ; Use a port other than 8080.
 ```
 
 ### Autocomplete
