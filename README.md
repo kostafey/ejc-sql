@@ -163,6 +163,14 @@ Enable `company-mode` completion frontend for `ejc-sql` minor mode:
             (company-mode t)))
 ```
 
+If you want to automatically start completion after inserting a dot for
+`company-mode` despite `company-minimum-prefix-length` is bigger than `0`,
+set `ejc-complete-on-dot` to `t`:
+
+```elisp
+(setq ejc-complete-on-dot t)
+```
+
 To show documentation quickhelp install `company-quickhelp` by:
 <kbd>M-x package-install [RET] company-quickhelp [RET]</kbd>
 

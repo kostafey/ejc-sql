@@ -134,6 +134,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
 (define-key ejc-sql-mode-keymap (kbd "C-g") 'ejc-cancel-query)
 (define-key ejc-sql-mode-keymap (kbd "M-.") 'ejc-describe-entity)
 (define-key ejc-sql-mode-keymap (kbd "M-,") 'ejc-show-prev-result)
+(define-key ejc-sql-mode-keymap (kbd ".") 'ejc-dot-pressed)
 
 (defvar ejc-command-map
   (let ((map (make-sparse-keymap)))

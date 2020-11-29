@@ -39,6 +39,13 @@ Uppercase by default, set to nil to use downcase candidates."
   '("show" "errors" "desc" "count" "type" "table" "function" "procedure"
     "begin" "end" "for" "return"))
 
+(defcustom ejc-complete-on-dot nil
+  "When t automatically start completion after inserting a dot for
+`company-mode' despite `company-minimum-prefix-length' is bigger than 0."
+  :type 'boolean
+  :safe #'booleanp
+  :group 'ejc-sql)
+
 (defun ejc-return-point ()
   "Return point position if point (cursor) is located next to dot char (.#)"
   (let ((curr-char (buffer-substring
@@ -146,6 +153,12 @@ function. If the user waits for autocompletion and doesn't move point
   (if (not ejc-doc-created-p)
       (ejc-create-doc))
   (gethash (intern (downcase symbol-name)) ejc-sql-doc))
+
+(defun ejc-dot-pressed ()
+  (interactive)
+  (insert ".")
+  (if (and ejc-complete-on-dot (bound-and-true-p company-mode))
+      (call-interactively 'company-complete)))
 
 (provide 'ejc-completion-common)
 
