@@ -161,10 +161,16 @@
                              (format " WHERE UPPER(owner) = '%s' "
                                      (s/upper-case owner))
                              "")))
-    :views       (fn [& _] "
+    :views       (fn [& {:keys [owner]}]
+                   (format "
                     SELECT view_name
                     FROM all_views
-                    ORDER BY view_name ")
+                    %s
+                    ORDER BY view_name "
+                           (if owner
+                             (format " WHERE UPPER(owner) = '%s' "
+                                     (s/upper-case owner))
+                             "")))
     :all-tables  (fn [& _] "
                     SELECT owner, table_name
                     FROM all_tables
@@ -619,6 +625,7 @@
                          direct-value)
                  (future (try
                            (let [result (exec-fn db sql)
+                                 result (distinct result)
                                  result (if filter-fn
                                           (filter filter-fn result)
                                           result)
@@ -667,13 +674,12 @@
 (defn get-views
   "Return views list from cache if already received from DB,
   check if receiveing process is not running, then start it."
-  [db & [force?]]
-  (if (not (get-in @cache [db :views]))
-    (swap! cache assoc-in [db :views]
-           (future ((fn [db]
-                      (let [sql (select-db-meta-script db :views)]
-                        (sort (db->column db sql)))) db))))
-  (get? (get-in @cache [db :views]) force?))
+  [db & [owner_ force?]]
+  (let [owner (get-this-owner db owner_)]
+    (get-or-create-cache :db db
+                         :path [:views owner]
+                         :sql (select-db-meta-script db :views :owner owner)
+                         :force? force?)))
 
 (defn get-colomns
   "Return colomns list for this table from cache if already received from DB,
@@ -684,7 +690,7 @@
            (future ((fn [db table]
                       (let [sql (select-db-meta-script db :columns
                                                        :table table)]
-                        (sort (db->column db sql))))
+                        (sort (distinct (db->column db sql)))))
                     db table))))
   (get? (get->in @cache [db :colomns table])
         force?))
@@ -835,8 +841,16 @@
 
 (defn get-views-candidates
   "Return views candidates autocomplete list."
-  [& {:keys [db sql buffer-name point]}]
-  (if-let [views (get-views db)]
+  [& {:keys [db sql prefix-1 buffer-name point]}]
+  (if-let [views (if (not prefix-1)
+                 ;; something#
+                 (get-views db)
+                 (if (is-owner? db prefix-1)
+                   ;; [owner].#<views-list>
+                   (get-views db prefix-1)
+                   ;; owners still pending or
+                   ;; unknown?.# case
+                   (list)))]
     (autocomplete-result views)
     ;; pending views...
     (autocomplete-loading)))

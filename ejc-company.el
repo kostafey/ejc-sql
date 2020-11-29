@@ -41,7 +41,11 @@
         candidates))
 
 (defun ejc-company-candidates (prefix)
-  (let (res)
+  (let* ((prefix-1 (ejc-get-prefix-word))
+         (prefix-2 (save-excursion
+                     (search-backward "." nil t)
+                     (ejc-get-prefix-word)))
+         (res))
     (dolist (item
              (cl-remove-if-not
               (lambda (c) (string-prefix-p prefix (car c) t))
@@ -58,8 +62,9 @@
                 "table" (ejc-tables-candidates))
                (ejc-company-add-meta
                 "view" (ejc-views-candidates))
-               (ejc-company-add-meta
-                "package" (ejc-packages-candidates))
+               (if (not prefix-1)
+                   (ejc-company-add-meta
+                    "package" (ejc-packages-candidates)))
                (ejc-company-add-meta
                 "colomn" (ejc-colomns-candidates)))))
       (push (ejc-company-make-candidate item) res))
