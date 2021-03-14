@@ -733,7 +733,6 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
   "ch@180"
   :dependencies [[ru.yandex.clickhouse/clickhouse-jdbc "0.2.6"]]
   :dbtype "clickhouse"
-  :classpath "~/Library/DBeaverData/drivers/maven/maven-central/ru.yandex.clickhouse/clickhouse-jdbc-0.2.6.jar"
   :classname "ru.yandex.clickhouse.ClickHouseDriver"
   :connection-uri (concat "jdbc:clickhouse://10.1.4.180:8123/" "testdb"))
 ```
@@ -746,7 +745,6 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
   "es@177"
   :dependencies [[org.elasticsearch.plugin/x-pack-sql-jdbc "7.9.1"]]
   :dbtype "elasticsearch"
-  :classpath "~/Library/DBeaverData/drivers/maven/maven-central/org.elasticsearch.plugin/x-pack-sql-jdbc-7.9.1.jar"
   :classname "org.elasticsearch.xpack.sql.jdbc.EsDriver"
   :connection-uri (concat "jdbc:es://172.16.13.177:9200/"))
 ```
