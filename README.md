@@ -37,6 +37,8 @@ formatting of SQL scripts are also available.
     - [PostgreSQL connection](#postgresqlconnection)
     - [Informix connection](#informixconnection)
     - [Presto connection](#prestoconnection)
+    - [ClickHouse connection](#clickhouseconnection)
+    - [ElasticSearch connection](#elasticsearchconnection)
 - [Usage](#usage)
   - [Basic use case](#basic-use-case)
   - [Separators & delimiters](#separators-delimiters)
@@ -84,7 +86,7 @@ result dataset to the file (in pain text table format). Then JVM as HTTP client
 notifies Emacs: "data printed into `filepath`, please refresh the output
 buffer". The JVM side port can be configured by related CIDER customizations,
 whereas the default Emacs side HTTP server port can be customized by
-`clomacs-httpd-default-port` variable (`8080` by default): 
+`clomacs-httpd-default-port` variable (`8080` by default):
 ```lisp
 (setq clomacs-httpd-default-port 8090) ; Use a port other than 8080.
 ```
@@ -721,6 +723,32 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
  :connection-uri (concat
                   "jdbc:presto://localhost:1234/dbName/schemaName?"
                   "user=a_user"))
+```
+
+<a id="clickhouseconnection"></a>
+### ClickHouse connection
+```lisp
+;; ClickHouse example
+(ejc-create-connection
+  "ch@180"
+  :dependencies [[ru.yandex.clickhouse/clickhouse-jdbc "0.2.6"]]
+  :dbtype "clickhouse"
+  :classpath "~/Library/DBeaverData/drivers/maven/maven-central/ru.yandex.clickhouse/clickhouse-jdbc-0.2.6.jar"
+  :classname "ru.yandex.clickhouse.ClickHouseDriver"
+  :connection-uri (concat "jdbc:clickhouse://10.1.4.180:8123/" "testdb"))
+```
+
+<a id="elasticsearchconnection"></a>
+### ElasticSearch connection
+```lisp
+;; ElasticSearch example
+(ejc-create-connection
+  "es@177"
+  :dependencies [[org.elasticsearch.plugin/x-pack-sql-jdbc "7.9.1"]]
+  :dbtype "elasticsearch"
+  :classpath "~/Library/DBeaverData/drivers/maven/maven-central/org.elasticsearch.plugin/x-pack-sql-jdbc-7.9.1.jar"
+  :classname "org.elasticsearch.xpack.sql.jdbc.EsDriver"
+  :connection-uri (concat "jdbc:es://172.16.13.177:9200/"))
 ```
 
 ## Usage
