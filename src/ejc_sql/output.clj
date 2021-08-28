@@ -78,19 +78,19 @@
 
 (def fetch-size
   "Limit number of records to output."
-  (atom 50))
+  (atom 0))
 
 (def max-rows
   "Limit number of records to contain in ResultSet."
-  (atom 99))
+  (atom 0))
 
 (def show-too-many-rows-message
   "Output message in case of ResultSet is bigger than `fetch-size`."
-  (atom true))
+  (atom false))
 
 (def column-width-limit
   "Limit number of chars per column to output."
-  (atom 30))
+  (atom 0))
 
 (defn set-fetch-size
   "Set limit for number of records to output. When nil no limit.
@@ -125,7 +125,7 @@
   [data]
   (apply mapv vector data))
 
-(def use-unicode (atom false))
+(def use-unicode (atom true))
 
 (defn set-use-unicode
   "Set using unicode for grid borders."
