@@ -44,7 +44,7 @@
   '(("database" . ejc-direx:database)
     ("schema" . ejc-direx:schema)
     ("table" . ejc-direx:table)
-    ("colomn" . ejc-direx:colomn)))
+    ("column" . ejc-direx:colomn)))
 
 (defun ejc-direx:node-from-cache (cache)
   (let* ((type (plist-get (car cache) :type))
