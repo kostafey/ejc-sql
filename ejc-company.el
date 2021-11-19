@@ -66,7 +66,7 @@
                    (ejc-company-add-meta
                     "package" (ejc-packages-candidates)))
                (ejc-company-add-meta
-                "colomn" (ejc-colomns-candidates)))))
+                "column" (ejc-colomns-candidates)))))
       (push (ejc-company-make-candidate item) res))
     res))
 
