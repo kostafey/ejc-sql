@@ -285,6 +285,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
                                  dependencies
                                  classpath
                                  separator
+                                 sslmode
                                  ;; ----------
                                  ;; Optional:
                                  classname)
@@ -322,6 +323,7 @@ For more details about parameters see `get-connection' function in jdbc.clj:
                                            (-map 'file-truename classpath))
                                   (vector (file-truename classpath)))))
                         (cons :separator separator)
+                        (cons :sslmode sslmode)
                         (cons :classname classname)))
                  new-connection))
               ejc-connections)))
