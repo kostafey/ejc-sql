@@ -861,7 +861,6 @@ Buffer can be saved to file with `ejc-temp-editor-file' path."
         (find-file tmp-file-path)
         (rename-buffer tmp-buffer-name)
         (sql-mode)
-        (auto-fill-mode t)
         (ejc-add-connection)
         (get-buffer tmp-buffer-name)))))
 
