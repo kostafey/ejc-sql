@@ -148,7 +148,7 @@ or error messages."
       (beginning-of-buffer)
       (let* ((window (or (get-buffer-window output-buffer t)
                          (progn
-                           (display-buffer output-buffer)
+                           (display-buffer output-buffer '(display-buffer-at-bottom . ()))
                            (get-buffer-window output-buffer t))))
              (frame (window-frame window)))
         (if (not (eq frame (selected-frame)))
