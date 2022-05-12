@@ -43,6 +43,12 @@
   :group 'ejc-sql
   :type 'integer)
 
+(defcustom ejc-show-result-bottom t
+  "Show result output buffer in the bottom window. bottom by default, 
+     set to nil to show it in the right"
+  :group 'ejc-sql
+  :type 'boolean)
+
 (defvar ejc-ring-position 0
   "Current SQL evaluation result position in ring.")
 
@@ -148,7 +154,9 @@ or error messages."
       (beginning-of-buffer)
       (let* ((window (or (get-buffer-window output-buffer t)
                          (progn
-                           (display-buffer output-buffer '(display-buffer-at-bottom . ()))
+                           (if ejc-show-result-bottom
+                               (display-buffer output-buffer '(display-buffer-at-bottom . ()))
+                             (display-buffer output-buffer))
                            (get-buffer-window output-buffer t))))
              (frame (window-frame window)))
         (if (not (eq frame (selected-frame)))
@@ -182,7 +190,9 @@ or error messages."
       (insert-file-contents file-path)
       (ejc-output-mode-specific-customization)
       (beginning-of-buffer)
-      (display-buffer output-buffer)
+      (if ejc-show-result-bottom
+          (display-buffer output-buffer '(display-buffer-at-bottom . ()))
+        (display-buffer output-buffer))
       (message file-path))))
 
 ;;;###autoload
