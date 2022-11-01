@@ -87,7 +87,7 @@ Uppercase by default, set to nil to use downcase candidates."
       (unless (or (ejc-return-point) (ejc-get-prefix-word))
         (if ejc-candidates-uppercase
             (mapcar 'upcase (ejc-get-keywords-inner ejc-db nil))
-          (mapcar 'lowercase (ejc-get-keywords-inner ejc-db nil))))))
+          (mapcar 'downcase (ejc-get-keywords-inner ejc-db nil))))))
 
 (cl-defun ejc-complete-auto-complete (buffer-name point)
   "Called by Clojure side when db structure cache creation process completes.
