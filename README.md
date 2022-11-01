@@ -731,9 +731,9 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; ClickHouse example
 (ejc-create-connection
   "ch@180"
-  :dependencies [[ru.yandex.clickhouse/clickhouse-jdbc "0.2.6"]]
+  :dependencies [[com.clickhouse/clickhouse-jdbc "0.3.2"]]
   :dbtype "clickhouse"
-  :classname "ru.yandex.clickhouse.ClickHouseDriver"
+  :classname "com.clickhouse.jdbc.ClickHouseDriver"
   :connection-uri (concat "jdbc:clickhouse://10.1.4.180:8123/" "testdb"))
 ```
 
