@@ -369,7 +369,11 @@ For more details about parameters see `get-connection' function in jdbc.clj:
 (defun ejc-set-mode-name (connection-name)
   "Show CONNECTION-NAME as part of `mode-name' in `mode-line'."
   (setq mode-name (format "%s->[%s]"
-                          (car (split-string mode-name "->\\[.+\\]"))
+                          (car (split-string
+                                (if (listp mode-name)
+                                    (car mode-name)
+                                  mode-name)
+                                "->\\[.+\\]"))
                           connection-name)))
 
 (cl-defun ejc-add-connection (&optional connection-name db)
