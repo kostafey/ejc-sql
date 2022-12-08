@@ -6,7 +6,7 @@
 ;; URL: https://github.com/kostafey/ejc-sql
 ;; Keywords: sql, jdbc
 ;; Version: 0.4.1
-;; Package-Requires: ((emacs "26.3")(clomacs "0.0.5")(dash "2.16.0")(spinner "1.7.3")(direx "1.0.0"))
+;; Package-Requires: ((emacs "26.3")(clomacs "0.0.5")(dash "2.16.0")(spinner "1.7.3"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -38,7 +38,6 @@
 (require 'cl-lib)
 (require 'org-table)
 (require 'ejc-lib)
-(require 'ejc-direx)
 (require 'ejc-eldoc)
 (require 'ejc-format)
 (require 'ejc-interaction)
