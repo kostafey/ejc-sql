@@ -185,13 +185,17 @@ To activate `company-quickhelp` add the following to your `.emacs`:
 <a id="minibuffer-completion"></a>
 ### Minibuffer completion
 
-By default `ido` is used as minibuffer the completion system. You can change
-this to leverage another option by editing `ejc-completion-system` and
-selecting `standard`. This will allow you to use it with any configured
-completion mechanism for example, [ivy](https://github.com/abo-abo/swiper):
+By default standard `completing-read` is used as minibuffer the completion
+system. This is allow you to use it with any configured
+completion mechanism for example, [vertico](https://github.com/minad/vertico),
+[ivy](https://github.com/abo-abo/swiper)
+or [helm](https://github.com/emacs-helm/helm).
+You can change this to `ido-completing-read`
+([ido](https://www.gnu.org/software/emacs/manual/html_mono/ido.html))
+by editing `ejc-completion-system` and selecting `ido`:
 
 ```elisp
-(setq ejc-completion-system 'standard)
+(setq ejc-completion-system 'ido)
 ```
 
 ### ElDoc

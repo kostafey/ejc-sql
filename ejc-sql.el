@@ -110,7 +110,7 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
   :group 'ejc-sql
   :type '(plist :key-type string :value-type (vector symbol string)))
 
-(defcustom ejc-completion-system 'ido
+(defcustom ejc-completion-system 'standard
   "The completion system used by `ejc-connect'."
   :group 'ejc-sql
   :type '(radio
