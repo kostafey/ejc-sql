@@ -1,6 +1,6 @@
 ;;; structure.clj -- Receive database stucture and keep it in cache.
 
-;;; Copyright © 2016-2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2016-2023 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -296,9 +296,32 @@
                       AND c.parent_category_id IN (SELECT help_category_id
                                                   FROM mysql.help_category
                                                   WHERE name = 'Functions')
-                    WHERE UPPER(t.name) = '%s'"
+                    WHERE UPPER(t.name) = '%s'
+                    UNION
+                    SELECT 'table' as table_name
+                    FROM information_schema.tables
+                    WHERE UPPER(table_name) = '%s'"
+                           (s/upper-case entity-name)
                            (s/upper-case entity-name)
                            (s/upper-case entity-name)))
+    :constraints (fn [& {:keys [owner table]}]
+                   (cond
+                     (and owner table)
+                     (format "
+                      SELECT column_name, constraint_name,
+                             referenced_column_name, referenced_table_name
+                      FROM information_schema.key_column_usage
+                      WHERE constraint_schema = '%s'
+                        AND table_name = '%s' "
+                             owner table)
+                     table
+                     (format "
+                      SELECT column_name, constraint_name,
+                             referenced_column_name, referenced_table_name
+                      FROM information_schema.key_column_usage
+                      WHERE table_name = '%s' " table)
+                     :else
+                     "SELECT * FROM information_schema.key_column_usage"))
     :procedures (fn [& _] "
                   SELECT routine_schema, routine_name
                   FROM information_schema.routines ")
@@ -310,6 +333,8 @@
                 (format "
                   SHOW CREATE FUNCTION %s "
                         entity-name))
+    :table (fn [& {:keys [entity-name]}]
+             (format "SHOW CREATE TABLE %s " entity-name))
     :standard-function (fn [& {:keys [entity-name]}]
                          (format "
                   SELECT description FROM mysql.help_topic
@@ -1084,6 +1109,7 @@
                                   :mysql (case type
                                            :function "create function"
                                            :procedure "create procedure"
+                                           :table "create table"
                                            nil)
                                   nil)))]
             (c/complete (o/unify-str
