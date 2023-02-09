@@ -1,6 +1,6 @@
 ;;; ejc-lib.el -- ejc-sql shared objects (the part of ejc-sql).
 
-;;; Copyright © 2013-2020 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2023 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 (require 's)
 (require 'dash)
+(require 'sql)
 
 (defvar-local ejc-connection-name nil
   "Buffer-local connection name created with `ejc-create-connection'.")
