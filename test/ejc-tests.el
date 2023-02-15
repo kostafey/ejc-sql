@@ -8,7 +8,11 @@
 (require 'cl)
 
 (when (require 'undercover nil t)
-  (undercover "*.el"))
+  (setq undercover-force-coverage t)
+  (undercover "*.el"
+              (:report-format 'lcov)
+              (:merge-report nil)
+              (:send-report nil)))
 (require 'ejc-sql)
 (require 'ejc-autocomplete)
 

@@ -3,7 +3,7 @@
 [![MELPA](https://melpa.org/packages/ejc-sql-badge.svg)](https://melpa.org/#/ejc-sql)
 [![Melpa Stable](https://stable.melpa.org/packages/ejc-sql-badge.svg)](https://stable.melpa.org/#/ejc-sql)
 [![Build Status](https://github.com/kostafey/ejc-sql/workflows/CI/badge.svg)](https://github.com/kostafey/ejc-sql/actions?query=workflow%3ACI)
-[![Coverage Status](https://coveralls.io/repos/kostafey/ejc-sql/badge.svg?branch=master)](https://coveralls.io/github/kostafey/ejc-sql?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/kostafey/ejc-sql/badge.svg?branch=master)](https://coveralls.io/github/kostafey/ejc-sql?branch=master)
 
 # ejc-sql
 

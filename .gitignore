@@ -3,6 +3,7 @@
 /classes
 /checkouts
 /maven_repository
+/coverage
 pom.xml
 *.jar
 *.class

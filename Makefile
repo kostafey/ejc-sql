@@ -7,10 +7,11 @@ test : version
 elpa:
 ifeq ($(OS),Windows_NT)
 	if exist $(USERPROFILE)\.cask rmdir $(USERPROFILE)\.cask /s /q
-	curl -fsSkL https://raw.github.com/cask/cask/master/go | python
+	git clone https://github.com/cask/cask $(USERPROFILE)\.cask
+	make -C $(USERPROFILE)\.cask cask install
 else ifeq ($(wildcard $(HOME)/.cask/bin/),)
 	rm -rf ~/.cask
-	curl -fsSkL https://raw.github.com/cask/cask/master/go | python
+	git clone https://github.com/cask/cask $(HOME)/.cask
+	make -C ~/.cask cask install
 endif
 	cask install
-	cask update
