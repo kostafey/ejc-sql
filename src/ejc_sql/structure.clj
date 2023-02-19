@@ -134,8 +134,9 @@
                     WHERE UPPER(OBJECT_NAME) = '%s'
                       AND object_type NOT IN ('SYNONYM', 'PACKAGE BODY')
                     UNION
-                    SELECT 'PROCEDURE' FROM dba_procedures
-                    WHERE UPPER(PROCEDURE_NAME) = '%s'
+                    SELECT 'PROCEDURE' FROM all_procedures
+                    WHERE UPPER(OBJECT_NAME) = '%s'
+                      AND object_type = 'PROCEDURE'
                       AND rownum = 1"
                            (s/upper-case entity-name)
                            (s/upper-case entity-name)))
