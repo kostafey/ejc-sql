@@ -1,6 +1,6 @@
 ;;; output.clj -- Output & formatting clojure functions for ejc-sql.
 
-;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2023 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -17,13 +17,11 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.output
-  (:use clojure.java.io
-        ejc-sql.lib)
-  (:require [clojure.string :as s])
+  (:require [clojure.string :as s]
+            [clojure.java.io :refer [file writer]]
+            [ejc-sql.lib :refer [*max-column-width* dml? simple-join windows?]])
   (:import (java.io File)
-           (java.lang.reflect Method)
-           (java.util Date)
-           (java.text SimpleDateFormat)
+           (java.lang Character$UnicodeBlock)
            (org.apache.commons.lang3 StringUtils)
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl
                                                DDLFormatterImpl)))
@@ -64,7 +62,7 @@
     (when is-new-file
       (.mkdirs (File. (.getParent log-file)))
       (.createNewFile log-file))
-    (with-open [wrtr (clojure.java.io/writer log-file :append true)]
+    (with-open [wrtr (writer log-file :append true)]
       (when is-new-file
         (.write wrtr (str "-- -*- mode: sql; -*-\n"
                           "-- Local Variables:\n"
@@ -179,6 +177,27 @@
   (min (if (> x 0) x y)
        (if (> y 0) y x)))
 
+(defn- cjk-char?
+  "Return true if argument char is CJK character."
+  [char]
+  (= (Character$UnicodeBlock/of char)
+     Character$UnicodeBlock/CJK_UNIFIED_IDEOGRAPHS))
+
+(defn- cjk-chars-count
+  "Return count of CJK characters in string."
+  [text]
+  (count (filter cjk-char? text)))
+
+(defn- string-length
+  "Return string length, given that CJK characters have a length of 2."
+  [text]
+  (loop [string text
+         length 0]
+    (if (= (count string) 0)
+      length
+      (recur (next string) (+ length
+                              (if (cjk-char? (first string)) 2 1))))))
+
 (defn print-table
   "Converts a seq of seqs to a textual table. Uses the first seq as the table
   headings and the remaining seqs as rows."
@@ -191,7 +210,7 @@
                                ;; `row` 1 should be added to `row-limit`.
                                (> (count rows) (+ row-limit 1)))
                         [(take (+ row-limit 1) rows)
-                         (if @show-too-many-rows-message
+                         (when @show-too-many-rows-message
                            (format "Too many rows. Only %s from %s%s are shown."
                                    row-limit
                                    (min-not-zero @max-rows (- (count rows) 1))
@@ -210,8 +229,8 @@
                             [(rotate-table [headers (first rows)]) true]
                             [rows false])
            [single-column-and-row
-            cell-value] (if-let [single-cell? (and (= (count rows) 1)
-                                                   (= (count (first rows)) 1))]
+            cell-value] (when-let [single-cell? (and (= (count rows) 1)
+                                                     (= (count (first rows)) 1))]
                           [single-cell? (ffirst rows)])
            [headers rows] (if (or rotated single-column-and-row)
                             ;; Do not restrict column width if result
@@ -239,33 +258,41 @@
                     (list
                      (apply max
                             (cons
-                             (count (first headers))
+                             (string-length (first headers))
                              (if (string? cell-value)
-                               (map count (s/split cell-value rn))
-                               (list (count (str cell-value)))))))
+                               (map string-length (s/split cell-value rn))
+                               (list (string-length (str cell-value)))))))
                     (for [col (rotate-table (conj rows headers))]
-                      (apply max (map #(count (str %)) col))))
+                      (apply max (map #(string-length (str %)) col))))
            spacers (map #(apply str (repeat % (u? "─" "-"))) widths)
            ;; TODO: #(str "%" % "d") for numbers
            fmts (if (and rotated (not aob))
                   ;; Remove trailing spaces for data column of single-row
                   ;; result if no outer borders required.
-                  (list (str "%-" (first widths) "s") "%s")
-                  (map #(str "%-" % "s") widths))
+                  (list (fn [text] (let [width (- (first widths)
+                                                  (cjk-chars-count text))
+                                         pattern (str "%-" width "s")]
+                                     (format pattern text)))
+                        (fn [text] (let [pattern "%s"]
+                                     (format pattern text))))
+                  (map (fn [w]
+                         (fn [text] (let [width (- w (cjk-chars-count text))
+                                          pattern (str "%-" width "s")]
+                                      (format pattern text))))
+                       widths))
            fmt-row (fn [leader divider trailer row]
                      (str leader
                           (apply str (interpose
                                       divider
                                       (for [[col fmt] (map vector row fmts)]
-                                        (format fmt (str col)))))
+                                        (fmt (str col)))))
                           trailer))]
        (when (not-empty msg)
          (println msg)
          (println))
-       (if (not rotated)
-         (do
-           (println (fmt-row (if aob (u? "│ " "| ") "") (u? " │ " " | ") (if aob (u? " │" " |") "") headers))
-           (println (fmt-row (if aob (u? "├─" "|-") "") (u? "─┼─" "-+-") (if aob (u? "─┤" "-|") "") spacers))))
+       (when (not rotated)
+         (println (fmt-row (if aob (u? "│ " "| ") "") (u? " │ " " | ") (if aob (u? " │" " |") "") headers))
+         (println (fmt-row (if aob (u? "├─" "|-") "") (u? "─┼─" "-+-") (if aob (u? "─┤" "-|") "") spacers)))
        (doseq [row (if (and aob single-column-and-row (string? cell-value))
                      (map list (s/split cell-value (re-pattern nl)))
                      rows)]
