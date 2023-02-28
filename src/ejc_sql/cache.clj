@@ -1,6 +1,6 @@
 ;;; cache.clj -- Keep database stucture cache.
 
-;;; Copyright © 2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2019-2023 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.cache
-  (:use [clomacs]))
+  (:require [clomacs :as clomacs]))
 
 (def cache
   "Keep information about structure of databases used for autocomplete & eldoc.

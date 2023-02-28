@@ -1,6 +1,6 @@
 ;;; connect.clj -- Core clojure functions for ejc-sql emacs extension.
 
-;;; Copyright © 2013-2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2023 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -17,32 +17,26 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.connect
-  (:use [clojure.java.io]
-        [ejc-sql.lib]
-        [ejc-sql.cache]
-        [clomacs])
   (:require [clojure.java.jdbc :as j]
             [clojure.java.io :as io]
             [clojure.string :as s]
-            [ejc-sql.output :as o])
-  (:import [java.sql Connection
-                     DriverManager
-                     PreparedStatement
-                     ResultSet
-            SQLException]
-           [java.io File]))
+            [clomacs :refer [clomacs-defn]]
+            [ejc-sql.output :as o]
+            [ejc-sql.lib :refer [select? ddl? clob-to-string-row *max-column-width*]]
+            [ejc-sql.cache :refer [invalidate-cache]])
+  (:import [java.sql SQLException]))
 
 (def db
   "DataBase connection properties list from the last transaction.
 For debug purpose."
   (atom nil))
 
+(defn set-db [ejc-db]
+  (reset! db ejc-db))
+
 (def current-query
   "Current running query data."
   (atom {}))
-
-(defn set-db [ejc-db]
-  (reset! db ejc-db))
 
 (defn handle-special-cases [db sql]
   (case (:subprotocol db)
@@ -78,13 +72,13 @@ For debug purpose."
   Unsafe for INSERT/UPDATE/CREATE/ALTER queries."
   []
   (future
-    (if (is-statement-not-closed?)
+    (when (is-statement-not-closed?)
       (let [conn (:conn @current-query)]
         (try
           (.rollback conn)
           (finally
             (.close conn)))))
-    (if (is-query-process-running?)
+    (when (is-query-process-running?)
       (future-cancel (:runner @current-query))))
   (:start-time @current-query))
 
@@ -129,7 +123,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
    (bit-or java.util.regex.Pattern/DOTALL
            java.util.regex.Pattern/MULTILINE)))
 
-(clomacs-defn complete-query ejc-complete-query
+(clomacs-defn complete-query 'ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
 
 (defn complete
@@ -198,19 +192,20 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
             msg (if (> result 0)
                   (str "Records affected: " result)
                   "Executed")]
-        (if (ddl? sql)
+        (when (ddl? sql)
           (invalidate-cache db))
         (list :message msg)))
     (catch SQLException e
       (list :message
             (o/unify-str "Error: " (.getMessage e))))))
 
-(defn- eval-user-sql [db sql & {:keys [rows-limit
-                                       fetch-size
-                                       append
-                                       display-result
-                                       result-file]}]
+(defn- eval-user-sql
   "Receive raw SQL from the user, log it, divide by statements and eval them."
+  [db sql & {:keys [rows-limit
+                    fetch-size
+                    append
+                    display-result
+                    result-file]}]
   (let [sql (s/trim sql)
         _ (do (o/log-sql (str sql "\n"))
               (o/clear-result-file :result-file result-file))
@@ -228,9 +223,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                  (for [sql-part (filter
                                  ;; Remove parts contains comments only.
                                  (fn [part]
-                                   (not (empty?
-                                         (s/trim
-                                          (s/replace part comments-re "")))))
+                                   (seq (s/trim
+                                         (s/replace part comments-re ""))))
                                  (if (or (not (:separator db)) manual-separator)
                                    (s/split sql statement-separator-re)
                                    [sql]))]
@@ -246,7 +240,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
      nil
      :start-time (:start-time @current-query)
      :status (if (or
-                  (every? (fn [[result-type result]]
+                  (every? (fn [[result-type _]]
                             (= result-type :result-set))
                           results)
                   (not (some (fn [[result-type result]]
@@ -258,7 +252,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                :done
                (if (and
                     (= (count results) 1)
-                    (some (fn [[result-type result]]
+                    (some (fn [[_ result]]
                             (.contains (s/lower-case result)
                                        "closed connection"))
                           results))
@@ -301,7 +295,8 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                       (s/join "\n" (.getStackTrace e)))
                  :start-time (:start-time @current-query)
                  :status :error
-                 :display-result true))))]
+                 :display-result true
+                 :result-file result-file))))]
     (if sync
       (run-query)
       (swap! current-query assoc

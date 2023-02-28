@@ -1,0 +1,25 @@
+{:lint-as {clomacs/clomacs-defn clojure.core/def}
+ :linters {:clojure-lsp/unused-public-var
+           {:level :info
+            :exclude #{ejc-sql.connect/cancel-query
+                       ejc-sql.connect/is-query-running?
+                       ejc-sql.connect/validate-connection
+                       ejc-sql.connect/eval-sql-and-log-print
+                       ejc-sql.cache/output-cache
+                       ejc-sql.classpath/add-classpath
+                       ejc-sql.output/print-log-file-path
+                       ejc-sql.output/set-fetch-size
+                       ejc-sql.output/set-max-rows
+                       ejc-sql.output/set-show-too-many-rows-message
+                       ejc-sql.output/set-column-width-limit
+                       ejc-sql.output/set-use-unicode
+                       ejc-sql.output/format-sql-print
+                       ejc-sql.structure/get-parameters
+                       ejc-sql.structure/get-keywords
+                       ejc-sql.structure/get-owners-candidates
+                       ejc-sql.structure/get-tables-candidates
+                       ejc-sql.structure/get-views-candidates
+                       ejc-sql.structure/get-packages-candidates
+                       ejc-sql.structure/get-entity-type-fmt
+                       ejc-sql.structure/get-entity-description
+                       ejc-sql.structure/describe-table}}}}

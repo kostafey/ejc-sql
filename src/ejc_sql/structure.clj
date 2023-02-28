@@ -17,13 +17,13 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.structure
-  (:use [ejc-sql.lib]
-        [ejc-sql.cache]
-        [clomacs])
   (:require
    [clojure.java.jdbc :as j]
    [clojure.string :as s]
    [clojure.java.io :as io]
+   [clomacs :refer [clomacs-defn]]
+   [ejc-sql.lib :refer [is-clob? clob-to-string clean-sql in? get->in]]
+   [ejc-sql.cache :refer [cache cache-creation-promises]]
    [ejc-sql.connect :as c]
    [ejc-sql.output :as o]
    [ejc-sql.keywords :as k]))
@@ -77,58 +77,56 @@
       true
       (> (get-ms-sql-server-version ver) 2000))))
 
-(def default-queries
-  {:owners  (fn [& _] "
+(def queries
+  "Database - specific queries used for obtain data about database structure."
+  (let [default-queries
+        {:owners  (fn [& _] "
               SELECT schema_owner
               FROM information_schema.schemata ")
-   :schemas (fn [& _] "
+         :schemas (fn [& _] "
               SELECT schema_name
               FROM information_schema.schemata ")
-   :tables  (fn [& {:keys [schema]}]
-              (format "
+         :tables  (fn [& {:keys [schema]}]
+                    (format "
                SELECT table_name
                FROM information_schema.tables
                %s
                ORDER BY table_name "
-                      (if schema
-                        (format " WHERE table_schema = '%s'" schema)
-                        "")))
-   :views   (fn [& _] "
+                            (if schema
+                              (format " WHERE table_schema = '%s'" schema)
+                              "")))
+         :views   (fn [& _] "
               SELECT table_name
               FROM information_schema.views ")
-   :all-tables (fn [& _] "
+         :all-tables (fn [& _] "
                  SELECT s.schema_owner, s.schema_name, t.table_name
                  FROM information_schema.schemata AS s,
                       information_schema.tables AS t
                  WHERE t.table_schema = s.schema_name ")
-   :columns (fn [& {:keys [table]}]
-              (format "
+         :columns (fn [& {:keys [table]}]
+                    (format "
                SELECT column_name
                FROM information_schema.columns
                WHERE UPPER(table_name) = '%s'
                ORDER BY column_name "
-                      (s/upper-case table)))
-   :view    (fn [& {:keys [entity-name]}]
-              (format "
+                            (s/upper-case table)))
+         :view    (fn [& {:keys [entity-name]}]
+                    (format "
                SELECT v.view_definition
                FROM information_schema.views AS v
                WHERE UPPER(v.table_name) = '%s' "
-                      (s/upper-case entity-name)))})
-
-(def queries
-  "Database - specific queries used for obtain data about database structure."
-  {
-   ;;--------
-   :oracle
-   ;;--------
-   {:entity      (fn [& {:keys [entity-name]}]
-                   (format "
+                            (s/upper-case entity-name)))}
+        ;;--------
+        oracle
+        ;;--------
+        {:entity      (fn [& {:keys [entity-name]}]
+                        (format "
                     SELECT text
                     FROM all_source
                     WHERE UPPER(name) = '%s' "
-                           (s/upper-case entity-name)))
-    :entity-type (fn [& {:keys [entity-name]}]
-                   (format "
+                                (s/upper-case entity-name)))
+         :entity-type (fn [& {:keys [entity-name]}]
+                        (format "
                     SELECT object_type
                     FROM all_objects
                     WHERE UPPER(OBJECT_NAME) = '%s'
@@ -138,86 +136,86 @@
                     WHERE UPPER(OBJECT_NAME) = '%s'
                       AND object_type = 'PROCEDURE'
                       AND rownum = 1"
-                           (s/upper-case entity-name)
-                           (s/upper-case entity-name)))
-    :view        (fn [& {:keys [entity-name]}]
-                   (format "
+                                (s/upper-case entity-name)
+                                (s/upper-case entity-name)))
+         :view        (fn [& {:keys [entity-name]}]
+                        (format "
                     SELECT text
                     FROM all_views
                     WHERE UPPER(view_name) = '%s' "
-                           (s/upper-case entity-name)))
-    :types       (fn [& _] "
+                                (s/upper-case entity-name)))
+         :types       (fn [& _] "
                     SELECT * FROM USER_TYPES ")
-    :owners      (fn [& _] "
+         :owners      (fn [& _] "
                     SELECT DISTINCT(owner)
                     FROM ALL_OBJECTS
                     ORDER BY owner ")
-    :tables      (fn [& {:keys [owner]}]
-                   (format "
+         :tables      (fn [& {:keys [owner]}]
+                        (format "
                     SELECT table_name, owner
                     FROM all_tables
                     %s
                     ORDER BY table_name "
-                           (if owner
-                             (format " WHERE UPPER(owner) = '%s' "
-                                     (s/upper-case owner))
-                             "")))
-    :views       (fn [& {:keys [owner]}]
-                   (format "
+                                (if owner
+                                  (format " WHERE UPPER(owner) = '%s' "
+                                          (s/upper-case owner))
+                                  "")))
+         :views       (fn [& {:keys [owner]}]
+                        (format "
                     SELECT view_name
                     FROM all_views
                     %s
                     ORDER BY view_name "
-                           (if owner
-                             (format " WHERE UPPER(owner) = '%s' "
-                                     (s/upper-case owner))
-                             "")))
-    :all-tables  (fn [& _] "
+                                (if owner
+                                  (format " WHERE UPPER(owner) = '%s' "
+                                          (s/upper-case owner))
+                                  "")))
+         :all-tables  (fn [& _] "
                     SELECT owner, table_name
                     FROM all_tables
                     WHERE owner NOT IN ('SYS', 'SYSTEM')
                     ORDER BY owner ")
-    :columns     (fn [& {:keys [table]}]
-                   (format "
+         :columns     (fn [& {:keys [table]}]
+                        (format "
                     SELECT column_name
                     FROM ALL_TAB_COLUMNS
                     WHERE UPPER(table_name) = '%s' "
-                           (s/upper-case table)))
-    :constraints (fn [& {:keys [owner table]}]
-                   (cond
-                     (and owner table)
-                     (format "
+                                (s/upper-case table)))
+         :constraints (fn [& {:keys [owner table]}]
+                        (cond
+                          (and owner table)
+                          (format "
                       SELECT * FROM all_constraints
                       WHERE owner = '%s'
                         AND table_name = '%s' "
-                             owner table)
-                     table
-                     (format "
+                                  owner table)
+                          table
+                          (format "
                       SELECT * FROM all_constraints
                       WHERE table_name = '%s' " table)
-                     :else
-                     "SELECT * FROM user_constraints"))
-    :procedures  (fn [& {:keys [owner]}]
-                   (format "
+                          :else
+                          "SELECT * FROM user_constraints"))
+         :procedures  (fn [& {:keys [owner]}]
+                        (format "
                     SELECT object_name, procedure_name
                     FROM all_procedures
                     %s " (if owner
                            (format "WHERE owner = '%s' " owner)
                            "")))
-    :parameters (fn [& {:keys [package entity-name]}]
-                  (format "
+         :parameters (fn [& {:keys [package entity-name]}]
+                       (format "
                       SELECT data_type, argument_name
                       FROM SYS.ALL_ARGUMENTS
                       WHERE object_name  = '%s'
                         AND in_out = 'IN'
                         %s "
-                          (s/upper-case entity-name)
-                          (if package
-                            (format "AND package_name = '%s'" package)
-                            "")))
-    :package   (fn [& {:keys [entity-name]}]
-                 ;; entity-name is a package name here
-                 (format "
+                               (s/upper-case entity-name)
+                               (if package
+                                 (format "AND package_name = '%s'" package)
+                                 "")))
+         :package   (fn [& {:keys [entity-name]}]
+                      ;; entity-name is a package name here
+                      (format "
                   SELECT text FROM
                   (
                     SELECT text AS text,
@@ -240,29 +238,29 @@
                       AND type = 'PACKAGE BODY'
                   )
                   ORDER BY ordered, line "
-                         (s/upper-case entity-name)
-                         (s/upper-case entity-name)))
-    :table     (fn [& {:keys [entity-name]}]
-                 (format "
+                              (s/upper-case entity-name)
+                              (s/upper-case entity-name)))
+         :table     (fn [& {:keys [entity-name]}]
+                      (format "
                   SELECT dbms_metadata.get_ddl('TABLE','%s')
                   FROM dual " (s/upper-case entity-name)))
-    :objects   (fn [& _] "
+         :objects   (fn [& _] "
                  SELECT * FROM all_objects
                  WHERE object_type IN ('FUNCTION','PROCEDURE','PACKAGE') ")
-    :keywords  (fn [& _] "
+         :keywords  (fn [& _] "
                  SELECT * FROM V$RESERVED_WORDS ORDER BY keyword ")}
-   ;;--------
-   :informix
-   ;;--------
-   {:owners nil
-    :tables  (fn [& _] "
+        ;;--------
+        informix
+        ;;--------
+        {:owners nil
+         :tables  (fn [& _] "
                SELECT TRIM(t.tabname) as tablesList
                FROM systables AS t
                WHERE t.tabtype = 'T'
                  AND t.tabid >= 100
                ORDER BY t.tabname; ")
-    :columns (fn [& {:keys [table]}]
-               (format "
+         :columns (fn [& {:keys [table]}]
+                    (format "
                 SELECT TRIM(c.colname) AS column_name
                  FROM systables AS t, syscolumns AS c
                 WHERE t.tabid = c.tabid
@@ -270,23 +268,23 @@
                   AND t.tabid >= 100
                   AND TRIM(t.tabname) = '%s'
                 ORDER BY c.colno; " table))}
-   ;;-------
-   :mysql
-   ;;-------
-   {:owners  (fn [& _] "
+        ;;-------
+        mysql
+        ;;-------
+        {:owners  (fn [& _] "
                SELECT schema_name
                FROM information_schema.schemata ")
-    :tables  (default-queries :tables)
-    :all-tables (fn [& _] "
+         :tables  (default-queries :tables)
+         :all-tables (fn [& _] "
                   SELECT s.schema_name, t.table_name
                   FROM information_schema.schemata AS s,
                        information_schema.tables AS t
                   WHERE t.table_schema = s.schema_name ")
-    :columns (default-queries :columns)
-    :keywords (fn [& _] "
+         :columns (default-queries :columns)
+         :keywords (fn [& _] "
                   SELECT name FROM mysql.help_keyword")
-    :entity-type (fn [& {:keys [entity-name]}]
-                   (format "
+         :entity-type (fn [& {:keys [entity-name]}]
+                        (format "
                     SELECT routine_type
                     FROM information_schema.routines
                     WHERE UPPER(routine_name) = '%s'
@@ -302,137 +300,137 @@
                     SELECT 'table' as table_name
                     FROM information_schema.tables
                     WHERE UPPER(table_name) = '%s'"
-                           (s/upper-case entity-name)
-                           (s/upper-case entity-name)
-                           (s/upper-case entity-name)))
-    :constraints (fn [& {:keys [owner table]}]
-                   (cond
-                     (and owner table)
-                     (format "
+                                (s/upper-case entity-name)
+                                (s/upper-case entity-name)
+                                (s/upper-case entity-name)))
+         :constraints (fn [& {:keys [owner table]}]
+                        (cond
+                          (and owner table)
+                          (format "
                       SELECT column_name, constraint_name,
                              referenced_column_name, referenced_table_name
                       FROM information_schema.key_column_usage
                       WHERE constraint_schema = '%s'
                         AND table_name = '%s' "
-                             owner table)
-                     table
-                     (format "
+                                  owner table)
+                          table
+                          (format "
                       SELECT column_name, constraint_name,
                              referenced_column_name, referenced_table_name
                       FROM information_schema.key_column_usage
                       WHERE table_name = '%s' " table)
-                     :else
-                     "SELECT * FROM information_schema.key_column_usage"))
-    :procedures (fn [& _] "
+                          :else
+                          "SELECT * FROM information_schema.key_column_usage"))
+         :procedures (fn [& _] "
                   SELECT routine_schema, routine_name
                   FROM information_schema.routines ")
-    :procedure (fn [& {:keys [entity-name]}]
-                 (format "
+         :procedure (fn [& {:keys [entity-name]}]
+                      (format "
                   SHOW CREATE PROCEDURE %s "
-                         entity-name))
-    :function (fn [& {:keys [entity-name]}]
-                (format "
+                              entity-name))
+         :function (fn [& {:keys [entity-name]}]
+                     (format "
                   SHOW CREATE FUNCTION %s "
-                        entity-name))
-    :table (fn [& {:keys [entity-name]}]
-             (format "SHOW CREATE TABLE %s " entity-name))
-    :standard-function (fn [& {:keys [entity-name]}]
-                         (format "
+                             entity-name))
+         :table (fn [& {:keys [entity-name]}]
+                  (format "SHOW CREATE TABLE %s " entity-name))
+         :standard-function (fn [& {:keys [entity-name]}]
+                              (format "
                   SELECT description FROM mysql.help_topic
                   WHERE UPPER(name) = '%s' "
-                                 (s/upper-case entity-name)))
-    :parameters (fn [& {:keys [entity-name]}]
-                  (format "
+                                      (s/upper-case entity-name)))
+         :parameters (fn [& {:keys [entity-name]}]
+                       (format "
                       SELECT data_type, parameter_name
                       FROM information_schema.parameters
                       WHERE parameter_mode = 'IN'
                         AND UPPER(specific_name) = '%s'"
-                          (s/upper-case entity-name)))}
-   ;;--------
-   :h2
-   ;;--------
-   {:tables  (fn [& _] ((default-queries :tables) :schema "PUBLIC"))
-    :views   (default-queries :views)
-    :all-tables (fn [& _] "
+                               (s/upper-case entity-name)))}
+        ;;--------
+        h2
+        ;;--------
+        {:tables  (fn [& _] ((default-queries :tables) :schema "PUBLIC"))
+         :views   (default-queries :views)
+         :all-tables (fn [& _] "
                  SELECT s.schema_owner, s.schema_name, t.table_name
                  FROM information_schema.schemata AS s,
                       information_schema.tables AS t
                  WHERE t.table_schema = s.schema_name
                    AND LCASE(s.schema_name) != 'information_schema' ")
-    :columns (default-queries :columns)
-    :keywords (fn [& _]
-                "SELECT topic FROM information_schema.help")
-    :entity-type (fn [& {:keys [entity-name]}]
-                   (format "
+         :columns (default-queries :columns)
+         :keywords (fn [& _]
+                     "SELECT topic FROM information_schema.help")
+         :entity-type (fn [& {:keys [entity-name]}]
+                        (format "
                     SELECT t.table_type
                     FROM information_schema.tables AS t
                     WHERE UPPER(t.table_name) = '%s' "
-                    (s/upper-case entity-name)))
-    :view    (fn [& {:keys [entity-name]}]
-               ((default-queries :view) :entity-name entity-name))}
-   ;;--------
-   :sqlite
-   ;;--------
-   {:tables     (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
-    :views      (fn [& _] "SELECT name FROM sqlite_master WHERE type='view'")
-    :all-tables (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
-    :columns    (fn [& {:keys [table]}]
-                  (format "
+                                (s/upper-case entity-name)))
+         :view    (fn [& {:keys [entity-name]}]
+                    ((default-queries :view) :entity-name entity-name))}
+        ;;--------
+        sqlite
+        ;;--------
+        {:tables     (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
+         :views      (fn [& _] "SELECT name FROM sqlite_master WHERE type='view'")
+         :all-tables (fn [& _] "SELECT name FROM sqlite_master WHERE type='table'")
+         :columns    (fn [& {:keys [table]}]
+                       (format "
                    SELECT p.name as columnName
                    FROM sqlite_master m
                    LEFT OUTER JOIN pragma_table_info((m.name)) p
                         ON m.name <> p.name
                    WHERE m.name = '%s'
                    ORDER BY columnName " table))
-    :keywords    (:sqlite k/keywords)
-    :entity-type (fn [& {:keys [entity-name]}]
-                   (format "
+         :keywords    (:sqlite k/keywords)
+         :entity-type (fn [& {:keys [entity-name]}]
+                        (format "
                     SELECT type FROM sqlite_master
                     WHERE UPPER(name) = '%s' "
-                           (s/upper-case entity-name)))
-    :view        (fn [& {:keys [entity-name]}]
-                   (format "
+                                (s/upper-case entity-name)))
+         :view        (fn [& {:keys [entity-name]}]
+                        (format "
                     SELECT sql FROM sqlite_master
                     WHERE UPPER(name) = '%s' "
-                    (s/upper-case entity-name)))}
-   ;;-------
-   :sqlserver ; ms sql server
-   ;;-------
-   {:owners  (default-queries :owners)
-    :schemas (default-queries :schemas)
-    :tables  (default-queries :tables)
-    :all-tables (default-queries :all-tables)
-    :columns (default-queries :columns)
-    :constraints (fn [& {:keys [table]}]
-                   (format "
+                                (s/upper-case entity-name)))}
+        ;;-------
+        sqlserver ; ms sql server
+        ;;-------
+        {:owners  (default-queries :owners)
+         :schemas (default-queries :schemas)
+         :tables  (default-queries :tables)
+         :all-tables (default-queries :all-tables)
+         :columns (default-queries :columns)
+         :constraints (fn [& {:keys [table]}]
+                        (format "
                     SELECT type_desc AS constraint_type,
                            name
                     FROM sys.objects
                     WHERE type_desc LIKE '%CONSTRAINT'
                       AND OBJECT_NAME(parent_object_id)='%s' " table))
-    :entity      (fn [& {:keys [db entity-name]}]
-                   (if (is-modern-sql-server? db)
-                     (format "
+         :entity      (fn [& {:keys [db entity-name]}]
+                        (if (is-modern-sql-server? db)
+                          (format "
                       SELECT definition
                       FROM sys.objects o
                       JOIN sys.sql_modules m ON m.object_id = o.object_id
                       WHERE o.object_id = object_id('%s') " entity-name)
-                     (format "
+                          (format "
                       SELECT c.text
                       FROM sysobjects o
                       JOIN syscomments c ON c.id = o.id
                       WHERE o.name = '%s' " entity-name)))}
-   ;;-------
-   :postgresql
-   ;;-------
-   {:procedure (fn [& {:keys [entity-name]}]
-                 (format "
+        ;;-------
+        postgresql
+        ;;-------
+        {:procedure (fn [& {:keys [entity-name]}]
+                      (format "
                   SELECT pg_get_functiondef(p.oid)
                   FROM   pg_catalog.pg_proc p
                   WHERE  upper(p.proname) = '%s' "
-                         (s/upper-case entity-name)))
-    :table (fn [& {:keys [entity-name]}]
-             (format "
+                              (s/upper-case entity-name)))
+         :table (fn [& {:keys [entity-name]}]
+                  (format "
               SELECT 'CREATE TABLE %s (\n' ||
                   string_agg(column_list.column_expr, ', \n') ||
                   '\n);'
@@ -447,21 +445,21 @@
                 WHERE table_schema = 'public'
                   AND upper(table_name) = '%s'
                 ORDER BY ordinal_position) column_list"
-                     entity-name
-                     (s/upper-case entity-name)))
-    :owners     (default-queries :owners)
-    :schemas    (default-queries :schemas)
-    :tables     (default-queries :tables)
-    :all-tables (default-queries :all-tables)
-    :columns    (default-queries :columns)
-    :procedures (fn [& _] "
+                          entity-name
+                          (s/upper-case entity-name)))
+         :owners     (default-queries :owners)
+         :schemas    (default-queries :schemas)
+         :tables     (default-queries :tables)
+         :all-tables (default-queries :all-tables)
+         :columns    (default-queries :columns)
+         :procedures (fn [& _] "
                     SELECT p.proname
                     FROM   pg_catalog.pg_namespace n
                     JOIN   pg_catalog.pg_proc p
                       ON   p.pronamespace = n.oid
                     ORDER BY proname ")
-    :entity-type (fn [& {:keys [entity-name]}]
-                   (format "
+         :entity-type (fn [& {:keys [entity-name]}]
+                        (format "
                     SELECT 'namespace'
                     FROM   pg_catalog.pg_namespace n
                     WHERE  upper(n.nspname) = '%s'
@@ -479,24 +477,26 @@
                     JOIN   pg_catalog.pg_proc p
                       ON   p.pronamespace = n.oid
                     WHERE  upper(p.proname) = '%s' "
-                           (s/upper-case entity-name)
-                           (s/upper-case entity-name)
-                           (s/upper-case entity-name)
-                           (s/upper-case entity-name)))
-    :parameters (fn [& {:keys [entity-name]}]
-                  (format "
+                                (s/upper-case entity-name)
+                                (s/upper-case entity-name)
+                                (s/upper-case entity-name)
+                                (s/upper-case entity-name)))
+         :parameters (fn [& {:keys [entity-name]}]
+                       (format "
                       SELECT pg_catalog.pg_get_function_identity_arguments(
                                p.oid)
                       FROM   pg_catalog.pg_proc p
                       WHERE  p.proname = '%s'" entity-name))
-    :keywords (fn [& _]
-                "SELECT word FROM pg_get_keywords()")}})
-
-;; Use the same database introspection queries for MariaDB as for MySQL.
-(def queries (assoc queries :mariadb (queries :mysql)))
-
-(defn autocomplete-available-for-db? [db-type]
-  (queries db-type))
+         :keywords (fn [& _]
+                     "SELECT word FROM pg_get_keywords()")}]
+    {:oracle oracle
+     :informix informix
+     :mysql mysql
+     :mariadb mysql
+     :h2 h2
+     :sqlite sqlite
+     :sqlserver sqlserver
+     :postgresql postgresql}))
 
 (defn get-db-name [db]
   (let [{:keys [database subname connection-uri dbname]} db]
@@ -594,7 +594,7 @@
         meta-type (if (keyword? meta-type) meta-type (keyword meta-type))
         ;; owner (get-this-owner db owner)
         sql-receiver (get-in queries [db-type meta-type])
-        sql (if sql-receiver
+        sql (when sql-receiver
               (sql-receiver :db db
                             :owner owner
                             :schema owner
@@ -775,10 +775,10 @@
   "Return keywords list for this database type from cache if already received
   from DB, check if receiveing process is not running, then start it."
   [db force?]
-  (if-let [keywords-query (get-in queries [(get-db-type db) :keywords])]
+  (when-let [keywords-query (get-in queries [(get-db-type db) :keywords])]
     (get-or-create-cache :db db
                          :path [:keywords]
-                         :direct-value (if (vector? keywords-query)
+                         :direct-value (when (vector? keywords-query)
                                          keywords-query)
                          :sql (select-db-meta-script db :keywords)
                          :force? force?
@@ -800,7 +800,7 @@
 
 (clomacs-defn
  complete-auto-complete
- ejc-complete-auto-complete
+ 'ejc-complete-auto-complete
  :doc "Call Emacs auto-complete if point is the same as before loading.")
 
 (defn run-autocomplete [db buffer-name point]
@@ -1020,7 +1020,7 @@
               (let [pattern (re-pattern (str "\\(.+\\)(\\s|\\s(as)\\s)"
                                              prefix-1))
                     complex-alias (first (re-find pattern sql))
-                    complex-alias (if complex-alias
+                    complex-alias (when complex-alias
                                     (subs complex-alias 1
                                           (.lastIndexOf complex-alias ")")))]
                 (if complex-alias
@@ -1039,10 +1039,10 @@
   "Determine DB entity type, whether it is a `:view`, `:type`,
   `:package`, `:namespace` or `:procedure`."
   [db entity-name]
-  (if-let [sql (and entity-name
-                    (select-db-meta-script db :entity-type
-                                           :entity-name entity-name))]
-    (if-let [found-type (db->value db sql)]
+  (when-let [sql (and entity-name
+                      (select-db-meta-script db :entity-type
+                                             :entity-name entity-name))]
+    (when-let [found-type (db->value db sql)]
       (-> (.split found-type " ")
           first
           s/lower-case
@@ -1126,7 +1126,7 @@
                         :connection-name connection-name
                         :db db
                         :result-file result-file
-                        :goto-symbol (if prefix entity-name))
+                        :goto-symbol (when prefix entity-name))
             (c/complete (format "Can't find %s named %s."
                                 (name type) sql-object)
                         :result-file result-file))

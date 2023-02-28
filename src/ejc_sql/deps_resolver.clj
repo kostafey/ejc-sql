@@ -1,6 +1,6 @@
 ;;; deps_resolver.clj -- Discover required jar artifacts.
 
-;;; Copyright © 2020 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2020-2023 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -17,10 +17,9 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.deps-resolver
-  (:use
-   [leiningen.core.project :only [default-repositories]])
   (:require
-   [cemerick.pomegranate.aether :as aether]))
+   [cemerick.pomegranate.aether :as aether]
+   [leiningen.core.project :refer [default-repositories]]))
 
 (defn get-hierarchy [artifacts-list]
   (aether/dependency-hierarchy
@@ -63,5 +62,5 @@
        (map
         (fn [dep] (get-hierarchy (vector dep)))
         (get-dependeces-list artifacts-list)))))
-    (catch Exception e
+    (catch Exception _
       nil)))

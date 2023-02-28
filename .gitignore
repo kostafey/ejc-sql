@@ -4,6 +4,9 @@
 /checkouts
 /maven_repository
 /coverage
+/.clj-kondo
+/.lsp
+/ejc-sql
 pom.xml
 *.jar
 *.class
