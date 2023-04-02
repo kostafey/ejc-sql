@@ -39,6 +39,7 @@ formatting of SQL scripts are also available.
     - [Presto connection](#prestoconnection)
     - [ClickHouse connection](#clickhouseconnection)
     - [ElasticSearch connection](#elasticsearchconnection)
+    - [Snowflake connection](#snowflakeconnection)
 - [Usage](#usage)
   - [Basic use case](#basic-use-case)
   - [Separators & delimiters](#separators-delimiters)
@@ -751,6 +752,22 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
   :dbtype "elasticsearch"
   :classname "org.elasticsearch.xpack.sql.jdbc.EsDriver"
   :connection-uri (concat "jdbc:es://172.16.13.177:9200/"))
+```
+
+<a id="snowflakeconnection"></a>
+### Snowflake connection
+```lisp
+(ejc-create-connection
+ "snowflake"
+ :dependencies [[net.snowflake/snowflake-jdbc "3.13.27"]
+                [net.java.dev.jna/jna "5.13.0"]]
+ :connection-uri (concat "jdbc:snowflake://my-db.snowflakecomputing.com:443"
+                         "?user="my-email@myjob.com"
+                         "&warehouse=my-warehouse"
+                         "&role=my-role"
+                         "&db=my-db"
+                         "&authenticator=externalbrowser"
+                         "&JDBC_QUERY_RESULT_FORMAT=JSON"))
 ```
 
 ## Usage
