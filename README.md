@@ -494,7 +494,7 @@ mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=net.sourcefo
 
 **PostgreSQL**
 ```
-mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=postgresql:postgresql:9.3-1102.jdbc41 -DrepoUrl=http://clojars.org/repo/
+mvn org.apache.maven.plugins:maven-dependency-plugin:get -Dartifact=org.postgresql:postgresql:42.6.0
 ```
 
 **MySQL**
@@ -691,8 +691,8 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; PostgreSQL example
 (ejc-create-connection
  "PostgreSQL-db-connection"
- :classpath (concat "~/.m2/repository/postgresql/postgresql/9.3.1102.jdbc41/"
-                     "postgresql-9.3-1102.jdbc41.jar")
+ :classpath (concat "~/.m2/repository/org.postgresql/postgresql/42.6.0/"
+                    "postgresql-42.6.0.jar")
  :subprotocol "postgresql"
  :subname "//localhost:5432/my_db_name"
  :user "a_user"
