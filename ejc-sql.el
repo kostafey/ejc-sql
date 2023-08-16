@@ -408,7 +408,8 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
       (if ejc-org-mode-show-results
           (with-temp-buffer
             (insert-file-contents (ejc-get-result-file-path))
-            (buffer-string))))))
+            (or (org-babel-read-table)
+                (buffer-string)))))))
 
 (defun ejc-org-edit-special (orig-fun &rest args)
   (if (and (equal "sql" (car (org-babel-get-src-block-info)))
