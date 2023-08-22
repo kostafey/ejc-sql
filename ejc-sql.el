@@ -397,12 +397,12 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
                  (concat "ejc-sql is enabled, ignore source block connection"
                          " header arguments and use ejc-sql to execute it? ")))))
       (funcall orig-fun body params)
-    (cl-multiple-value-bind (beg end) (save-mark-and-excursion
-                                        (org-babel-mark-block)
-                                        (list (point) (mark)))
-      (ejc-eval-user-sql-at-point
-       :beg beg
-       :end end
+    (let* ((info (org-babel-get-src-block-info 'no-eval))
+           (expanded-body (if (org-babel-noweb-p (nth 2 info) :eval)
+                              (org-babel-expand-noweb-references info)
+                            (nth 1 info))))
+      (ejc-eval-user-sql
+       expanded-body
        :sync ejc-org-mode-show-results
        :display-result (not ejc-org-mode-show-results))
       (if ejc-org-mode-show-results
