@@ -48,14 +48,9 @@ Uppercase by default, set to nil to use downcase candidates."
 
 (defun ejc-return-point ()
   "Return point position if point (cursor) is located next to dot char (.#)"
-  (let ((curr-char (buffer-substring
-                    (save-excursion
-                      (left-char 1)
-                      (point))
-                    (point))))
-    (if (equal curr-char ".")
-        (point)
-      nil)))
+  (if (= ?. (or (char-before) 0))
+      (point)
+    nil))
 
 (defun ejc-get-prefix-word ()
   "Return the word preceding dot before the typing."
