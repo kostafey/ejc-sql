@@ -7,7 +7,7 @@
 
 # ejc-sql
 
-<img src="https://github.com/kostafey/ejc-sql/blob/master/img/ejc-sql-logo.png" width="220px"
+<img src="https://gitlab.com/kostafey/ejc-sql/-/raw/master/img/ejc-sql-logo.png" width="220px"
  alt="ejc-sql logo" align="right" />
 
 ejc-sql turns Emacs into a simple SQL client; it uses a JDBC connection to
