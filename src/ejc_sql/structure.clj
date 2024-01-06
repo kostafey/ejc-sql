@@ -1,6 +1,6 @@
 ;;; structure.clj -- Receive database stucture and keep it in cache.
 
-;;; Copyright © 2016-2023 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2016-2024 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -366,6 +366,12 @@
                     FROM information_schema.tables AS t
                     WHERE UPPER(t.table_name) = '%s' "
                                 (s/upper-case entity-name)))
+         :table (fn [& {:keys [entity-name]}]
+                  (format "
+                    SELECT sql
+                    FROM INFORMATION_SCHEMA.TABLES
+                    WHERE TABLE_NAME = '%s' "
+                          (s/upper-case entity-name)))
          :view    (fn [& {:keys [entity-name]}]
                     ((default-queries :view) :entity-name entity-name))}
         ;;--------
