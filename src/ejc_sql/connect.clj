@@ -1,6 +1,6 @@
 ;;; connect.clj -- Core clojure functions for ejc-sql emacs extension.
 
-;;; Copyright © 2013-2023 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2013-2024 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 (def comments-re
   "Regex to search comments in SQL expression."
   (java.util.regex.Pattern/compile
-   "(?:/\\*.*?\\*/)|(?:--.*?$)",
+   "(?:/\\*.*?\\*/[\\s;]*\n?)|(?:--.*?$\n)",
    (bit-or java.util.regex.Pattern/DOTALL
            java.util.regex.Pattern/MULTILINE)))
 
