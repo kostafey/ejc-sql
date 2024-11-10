@@ -1065,10 +1065,11 @@ List of other interactive functions
 List of snippets:
 
 __select__ | __where__ | __inner__
------------|-----------|------------
+-----------|-----------|-------------
 __insert__ | __begin__ | __left__
 __update__ | __grant__ | __right__
 __delete__ | __revoke__| __alter__
+__show__   | __drop.d__| __create.d__
 
 
 ## Troubleshooting

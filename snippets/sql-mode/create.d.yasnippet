@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: create.d
+# key: create.d
+# --
+CREATE DATABASE ${1:database_name}
+`(if (eq sql-product 'ansi) "character set 'utf8' collate 'utf8_general_ci'")`;
