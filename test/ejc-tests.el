@@ -116,14 +116,14 @@
                   23 "SELECT * FROM table / SELECT * FROM user")))
   (should (equal '(4 23)
                  (ejc-test:get-boundaries 3 "\n/\nSELECT * FROM table")))
-  (should (equal '(1 21)
+  (should (equal '(1 22)
                  (ejc-test:get-boundaries 1 "\nSELECT * FROM table\n/")))
   (should (equal '(26 44)
                  (ejc-test:get-boundaries 26 (concat "\n"
                                                      "SELECT * FROM table\n"
                                                      "/  \n"
                                                      "SELECT * FROM user"))))
-  (should (equal '(1 23)
+  (should (equal '(1 26)
                  (ejc-test:get-boundaries 1 "\n  SELECT * FROM table\n  /")))
   (should (equal '(1 23)
                  (ejc-test:get-boundaries 1 "\n  SELECT * FROM table\n  /  ")))

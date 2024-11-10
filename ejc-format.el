@@ -34,6 +34,10 @@
   "Get top position of batch statement(s) seperator `ejc-sql-separator'.
 Upper position of this batch statement(s)."
   (save-excursion
+    (when (and (characterp (char-after))
+               (or (equal (string (char-after)) " ")
+                   (equal (string (char-after)) "\n")))
+      (forward-char 1))
     (if (re-search-backward (ejc-sql-separator-re) nil t nil)
         (re-search-forward (ejc-sql-separator-re) nil t nil)
       (beginning-of-buffer))
