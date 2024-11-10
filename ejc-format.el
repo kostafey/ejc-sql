@@ -1,6 +1,6 @@
 ;;; ejc-format.el -- SQL formatting library (the part of ejc-sql).
 
-;;; Copyright © 2012-2019 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2024 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@
   "The char with purpose to separate the SQL statement both other.")
 
 (defun ejc-sql-separator-re ()
-  (format "^\\s-*%s\\s-*" (or (alist-get :separator ejc-db)
-                              ejc-sql-separator)))
+  (format "^\\s-*%s\\(\\s-+\\|\n\\)" (or (alist-get :separator ejc-db)
+                                         ejc-sql-separator)))
 
 (defun ejc-get-border-top ()
   "Get top position of batch statement(s) seperator `ejc-sql-separator'.
