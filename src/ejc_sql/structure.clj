@@ -1170,10 +1170,12 @@
           (println)
           (println "Constraints:")
           (println)
-          (o/print-table (second (c/eval-sql-core :db db
-                                                  :sql sql
-                                                  :fetch-size 0
-                                                  :max-rows 0)))))))
+          (o/print-table (second
+                          (first
+                           (c/eval-sql-core :db db
+                                            :sql-list (list sql)
+                                            :fetch-size 0
+                                            :max-rows 0))))))))
   (c/complete
    nil
    :display-result true
