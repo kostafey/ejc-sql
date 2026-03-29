@@ -28,7 +28,6 @@
 
 (require 'cl-lib)
 (require 'dash)
-(require 'company)
 (require 'ejc-completion-common)
 
 (defcustom ejc-company-cache-update-ivl-secs 60
@@ -145,15 +144,16 @@ it returns only common SQL words and schedules the cache update.
 (defun ejc-company-doc-buffer (candidate)
   (company-doc-buffer (ac-ejc-documentation candidate)))
 
-(defun ejc-company-backend (command &optional arg &rest ignored)
-  (interactive (list 'interactive))
-  (cl-case command
-    (interactive (company-begin-backend 'ejc-company-backend))
-    (prefix (and (bound-and-true-p ejc-sql-mode)
-                 (company-grab-symbol)))
-    (candidates (ejc-company-candidates arg))
-    (doc-buffer (ejc-company-doc-buffer arg))
-    (annotation (ejc-company-annotation arg))))
+(when (featurep 'company)
+  (defun ejc-company-backend (command &optional arg &rest ignored)
+    (interactive (list 'interactive))
+    (cl-case command
+      (interactive (company-begin-backend 'ejc-company-backend))
+      (prefix (and (bound-and-true-p ejc-sql-mode)
+                   (company-grab-symbol)))
+      (candidates (ejc-company-candidates arg))
+      (doc-buffer (ejc-company-doc-buffer arg))
+      (annotation (ejc-company-annotation arg)))))
 
 (provide 'ejc-company)
 

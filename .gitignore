@@ -16,3 +16,4 @@ pom.xml
 .lein-plugins
 .nrepl-port
 .cask
+elpa
