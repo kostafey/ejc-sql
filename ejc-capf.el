@@ -26,18 +26,7 @@
                       collection)))
 
 (defun ejc-capf-get-annotation (cand)
-  (let* ((on-point (ejc-get-prefix-word))
-         (my-data (list (list "ansi sql" (ejc-get-ansi-sql-words))
-                        (list "keyword" (ejc-get-keywords))
-                        (list "owner" (ejc-owners-candidates))
-                        (list "table" (ejc-tables-candidates))
-                        (list "view" (ejc-views-candidates))
-                        (when on-point
-                          (list "column" (ejc-colomns-candidates)))))
-         ;; Find which lists contain the candidate
-         (matches (ejc-find-lists-containing cand my-data)))
-    (when matches
-      (format " [%s]" (mapconcat #'identity matches ", ")))))
+  (format " [%s]" (get-text-property 0 'meta-category cand)))
 
 (defun ejc-capf ()
   "SQL completion-at-point function."
@@ -45,13 +34,20 @@
         (on-point (ejc-get-prefix-word)))
     (when bds
       (list (car bds) (cdr bds)
-            (append (ejc-get-ansi-sql-words)
-                    (ejc-get-keywords)
-                    (ejc-owners-candidates)
-                    (ejc-tables-candidates)
-                    (ejc-views-candidates)
+            (append (mapcar (lambda (w) (propertize w 'meta-category "ansi sql"))
+                            (ejc-get-ansi-sql-words))
+                    (mapcar (lambda (w) (propertize w 'meta-category "keyword"))
+                            (seq-difference (ejc-get-keywords)
+                                            (ejc-get-ansi-sql-words)))
+                    (mapcar (lambda (w) (propertize w 'meta-category "owner"))
+                            (ejc-owners-candidates))
+                    (mapcar (lambda (w) (propertize w 'meta-category "table"))
+                            (ejc-tables-candidates))
+                    (mapcar (lambda (w) (propertize w 'meta-category "view"))
+                            (ejc-views-candidates))
                     (when on-point
-                      (ejc-colomns-candidates)))
+                      (mapcar (lambda (w) (propertize w 'meta-category "column"))
+                              (ejc-colomns-candidates))))
             :exclusive 'yes
             :annotation-function #'ejc-capf-get-annotation))))
 
