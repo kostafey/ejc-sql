@@ -78,13 +78,14 @@
            (str (subs result 0 (- *max-column-width* 3)) "...")
            result))))))
 
-(defn clob-to-string-row
-  "Check all data in row if it's a CLOB and convert CLOB to string."
+(defn lob-to-string-row
+  "Check all data in row if it's a LOB and convert CLOB/BLOB to string."
   [row single-record?]
   (mapv (fn [field]
-          (if (is-clob? field)
-            (clob-to-string field single-record?)
-            field))
+          (cond
+            (is-clob? field) (clob-to-string field single-record?)
+            (bytes? field) (String. field)
+            :else field))
         row))
 
 (defn clean-sql [sql]

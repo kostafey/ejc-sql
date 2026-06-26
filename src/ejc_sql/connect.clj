@@ -22,7 +22,7 @@
             [clojure.string :as s]
             [clomacs :refer [clomacs-defn]]
             [ejc-sql.output :as o]
-            [ejc-sql.lib :refer [select? ddl? clob-to-string-row *max-column-width*]]
+            [ejc-sql.lib :refer [select? ddl? lob-to-string-row *max-column-width*]]
             [ejc-sql.cache :refer [invalidate-cache]])
   (:import [java.sql SQLException]))
 
@@ -188,7 +188,7 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
                                  (let [single-record?
                                        (not (next (next rs)))]
                                    (mapv
-                                    #(clob-to-string-row
+                                    #(lob-to-string-row
                                       % single-record?)
                                     rs)))})))
                   ;; DML or DDL
