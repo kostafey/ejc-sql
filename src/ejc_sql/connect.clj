@@ -117,11 +117,13 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
   (re-pattern "(?i)delimiter\\s+(.+)"))
 
 (def comments-re
-  "Regex to search comments in SQL expression."
+  "Regex to search comments in SQL expression.
+Line comment lasts until the line break or the end of the SQL expression,
+hence the trailing line break is optional. Both `\\n` and `\\r\\n` line
+breaks are handled."
   (java.util.regex.Pattern/compile
-   "(?:/\\*.*?\\*/[\\s;]*\n?)|(?:--.*?$\n)",
-   (bit-or java.util.regex.Pattern/DOTALL
-           java.util.regex.Pattern/MULTILINE)))
+   "(?:/\\*.*?\\*/[\\s;]*(?:\\r?\\n)?)|(?:--[^\\r\\n]*(?:\\r?\\n)?)",
+   java.util.regex.Pattern/DOTALL))
 
 (clomacs-defn complete-query 'ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
