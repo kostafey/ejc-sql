@@ -125,11 +125,37 @@
 
 (defun ejc-plist-p (lst)
   "Check if LST is a plist."
-  (condition-case nil
-      (progn
-        (lax-plist-get lst nil)
-        t)
-    (error nil)))
+  (and (listp lst)
+       (null (cdr (last lst)))
+       (= 0 (% (safe-length lst) 2))))
+
+(defun ejc-plist-get (plist prop)
+  "Extract the value of PROP from the property list PLIST.
+Unlike `plist-get', keys are compared with `equal', so PROP can be
+a string.  `plist-get' gained a predicate argument in Emacs 29 only,
+and `lax-plist-get' is obsolete since then."
+  (catch 'found
+    (while (consp plist)
+      (if (equal (car plist) prop)
+          (throw 'found (cadr plist)))
+      (setq plist (cddr plist)))
+    nil))
+
+(defun ejc-plist-put (plist prop val)
+  "Change value in PLIST of PROP to VAL, comparing keys with `equal'.
+Like `plist-put', PLIST is modified by side effect when PROP is already
+there, so use the returned list rather than PLIST itself."
+  (let ((tail plist))
+    (catch 'done
+      (while (consp tail)
+        (when (equal (car tail) prop)
+          (setcar (cdr tail) val)
+          (throw 'done plist))
+        (setq tail (cddr tail)))
+      (if plist
+          (progn (nconc plist (list prop val))
+                 plist)
+        (list prop val)))))
 
 (defun ejc-flatten-index (imenu-index)
   "Flatten imenu index into a plain list.

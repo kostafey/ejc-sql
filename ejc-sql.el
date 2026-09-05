@@ -368,10 +368,10 @@ For more details about parameters see `get-connection' function in jdbc.clj:
 (defun ejc-update-conn-statistics (connection-name)
   "Update connection usage statistics, persist it in `ejc-conn-statistics-file'"
   (setq ejc-conn-statistics
-        (lax-plist-put
+        (ejc-plist-put
          ejc-conn-statistics
          connection-name
-         (1+ (or (lax-plist-get ejc-conn-statistics connection-name) 0))))
+         (1+ (or (ejc-plist-get ejc-conn-statistics connection-name) 0))))
   (ejc-save-to-file ejc-conn-statistics-file ejc-conn-statistics))
 
 (defun ejc-set-mode-name (connection-name)
@@ -436,8 +436,8 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
    (let ((conn-list (mapcar 'car ejc-connections))
          (conn-statistics (ejc-load-conn-statistics)))
      (-sort (lambda (c1 c2)
-              (> (or (lax-plist-get conn-statistics c1) 0)
-                 (or (lax-plist-get conn-statistics c2) 0)))
+              (> (or (ejc-plist-get conn-statistics c1) 0)
+                 (or (ejc-plist-get conn-statistics c2) 0)))
             conn-list))))
 
 ;;;###autoload
@@ -466,7 +466,7 @@ configuration."
 (defun ejc-resolve-jdbc-driver (dbtype)
   "Resolve and download artifacts (JDBC drivers) for DBTYPE.
 Apropriate artifacts list located in `ejc-jdbc-drivers'."
-  (let* ((artifact (lax-plist-get ejc-jdbc-drivers dbtype))
+  (let* ((artifact (ejc-plist-get ejc-jdbc-drivers dbtype))
          (jar-path (ejc-lein-artifact-to-path artifact)))
     (if (not (and (file-exists-p jar-path)
                   (if (> (file-attribute-size (file-attributes jar-path))

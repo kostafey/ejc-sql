@@ -122,7 +122,7 @@
     (if-let ((sql-word (condition-case nil
                            (ejc-get-word-before-point)
                          (error nil))))
-        (if-let ((sql-expression (lax-plist-get
+        (if-let ((sql-expression (ejc-plist-get
                                   ejc-sql-expressions
                                   sql-word)))
             (ejc-propertize sql-expression)))))
