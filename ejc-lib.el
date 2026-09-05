@@ -168,11 +168,11 @@ IMENU-INDEX - imenu index tree."
        (list x)))
    imenu-index))
 
-(defun ejc-split-and-join (fn split &optional join)
-  "Split string by SPLIT, apply FN to each substring, than join by JOIN."
+(defun ejc-split-and-join (string fn split &optional join)
+  "Split STRING by SPLIT, apply FN to each substring, than join by JOIN."
   (let ((join (or join split)))
     (string-join
-     (-map fn (split-string (car p) split))
+     (-map fn (split-string string split))
      join)))
 
 (defun ejc-not-nil-str (s)

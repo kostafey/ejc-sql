@@ -113,6 +113,7 @@
                         (-map
                          (lambda (p) (if (eql (cdr p) p-index)
                                     (ejc-split-and-join
+                                     (car p)
                                      (lambda (s) (concat "#" s ))
                                      " ")
                                   (car p)))
