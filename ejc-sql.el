@@ -53,9 +53,6 @@
 (declare-function org-babel-read-table "ob-core" ())
 (declare-function pkg-info-version-info "ext:pkg-info" t)
 
-(defvar-local ejc-db nil
-  "JDBC connection info for current SQL buffer.")
-
 (defvar ejc-connections nil
   "List of existing configured jdbc connections")
 
@@ -86,13 +83,6 @@
   "The time in seconds to wait for the database connection validation."
   :group 'ejc-sql
   :type 'integer)
-
-(defcustom ejc-result-table-impl 'orgtbl-mode
-  "Set mode for result-set table. Possible values are one of:
-'orgtbl-mode
-'ejc-result-mode."
-  :group 'ejc-sql
-  :type 'symbol)
 
 (defcustom ejc-org-mode-babel-wrapper t
   "Add wrapper around org-mode default `org-babel-execute:sql'."

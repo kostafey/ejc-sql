@@ -1,4 +1,4 @@
-;;; ejc-doc.el -- SQL quick hints documentation (the part of ejc-sql).
+;;; ejc-doc.el -- SQL quick hints documentation (the part of ejc-sql).  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2018-2019 - Kostafey <kostafey@gmail.com>
 

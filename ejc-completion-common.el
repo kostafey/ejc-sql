@@ -1,4 +1,4 @@
-;;; ejc-completion-common.el -- SQL completitions common functionality (the part of ejc-sql).
+;;; ejc-completion-common.el -- SQL completitions common functionality (the part of ejc-sql).  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2020 - Kostafey <kostafey@gmail.com>
 

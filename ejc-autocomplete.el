@@ -1,4 +1,4 @@
-;;; ejc-autocomplete.el -- SQL completitions at point by auto-complete (the part of ejc-sql).
+;;; ejc-autocomplete.el -- SQL completitions at point by auto-complete (the part of ejc-sql).  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2013-2020 - Kostafey <kostafey@gmail.com>
 
@@ -21,6 +21,10 @@
 (require 'auto-complete)
 (require 'ejc-completion-common)
 (require 'ejc-flx)
+
+;; Defined in `ejc-sql' and `yasnippet', both loaded by the user.
+(defvar ejc-sql-mode)
+(defvar yas-snippet-dirs)
 
 (defvar ac-source-ejc-owners
   '((candidates . ejc-owners-candidates)

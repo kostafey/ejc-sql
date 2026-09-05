@@ -1,4 +1,4 @@
-;;; ejc-format.el -- SQL formatting library (the part of ejc-sql).
+;;; ejc-format.el -- SQL formatting library (the part of ejc-sql).  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2012-2024 - Kostafey <kostafey@gmail.com>
 
@@ -95,13 +95,13 @@ buffer. Set BEG and END parameters to add manual boundaries restrictions."
     (list beg end)))
 
 (defmacro ejc--in-sql-boundaries (beg end &rest body)
-  "Inject `beg' and `end' local variables to the `body' scope.
-`beg' and `end' are the boundaries of the current sql expression."
-  `(let* ((boundaries (if (and (boundp ',beg) (boundp ',end))
-                          (ejc-get-sql-boundaries-at-point ,beg ,end)
-                        (ejc-get-sql-boundaries-at-point)))
+  "Inject BEG and END local variables to the BODY scope.
+BEG and END are the boundaries of the current SQL expression.
+To restrict them, call `ejc-get-sql-boundaries-at-point' directly."
+  `(let* ((boundaries (ejc-get-sql-boundaries-at-point))
           (,beg (car boundaries))
           (,end (car (cdr boundaries))))
+     (ignore ,beg ,end)
      ,@body))
 
 (defun ejc-mark-this-sql ()
@@ -138,17 +138,18 @@ buffer. Set BEG and END parameters to add manual boundaries restrictions."
      (goto-char beg)
      (left-char 1))))
 
-(defun ejc-apply-in-sql-boundaries (func)
-  (ejc--in-sql-boundaries beg end
-   (apply func (list beg end))))
+(defun ejc-apply-in-sql-boundaries (func &optional beg end)
+  "Apply FUNC to the boundaries of the current SQL expression.
+BEG and END restrict them, see `ejc-get-sql-boundaries-at-point'."
+  (apply func (ejc-get-sql-boundaries-at-point beg end)))
 
 (cl-defun ejc-get-sql-at-point (&key beg end)
-  "Return SQL around the point."
-  (ejc--in-sql-boundaries
-   beg end
-   (let ((sql (ejc-strip-text-properties
-               (buffer-substring beg end))))
-     sql)))
+  "Return SQL around the point.
+BEG and END restrict the boundaries, see
+`ejc-get-sql-boundaries-at-point'."
+  (let ((boundaries (ejc-get-sql-boundaries-at-point beg end)))
+    (ejc-strip-text-properties
+     (buffer-substring (car boundaries) (car (cdr boundaries))))))
 
 (defun ejc-flash-region (start end &optional timeout)
   "Temporarily highlight region from START to END."
@@ -157,11 +158,12 @@ buffer. Set BEG and END parameters to add manual boundaries restrictions."
     (run-with-timer (or timeout 0.2) nil 'delete-overlay overlay)))
 
 (cl-defun ejc-flash-this-sql (&key beg end)
-  "Select (mark) SQL around the point."
+  "Select (mark) SQL around the point.
+BEG and END restrict the boundaries, see
+`ejc-get-sql-boundaries-at-point'."
   (interactive)
-  (ejc--in-sql-boundaries
-   beg end
-   (ejc-flash-region beg end)))
+  (let ((boundaries (ejc-get-sql-boundaries-at-point beg end)))
+    (ejc-flash-region (car boundaries) (car (cdr boundaries)))))
 
 (defmacro ejc-ensure-sql-mode (&rest body)
   `(if (not (equal major-mode 'sql-mode))
@@ -174,8 +176,9 @@ buffer. Set BEG and END parameters to add manual boundaries restrictions."
    (save-excursion
      (mapc (lambda (from-to)
              (ejc-apply-in-sql-boundaries
-              (lambda (beg end)
-                (replace-regexp (car from-to) (cadr from-to) nil beg end))))
+              (lambda (from to)
+                (replace-regexp (car from-to) (cadr from-to) nil from to))
+              beg end))
            '(("\n"           " ")
              (","            ", ")
              (" +"           " ")
@@ -280,7 +283,7 @@ boundaries."
          (beginning-of-line)
          (insert "\"")
          (end-of-line)
-         (dotimes (counter (+ 2 (- length-line (current-column))))
+         (dotimes (_counter (+ 2 (- length-line (current-column))))
            (insert " "))
          (if (equal curr-line end-line)
              (insert "\\n\";")

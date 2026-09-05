@@ -1,4 +1,4 @@
-;;; ejc-result-buffer.el
+;;; ejc-result-buffer.el  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2019-2020 - Kostafey <kostafey@gmail.com>
 

@@ -1,4 +1,4 @@
-;;; ejc-flx.el -- Customization flx for ejc (the part of ejc-sql).
+;;; ejc-flx.el -- Customization flx for ejc (the part of ejc-sql).  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2018 - Kostafey <kostafey@gmail.com>
 
@@ -22,6 +22,10 @@
 (declare-function flx-flex-match "ext:flx" t)
 (declare-function flx-score "ext:flx" t)
 (declare-function ido-name "ido" (item))
+(defvar flx-file-cache)
+(defvar flx-ido-threshold)
+(defvar flx-ido-use-faces)
+(defvar ido-max-prospects)
 
 (defcustom ejc-use-flx nil
   "Non-nil enables `flx' fuzzy matching engine autocompletion."

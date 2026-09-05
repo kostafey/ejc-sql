@@ -1,4 +1,4 @@
-;;; ejc-lib.el -- ejc-sql shared objects (the part of ejc-sql).
+;;; ejc-lib.el -- ejc-sql shared objects (the part of ejc-sql).  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2013-2023 - Kostafey <kostafey@gmail.com>
 
@@ -22,6 +22,9 @@
 (require 'dash)
 (require 'imenu)
 (require 'sql)
+
+(defvar-local ejc-db nil
+  "JDBC connection info for current SQL buffer.")
 
 (defvar-local ejc-connection-name nil
   "Buffer-local connection name created with `ejc-create-connection'.")

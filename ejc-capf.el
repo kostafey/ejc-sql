@@ -1,4 +1,4 @@
-;;; ejc-capf.el -- SQL completitions at point by Completion-at-Point Function (Capf)
+;;; ejc-capf.el -- SQL completitions at point by Completion-at-Point Function (Capf)  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2026 - Kostafey <kostafey@gmail.com>
 

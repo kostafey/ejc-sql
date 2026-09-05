@@ -1,4 +1,4 @@
-;;; ejc-result-mode.el
+;;; ejc-result-mode.el  -*- lexical-binding: t -*-
 
 ;;; Copyright © 2017-2020 - Kostafey <kostafey@gmail.com>
 
@@ -19,6 +19,13 @@
 ;;; Code:
 
 (require 'org-table)
+
+(defcustom ejc-result-table-impl 'orgtbl-mode
+  "Set mode for result-set table. Possible values are one of:
+'orgtbl-mode
+'ejc-result-mode."
+  :group 'ejc-sql
+  :type 'symbol)
 
 (defface ejc-result-table-borders-face '((t :inherit font-lock-comment-face
                                             :italic nil))

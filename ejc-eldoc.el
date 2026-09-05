@@ -1,4 +1,4 @@
-;;; ejc-eldoc.el -- ejc-sql eldoc support (the part of ejc-sql).
+;;; ejc-eldoc.el -- ejc-sql eldoc support (the part of ejc-sql).  -*- lexical-binding: t -*-
 
 ;;; Copyright (C) 2019 - Kostafey <kostafey@gmail.com>
 
