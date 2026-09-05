@@ -117,8 +117,8 @@
                                      (lambda (s) (concat "#" s ))
                                      " ")
                                   (car p)))
-                         (-zip params
-                               (number-sequence 0 (1- (length params)))))
+                         (-zip-pair params
+                                    (number-sequence 0 (1- (length params)))))
                         ", "))))))
     (if-let ((sql-word (condition-case nil
                            (ejc-get-word-before-point)
