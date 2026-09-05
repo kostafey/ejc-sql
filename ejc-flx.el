@@ -18,6 +18,11 @@
 
 ;;; Code:
 
+;; `flx' is an optional dependency, used only when `ejc-use-flx' is set.
+(declare-function flx-flex-match "ext:flx" t)
+(declare-function flx-score "ext:flx" t)
+(declare-function ido-name "ido" (item))
+
 (defcustom ejc-use-flx nil
   "Non-nil enables `flx' fuzzy matching engine autocompletion."
   :group 'ejc-sql

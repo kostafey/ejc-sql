@@ -18,8 +18,13 @@
 
 ;;; Code:
 
+(require 'imenu)
+(require 'org-table)
 (require 'ejc-lib)
 (require 'ejc-result-mode)
+
+;; Defined in `ejc-sql', which requires this file.
+(declare-function ejc-add-connection "ejc-sql" (&optional connection-name db))
 
 (defvar ejc-results-buffer nil
   "The results buffer.")
@@ -125,7 +130,7 @@ or error messages."
 
 (defun ejc-output-mode-specific-customization ()
   (cl-case ejc-result-table-impl
-    (orgtbl-mode     (when (org-table-p) (org-table-align)))
+    (orgtbl-mode     (when (org-at-table-p) (org-table-align)))
     (ejc-result-mode (read-only-mode 1))))
 
 (defun ejc-show-result-buffer (output-buffer)

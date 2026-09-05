@@ -23,6 +23,9 @@
 (require 'subr-x)
 (require 'ejc-result-buffer)
 
+;; Defined in `ejc-interaction', which requires this file.
+(declare-function ejc-format-by-hibernate "ejc-interaction" t)
+
 (defvar ejc-sql-separator "/"
   "The char with purpose to separate the SQL statement both other.")
 

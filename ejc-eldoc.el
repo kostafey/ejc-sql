@@ -21,6 +21,7 @@
 (require 'dash)
 (require 'eldoc)
 (require 'ejc-format)
+(require 'ejc-interaction)
 
 (defun ejc-replace-property-mark (text fmt face)
   (while (string-match fmt text)

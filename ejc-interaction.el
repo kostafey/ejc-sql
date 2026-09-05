@@ -22,6 +22,7 @@
 (require 'ejc-lib)
 (require 'ejc-format)
 (require 'clomacs)
+(require 'pp)
 
 (clomacs-create-httpd-start ejc-httpd-start
                             :lib-name "ejc-sql")
@@ -291,7 +292,7 @@
   "Print current database connection cache when run from connected SQL buffer.
 Print all connections cache otherwise."
   (interactive)
-  (pprint (ejc-output-cache ejc-db)))
+  (pp-display-expression (ejc-output-cache ejc-db) "*ejc-sql-cache*"))
 
 (clomacs-defun ejc-select-db-meta-script
                select-db-meta-script

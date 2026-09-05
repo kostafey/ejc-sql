@@ -45,6 +45,14 @@
 (require 'ejc-result-buffer)
 (require 'ejc-completion-common)
 
+;; `org-babel' is loaded lazily, only for `org-mode' source blocks.
+(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
+(declare-function org-babel-noweb-p "ob-core" (params context))
+(declare-function org-babel-expand-noweb-references "ob-core"
+                  (&optional info parent-buffer))
+(declare-function org-babel-read-table "ob-core" ())
+(declare-function pkg-info-version-info "ext:pkg-info" t)
+
 (defvar-local ejc-db nil
   "JDBC connection info for current SQL buffer.")
 

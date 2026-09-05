@@ -112,16 +112,17 @@ something#"
 
 (add-hook 'ejc-sql-minor-mode-hook 'ejc-ac-hook)
 
+(defun ejc-yas-downcase-key (args)
+  (if ejc-sql-mode
+      (cl-callf downcase (nth 1 args)))
+  args)
+
 (when (require 'yasnippet nil 'noerror)
   (setq yas-snippet-dirs
         (nconc yas-snippet-dirs
                (list (expand-file-name "snippets"
                                        (file-name-directory
                                         (locate-library "ejc-sql"))))))
-  (defun ejc-yas-downcase-key (args)
-    (if ejc-sql-mode
-        (cl-callf downcase (nth 1 args)))
-    args)
   (advice-add 'yas--fetch :filter-args #'ejc-yas-downcase-key))
 
 (provide 'ejc-autocomplete)

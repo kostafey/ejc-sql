@@ -30,6 +30,11 @@
 (require 'dash)
 (require 'ejc-completion-common)
 
+;; `company' is an optional dependency, loaded by the user.
+(declare-function company-doc-buffer "ext:company" t)
+(declare-function company-begin-backend "ext:company" t)
+(declare-function company-grab-symbol "ext:company" t)
+
 (defcustom ejc-company-cache-update-ivl-secs 60
   "Specify how often to update cached candidates in seconds.
 If set to 1.0e+INF, do not update cache after initialization."

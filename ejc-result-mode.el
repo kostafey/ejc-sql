@@ -18,6 +18,8 @@
 
 ;;; Code:
 
+(require 'org-table)
+
 (defface ejc-result-table-borders-face '((t :inherit font-lock-comment-face
                                             :italic nil))
   "Face used to font-lock table borders."

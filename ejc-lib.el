@@ -20,6 +20,7 @@
 
 (require 's)
 (require 'dash)
+(require 'imenu)
 (require 'sql)
 
 (defvar-local ejc-connection-name nil

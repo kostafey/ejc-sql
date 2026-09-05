@@ -23,6 +23,10 @@
 (require 'ejc-interaction)
 (require 'ejc-doc)
 
+;; Optional completion frontends, used only when enabled by the user.
+(declare-function auto-complete "ext:auto-complete" t)
+(declare-function company-complete "ext:company" t)
+
 (defcustom ejc-candidates-uppercase t
   "Use uppercase candidates or downcase.
 Uppercase by default, set to nil to use downcase candidates."
