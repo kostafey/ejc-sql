@@ -43,7 +43,7 @@ Upper position of this batch statement(s)."
       (forward-char 1))
     (if (re-search-backward (ejc-sql-separator-re) nil t nil)
         (re-search-forward (ejc-sql-separator-re) nil t nil)
-      (beginning-of-buffer))
+      (goto-char (point-min)))
     (point)))
 
 (defun ejc-get-border-bottom ()
@@ -52,7 +52,7 @@ Bottom position of this batch statement(s)."
   (save-excursion
     (if (re-search-forward (ejc-sql-separator-re) nil t nil)
         (re-search-backward (ejc-sql-separator-re) nil t nil)
-      (end-of-buffer))
+      (goto-char (point-max)))
     (if (equal (string (preceding-char)) "\n")
         (backward-char 1))
     (let ((sep-len (length ejc-sql-separator)))
@@ -170,6 +170,25 @@ BEG and END restrict the boundaries, see
        (error "SQL formatting is suitable in sql-mode only.")
      (progn ,@body)))
 
+(defun ejc-goto-line (line)
+  "Move point to the beginning of LINE, counting from line 1.
+Unlike `goto-line', which is meant for interactive use, neither push
+the mark nor widen the buffer."
+  (goto-char (point-min))
+  (forward-line (1- line)))
+
+(defun ejc-replace-regexp (regexp to-string beg end)
+  "Replace REGEXP with TO-STRING between BEG and END.
+Unlike `replace-regexp', which is meant for interactive use, report
+nothing and leave the mark alone.  Like it, track END across the
+replacements, leave point after the last one and preserve the case of
+the replaced text when `case-fold-search' is non-nil."
+  (let ((limit (copy-marker (max beg end))))
+    (goto-char (min beg end))
+    (while (re-search-forward regexp limit t)
+      (replace-match to-string))
+    (set-marker limit nil)))
+
 (defun ejc-format-sql (beg end)
   (interactive "r")
   (ejc-ensure-sql-mode
@@ -177,7 +196,7 @@ BEG and END restrict the boundaries, see
      (mapc (lambda (from-to)
              (ejc-apply-in-sql-boundaries
               (lambda (from to)
-                (replace-regexp (car from-to) (cadr from-to) nil from to))
+                (ejc-replace-regexp (car from-to) (cadr from-to) from to))
               beg end))
            '(("\n"           " ")
              (","            ", ")
@@ -237,7 +256,7 @@ boundaries."
   (ejc--in-sql-boundaries
    beg end
    (save-excursion
-     (replace-regexp ejc-clear-sql-regexp "" nil beg end)
+     (ejc-replace-regexp ejc-clear-sql-regexp "" beg end)
      (whitespace-cleanup-region beg end))))
 
 (defun ejc-longest-line-length (beg-line end-line)
@@ -246,7 +265,7 @@ boundaries."
           (max-length 0)
           (new-length 0))
       (while (<= curr-line end-line)
-        (goto-line curr-line)
+        (ejc-goto-line curr-line)
         (setq new-length (save-excursion
                            (end-of-line)
                            (current-column)))
@@ -279,7 +298,7 @@ boundaries."
             (length-line (ejc-longest-line-length beg-line end-line))
             (curr-line beg-line))
        (while (<= curr-line end-line)
-         (goto-line curr-line)
+         (ejc-goto-line curr-line)
          (beginning-of-line)
          (insert "\"")
          (end-of-line)

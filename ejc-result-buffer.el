@@ -160,7 +160,7 @@ or error messages."
         ;; SQL evaluation result rendered to file
         (insert-file-contents (ejc-get-result-file-path)))
       (ejc-output-mode-specific-customization)
-      (beginning-of-buffer)
+      (goto-char (point-min))
       (let* ((window (or (get-buffer-window output-buffer t)
                          (progn
                            (ejc-show-result-buffer output-buffer)
@@ -196,7 +196,7 @@ or error messages."
           (funcall mode))
       (insert-file-contents file-path)
       (ejc-output-mode-specific-customization)
-      (beginning-of-buffer)
+      (goto-char (point-min))
       (ejc-show-result-buffer output-buffer)
       (message file-path))))
 
