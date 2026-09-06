@@ -271,6 +271,18 @@ Enable ElDoc for `ejc-sql` minor mode:
             (ejc-eldoc-setup)))
 ```
 
+ElDoc shows the template of the SQL statement around the point. `SELECT`,
+`INSERT`, `UPDATE`, `DELETE` and `ALTER` statements are supported, the part
+of the expression you are typing right now is highlighted, e.g. for the
+`WHERE` clause of an `UPDATE` statement it shows:
+
+```
+UPDATE table SET field = value WHERE predicate
+```
+
+The templates are defined by the `ejc-sql-expressions` constant, so any
+statement or clause can be added to it.
+
 ElDoc for functions and procedures is available for the following databases:
 
 * Oracle
