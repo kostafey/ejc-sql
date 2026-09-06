@@ -22,6 +22,7 @@ formatting of SQL scripts are also available.
   - [Autocomplete](#autocomplete)
   - [Fuzzy matching](#fuzzy-matching)
   - [Company mode](#company-mode)
+  - [Corfu & Capf](#corfu-capf)
   - [Minibuffer completion](#minibuffer-completion)
   - [ElDoc](#eldoc)
   - [Performance & output customization](#performance-output-customization)
@@ -181,6 +182,58 @@ To activate `company-quickhelp` add the following to your `.emacs`:
 
 ```lisp
 (company-quickhelp-mode)
+```
+
+<a id="corfu-capf"></a>
+### Corfu & Capf
+
+`ejc-capf` is a `completion-at-point-functions` (Capf) backend, so it can be
+used by any Capf frontend, e.g. [corfu](https://github.com/minad/corfu) or the
+built-in `completion-at-point` (<kbd>M-TAB</kbd>):
+
+```lisp
+(require 'ejc-capf)
+(add-hook 'ejc-sql-minor-mode-hook 'ejc-capf-setup)
+(add-hook 'ejc-sql-minor-mode-hook
+          (lambda ()
+            (corfu-mode t)))
+```
+
+The candidates requiring a database round-trip (owners, tables, views and
+packages) are collected in background by an idle timer and cached, so typing
+never waits for the database. The cache is shared between all the buffers
+connected to the same database.
+
+To collect the candidates after a bigger amount of idleness (1 second by
+default):
+
+```lisp
+(setq ejc-capf-idle-timer-secs 2)
+```
+
+To refresh the cached candidates more or less often (60 seconds by default,
+set it to `1.0e+INF` to never refresh the cache after initialization):
+
+```lisp
+(setq ejc-capf-cache-update-ivl-secs 300)
+```
+
+The columns candidates (`table_alias.#`) depend on the SQL expression around
+the point, hence they can't be collected in advance. They are requested
+synchronously, but only once per completion session: the result is reused
+while the user is typing the column name.
+
+The documentation of the candidate is shown by `corfu-popupinfo-mode`:
+
+```lisp
+(corfu-popupinfo-mode)
+```
+
+If you want to automatically start completion after inserting a dot despite
+`corfu-auto-prefix` is bigger than `0`, set `ejc-complete-on-dot` to `t`:
+
+```elisp
+(setq ejc-complete-on-dot t)
 ```
 
 <a id="minibuffer-completion"></a>
@@ -1096,6 +1149,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 * [auto-complete](https://github.com/auto-complete/auto-complete) *(optional)*
 * [company-mode](https://github.com/company-mode/company-mode) *(optional)*
 * [company-quickhelp](https://github.com/company-mode/company-quickhelp) *(optional)*
+* [corfu](https://github.com/minad/corfu) *(optional)*
 * [flx-ido](https://github.com/lewang/flx) *(optional)*
 * [yasnippet](https://github.com/joaotavora/yasnippet) *(optional)*.
 

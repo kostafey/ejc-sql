@@ -44,11 +44,20 @@ Uppercase by default, set to nil to use downcase candidates."
     "begin" "end" "for" "return"))
 
 (defcustom ejc-complete-on-dot nil
-  "When t automatically start completion after inserting a dot for
-`company-mode' despite `company-minimum-prefix-length' is bigger than 0."
+  "When t automatically start completion after inserting a dot.
+Useful when the completion frontend doesn't start the completion by
+itself for an empty prefix, e.g. `company-minimum-prefix-length' or
+`corfu-auto-prefix' is bigger than 0."
   :type 'boolean
   :safe #'booleanp
   :group 'ejc-sql)
+
+(defvar ejc-candidates-pending nil
+  "Non-nil when the database structure cache is not ready yet.
+Set by `ejc-candidates' when the requested candidates are not available
+yet, so the returned candidates list is incomplete.  Let-bind it to nil
+around the `ejc-candidates' call to check the completeness of the result,
+e.g. to decide how long the candidates can be cached.")
 
 (defun ejc-return-point ()
   "Return point position if point (cursor) is located next to dot char (.#)"
@@ -88,6 +97,12 @@ Uppercase by default, set to nil to use downcase candidates."
             (mapcar 'upcase (ejc-get-keywords-inner ejc-db nil))
           (mapcar 'downcase (ejc-get-keywords-inner ejc-db nil))))))
 
+(defun ejc-complete ()
+  "Start the completion by the enabled completion frontend."
+  (cond ((bound-and-true-p auto-complete-mode) (auto-complete))
+        ((bound-and-true-p company-mode) (company-complete))
+        ((memq 'ejc-capf completion-at-point-functions) (completion-at-point))))
+
 (cl-defun ejc-complete-auto-complete (buffer-name point)
   "Called by Clojure side when db structure cache creation process completes.
 When the user typed some chars, the request for autocompletion is passed to
@@ -100,8 +115,7 @@ function. If the user waits for autocompletion and doesn't move point
 (cursor) during this process, he will get autocompletion variants."
   (switch-to-buffer buffer-name)
   (if (equal point (point))
-      (cond ((bound-and-true-p auto-complete-mode) (auto-complete))
-            ((bound-and-true-p company-mode) (company-complete))))
+      (ejc-complete))
   nil)
 
 (defmacro ejc-candidates (cand-fn)
@@ -123,6 +137,7 @@ function. If the user waits for autocompletion and doesn't move point
               (candidates-cache (cdr result)))
          (if (ejc-not-nil-str pending)
              (progn
+               (setq ejc-candidates-pending t)
                (message "Receiving database structure...")
                (list))
            candidates-cache))))
@@ -154,10 +169,11 @@ function. If the user waits for autocompletion and doesn't move point
   (gethash (intern (downcase symbol-name)) ejc-sql-doc))
 
 (defun ejc-dot-pressed ()
+  "Insert a dot and start the completion if `ejc-complete-on-dot' is set."
   (interactive)
   (insert ".")
-  (if (and ejc-complete-on-dot (bound-and-true-p company-mode))
-      (call-interactively 'company-complete)))
+  (if ejc-complete-on-dot
+      (ejc-complete)))
 
 (provide 'ejc-completion-common)
 
