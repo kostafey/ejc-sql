@@ -19,16 +19,18 @@ formatting of SQL scripts are also available.
 - [Installation](#installation)
 - [Configuration](#configuration)
   - [Set httpd port](#set-httpd-port)
-  - [Autocomplete](#autocomplete)
-  - [Fuzzy matching](#fuzzy-matching)
-  - [Company mode](#company-mode)
-  - [Corfu & Capf](#corfu-capf)
+  - [Completion at point](#completion-at-point)
+    - [Autocomplete](#autocomplete)
+    - [Fuzzy matching](#fuzzy-matching)
+    - [Company mode](#company-mode)
+    - [Corfu & Capf](#corfu-capf)
   - [Minibuffer completion](#minibuffer-completion)
   - [ElDoc](#eldoc)
   - [Performance & output customization](#performance-output-customization)
   - [Create connections interactively](#create-connections-interactively)
   - [Create connections manualy](#create-connections-manualy)
     - [Install JDBC drivers](#install-jdbc-drivers)
+    - [`:dependencies` or `:classpath`](#dependencies-or-classpath)
     - [MySQL connection](#mysqlconnection)
     - [MariaDB connection](#mariadbconnection)
     - [MS SQL Server connection](#mssqlserverconnection)
@@ -92,6 +94,14 @@ whereas the default Emacs side HTTP server port can be customized by
 ```lisp
 (setq clomacs-httpd-default-port 8090) ; Use a port other than 8080.
 ```
+
+<a id="completion-at-point"></a>
+## Completion at point
+
+`ejc-sql` provides SQL completion candidates - the ANSI SQL words, the
+database-specific keywords, the owners, tables, views, packages and columns
+names - to any of the completion frontends described below.  Enable one of
+them, but not several at once.
 
 ### Autocomplete
 
@@ -237,7 +247,7 @@ If you want to automatically start completion after inserting a dot despite
 ```
 
 <a id="minibuffer-completion"></a>
-### Minibuffer completion
+## Minibuffer completion
 
 By default standard `completing-read` is used as minibuffer the completion
 system. This is allow you to use it with any configured
@@ -252,7 +262,7 @@ by editing `ejc-completion-system` and selecting `ido`:
 (setq ejc-completion-system 'ido)
 ```
 
-### ElDoc
+## ElDoc
 
 Enable ElDoc for `ejc-sql` minor mode:
 ```lisp
@@ -268,7 +278,7 @@ ElDoc for functions and procedures is available for the following databases:
 * MySQL
 
 <a id="performance-output-customization"></a>
-### Performance & output customization
+## Performance & output customization
 
 `ejc-set-fetch-size` sets limit for the number of records to output (`50` by
 default). Set to `nil` if you want to disable this limit.
@@ -586,14 +596,50 @@ The configuration of `ejs-sql` might looks like this:
 ;; Create your JDBC database connections configuration:
 ```
 
+<a id="dependencies-or-classpath"></a>
+### `:dependencies` or `:classpath`
+
+Any connection requires a JDBC driver, there are two ways to pass it to
+`ejc-create-connection`.
+
+The `:dependencies` parameter is a vector of the required artifacts in
+Leiningen format. `ejc-sql` resolves them, downloads (if not yet) and loads
+to `CLASSPATH` during the `ejc-connect` function run:
+
+```lisp
+(ejc-create-connection
+ "PostgreSQL-db-connection"
+ :dependencies [[org.postgresql/postgresql "42.6.0"]]
+ :subprotocol "postgresql"
+ :subname "//localhost:5432/my_db_name"
+ :user "a_user"
+ :password "secret")
+```
+
+The `:classpath` parameter is the exact path (or a vector of paths) to the
+JDBC driver jar files, already available on your machine:
+
+```lisp
+(ejc-create-connection
+ "PostgreSQL-db-connection"
+ :classpath (concat "~/.m2/repository/org/postgresql/postgresql/42.6.0/"
+                    "postgresql-42.6.0.jar")
+ :subprotocol "postgresql"
+ :subname "//localhost:5432/my_db_name"
+ :user "a_user"
+ :password "secret")
+```
+
+The examples below use `:dependencies`, but any of them can use `:classpath`
+instead, see [Install JDBC drivers](#install-jdbc-drivers).
+
 <a id="mysqlconnection"></a>
 ### MySQL connection
 ```lisp
 ;; MySQL example
 (ejc-create-connection
  "MySQL-db-connection"
- :classpath (concat "~/.m2/repository/mysql/mysql-connector-java/5.1.6/"
-                     "mysql-connector-java-5.1.6.jar")
+ :dependencies [[mysql/mysql-connector-java "5.1.6"]]
  :subprotocol "mysql"
  :subname "//localhost:3306/my_db_name"
  :user "a_user"
@@ -626,8 +672,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; MS SQL Server example
 (ejc-create-connection
  "MS-SQL-db-connection"
- :classpath (concat "~/.m2/repository/com/microsoft"
-                     "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
+ :dependencies [[com.microsoft.sqlserver/mssql-jdbc "6.2.2.jre8"]]
  :subprotocol "sqlserver"
  :subname "//localhost:1433"
  :user "a_user"
@@ -637,8 +682,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; MS SQL Server example (via URI)
 (ejc-create-connection
  "MS-SQL-db-connection-uri"
- :classpath (concat "~/.m2/repository/com/microsoft"
-                     "/sqlserver/sqljdbc/4.2/sqljdbc-4.2.jar")
+ :dependencies [[com.microsoft.sqlserver/mssql-jdbc "6.2.2.jre8"]]
  :connection-uri (concat "jdbc:sqlserver://localhost\\\\instance:1433;"
                          "databaseName=my_db_name;"
                          "user=a_user;"
@@ -647,8 +691,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; MS SQL Server example (via JTDS)
 (ejc-create-connection
  "MS-SQL-db-connection-JTDS"
- :classpath (concat "~/.m2/repository/net/sourceforge/jtds"
-                     "/jtds/1.3.1/jtds-1.3.1.jar")
+ :dependencies [[net.sourceforge.jtds/jtds "1.3.1"]]
  :connection-uri (concat "jdbc:jtds:sqlserver://localhost:1433/dbname;"
                          "instance=instance;"
                          "user=a_user;"
@@ -661,8 +704,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; Oracle example (via Service Name)
 (ejc-create-connection
  "Oracle-db-connection-sname"
- :classpath (concat "~/.m2/repository/com/oracle/jdbc"
-                    "/ojdbc8/12.2.0.1/ojdbc8-12.2.0.1.jar")
+ :dependencies [[com.oracle.jdbc/ojdbc8 "12.2.0.1"]]
  :dbtype "oracle"
  :dbname "my_service_name"
  :host "localhost"
@@ -674,8 +716,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; Oracle example (via SID)
 (ejc-create-connection
  "Oracle-db-connection-sid"
- :classpath (concat "~/.m2/repository/com/oracle/jdbc"
-                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
+ :dependencies [[com.oracle.jdbc/ojdbc7 "12.1.0.2"]]
  :dbtype "oracle:sid"
  :dbname "my_sid_name"
  :host "localhost"
@@ -687,8 +728,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; Oracle example (via URI)
 (ejc-create-connection
  "Oracle-db-connection-uri"
- :classpath (concat "~/.m2/repository/com/oracle/jdbc"
-                     "/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar")
+ :dependencies [[com.oracle.jdbc/ojdbc7 "12.1.0.2"]]
  :connection-uri "jdbc:oracle:thin:@localhist:1521:dbname"
  :user "a_user"
  :password "secret"
@@ -701,8 +741,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; H2 example
 (ejc-create-connection
  "H2-db-connection"
- :classpath (file-truename
-             "~/.m2/repository/com/h2database/h2/1.4.191/h2-1.4.191.jar")
+ :dependencies [[com.h2database/h2 "1.4.191"]]
  :subprotocol "h2"
  :subname "file://~/projects/my_proj/db/database;AUTO_SERVER=TRUE"
  :user "a_user"
@@ -713,7 +752,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; java -jar ~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar -tcpAllowOthers
 (ejc-create-connection
  "H2-remote-db-connection"
- :classpath "~/.m2/repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
+ :dependencies [[com.h2database/h2 "1.4.192"]]
  :connection-uri (concat "jdbc:h2:tcp://192.168.0.1:9092/~/db/database;ifexists=true;"
                          "user=a_user;"
                          "password=secret;"))
@@ -725,8 +764,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; SQLite example
 (ejc-create-connection
  "SQLite-conn"
- :classpath (concat "~/.m2/repository/org/xerial/sqlite-jdbc/"
-                    "3.23.1/sqlite-jdbc-3.23.1.jar")
+ :dependencies [[org.xerial/sqlite-jdbc "3.23.1"]]
  :subprotocol "sqlite"
  ;; Use absolute path, e.g.:
  ;;   "file:///home/user/projects/my_proj/db/sqdb.db"
@@ -744,8 +782,7 @@ GRANT SELECT ON mysql.help_keyword TO a_user;
 ;; PostgreSQL example
 (ejc-create-connection
  "PostgreSQL-db-connection"
- :classpath (concat "~/.m2/repository/org.postgresql/postgresql/42.6.0/"
-                    "postgresql-42.6.0.jar")
+ :dependencies [[org.postgresql/postgresql "42.6.0"]]
  :subprotocol "postgresql"
  :subname "//localhost:5432/my_db_name"
  :user "a_user"
@@ -1155,7 +1192,7 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 
 ## License
 
-Copyright © 2012-2024 Kostafey <kostafey@gmail.com> and
+Copyright © 2012-2026 Kostafey <kostafey@gmail.com> and
 [contributors](https://github.com/kostafey/ejc-sql/contributors)
 
 Distributed under the General Public License 2.0+
