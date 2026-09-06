@@ -83,7 +83,7 @@
                      (append
                       (-flatten dependency-jars)
                       (append classpath nil))))))))
-    (-map 'ejc-add-classpath jars-to-load))
+    (-each jars-to-load 'ejc-add-classpath))
   (when-let ((classname (alist-get :classname conn-struct)))
     (ejc-class-for-name classname)
     (ejc-import (read classname)))
@@ -179,8 +179,9 @@
                set-show-too-many-rows-message
                :lib-name "ejc-sql"
                :namespace ejc-sql.output
-               :doc (concat "Show 'Too many rows...' message in case"
-                            "of ResultSet is bigger than `fetch-size'."))
+               :doc (concat "Show `Too many rows...' message.\n"
+                            "Applies when the ResultSet is bigger "
+                            "than `fetch-size'."))
 
 (clomacs-defun ejc-set-max-rows
                set-max-rows

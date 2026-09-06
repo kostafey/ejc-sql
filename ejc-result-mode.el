@@ -21,9 +21,10 @@
 (require 'org-table)
 
 (defcustom ejc-result-table-impl 'orgtbl-mode
-  "Set mode for result-set table. Possible values are one of:
-'orgtbl-mode
-'ejc-result-mode."
+  "Set mode for result-set table.
+Possible values are one of:
+`orgtbl-mode'
+`ejc-result-mode'."
   :group 'ejc-sql
   :type 'symbol)
 

@@ -51,7 +51,8 @@ If set to 1.0e+INF, do not update cache after initialization."
   "Last timestamp of cache update.")
 
 (defvar-local ejc-company--cache-update-scheduled nil
-  "Whether `ejc-company--cache-candidates' is already scheduled with `run-with-idle-timer'.")
+  "Whether `ejc-company--cache-candidates' is already scheduled.
+The scheduling is done with `run-with-idle-timer'.")
 
 
 (defun ejc-company-make-candidate (candidate)
@@ -123,10 +124,11 @@ If set to 1.0e+INF, do not update cache after initialization."
     (setq ejc-company--cache-update-scheduled t)))
 
 (defun ejc-company-candidates (prefix)
-  "If the point is on dot (name.| or name.var|) then synchronously collect candidates.
-Otherwise use cached data. When cache is empty (first time invocation),
-it returns only common SQL words and schedules the cache update.
-`PREFIX' is used for filtering candidates."
+  "Return the completion candidates filtered by PREFIX.
+If the point is on dot (name.| or name.var|) then collect the candidates
+synchronously.  Otherwise use cached data.  When cache is empty (first
+time invocation), it returns only common SQL words and schedules the
+cache update."
 
 
   (let* ((on-point (ejc-get-prefix-word)))
@@ -150,7 +152,7 @@ it returns only common SQL words and schedules the cache update.
   (company-doc-buffer (ac-ejc-documentation candidate)))
 
 (when (featurep 'company)
-  (defun ejc-company-backend (command &optional arg &rest ignored)
+  (defun ejc-company-backend (command &optional arg &rest _ignored)
     (interactive (list 'interactive))
     (cl-case command
       (interactive (company-begin-backend 'ejc-company-backend))

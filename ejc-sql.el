@@ -298,30 +298,30 @@ For more details about parameters see `get-connection' function in jdbc.clj:
         (cons (cons
                connection-name
                (let ((new-connection nil))
-                 (-map (lambda (arg)
-                         (if (cdr arg)
-                             (setq new-connection
-                                   (cons arg new-connection))))
-                       (list
-                        (cons :dbtype dbtype)
-                        (cons :dbname dbname)
-                        (cons :host host)
-                        (cons :port port)
-                        (cons :connection-uri connection-uri)
-                        (cons :subprotocol subprotocol)
-                        (cons :subname subname)
-                        (cons :user user)
-                        (cons :password password)
-                        (cons :dependencies dependencies)
-                        (cons :classpath
-                              (when classpath
-                                (if (vectorp classpath)
-                                    (apply 'vector
-                                           (-map 'file-truename classpath))
-                                  (vector (file-truename classpath)))))
-                        (cons :separator separator)
-                        (cons :sslmode sslmode)
-                        (cons :classname classname)))
+                 (-each (list
+                         (cons :dbtype dbtype)
+                         (cons :dbname dbname)
+                         (cons :host host)
+                         (cons :port port)
+                         (cons :connection-uri connection-uri)
+                         (cons :subprotocol subprotocol)
+                         (cons :subname subname)
+                         (cons :user user)
+                         (cons :password password)
+                         (cons :dependencies dependencies)
+                         (cons :classpath
+                               (when classpath
+                                 (if (vectorp classpath)
+                                     (apply 'vector
+                                            (-map 'file-truename classpath))
+                                   (vector (file-truename classpath)))))
+                         (cons :separator separator)
+                         (cons :sslmode sslmode)
+                         (cons :classname classname))
+                        (lambda (arg)
+                          (if (cdr arg)
+                              (setq new-connection
+                                    (cons arg new-connection)))))
                  new-connection))
               ejc-connections)))
 
@@ -840,10 +840,10 @@ boundaries."
 
 ;;;###autoload
 (defun ejc-get-temp-editor-buffer (&optional num)
-  (interactive "P")
   "Switch to buffer dedicated to ad-hoc edit and SQL scripts.
 If the buffer is not exists - create it.
 Buffer can be saved to file with `ejc-temp-editor-file' path."
+  (interactive "P")
   (let* ((tmp-file-name (if num
                             (format "%s-%s"
                                     ejc-temp-editor-buffer-name
