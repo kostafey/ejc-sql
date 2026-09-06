@@ -64,6 +64,23 @@
      "DELETE"   "%DELETE %FROM #table [%WHERE predicate]"
      "FROM"     "%DELETE %FROM #table [%WHERE predicate]"
      "WHERE"    "%DELETE %FROM table %WHERE #predicate")
+    ("CREATE"
+     "CREATE"     "%CREATE %TABLE|%VIEW|%INDEX|%SEQUENCE #name ..."
+     "TABLE"      "%CREATE %TABLE #table (field type [constraint]...)"
+     "TABLE ("    "%CREATE %TABLE table (#field #type [constraint]...)"
+     "CONSTRAINT" "%CONSTRAINT #name %PRIMARY %KEY (field...)"
+     "VIEW"       "%CREATE [%OR %REPLACE] %VIEW #view %AS select_expression"
+     "AS"         "%CREATE %VIEW view %AS #select_expression"
+     "INDEX"      "%CREATE [%UNIQUE] %INDEX #index %ON table (field...)"
+     "ON"         "%CREATE %INDEX index %ON #table (field...)"
+     "ON ("       "%CREATE %INDEX index %ON table (#field...)"
+     "SEQUENCE"   "%CREATE %SEQUENCE #sequence [%START %WITH n] [%INCREMENT %BY n]")
+    ("DROP"
+     "DROP"       "%DROP %TABLE|%VIEW|%INDEX|%SEQUENCE #name [%CASCADE|%RESTRICT]"
+     "TABLE"      "%DROP %TABLE [%IF %EXISTS] #table [%CASCADE|%RESTRICT]"
+     "VIEW"       "%DROP %VIEW [%IF %EXISTS] #view [%CASCADE|%RESTRICT]"
+     "INDEX"      "%DROP %INDEX [%IF %EXISTS] #index"
+     "SEQUENCE"   "%DROP %SEQUENCE [%IF %EXISTS] #sequence")
     ("ALTER"
      "ALTER"        "%ALTER %TABLE #table [%ADD|%MODIFY|%DROP|%RENAME] column"
      "TABLE"        "%ALTER %TABLE #table [%ADD|%MODIFY|%DROP|%RENAME] column"
@@ -116,6 +133,50 @@ denotes an optional part and `...' - a repeated one.")
           (setq index (1+ index)))))
     (max (1- index) 0)))
 
+(defvar ejc-sql-statement-separator ";"
+  "Default separator of the statements inside the SQL batch.
+Unlike `ejc-sql-separator', which separates the batches evaluated as a
+whole, this one is used to find the boundaries of the single statement
+around the point, e.g. to show its ElDoc template.
+See `ejc-get-statement-beginning' for the cases when it is not used.")
+
+(defconst ejc-sql-delimiter-command-re
+  "[ \t\n\r]*delimiter[ \t]+\\([^ \t\n\r]+\\)[ \t]*$"
+  "Regex of the `DELIMITER' command redefining the statements separator.
+The command is expected at the beginning of the SQL batch.")
+
+(defun ejc-get-statement-beginning (beg)
+  "Return the beginning of the SQL statement around the point.
+BEG is the beginning of the batch, see `ejc-get-sql-boundaries-at-point'.
+
+The statements of the batch are separated by the `DELIMITER' command
+value, when the batch starts with this command, or by
+`ejc-sql-statement-separator' otherwise.  The connection having its own
+`:separator' evaluates the whole batch as a single statement, unless the
+`DELIMITER' command is used - the same way it is done on the Clojure
+side, see `ejc-sql.connect/eval-user-sql'."
+  (let ((case-fold-search t)
+        (delimiter nil)
+        (start beg))
+    (save-excursion
+      (goto-char beg)
+      (when (looking-at ejc-sql-delimiter-command-re)
+        (setq delimiter (match-string-no-properties 1)
+              start (match-end 0))))
+    (setq start (min start (point)))
+    (let ((separator (or delimiter
+                         (unless (alist-get :separator ejc-db)
+                           ejc-sql-statement-separator))))
+      (if (not separator)
+          start
+        (save-excursion
+          (catch 'found
+            (while (search-backward separator start t)
+              (let ((state (syntax-ppss)))
+                (unless (or (nth 3 state) (nth 4 state))
+                  (throw 'found (+ (point) (length separator))))))
+            start))))))
+
 (defun ejc-get-words-before-point (beg)
   "Return the words of the SQL expression started at BEG before the point.
 The words are upcased and reversed - the nearest to the point is the
@@ -127,7 +188,16 @@ first one.  The word being typed right now is not included."
     (save-excursion
       (goto-char beg)
       (while (re-search-forward "\\_<[[:alpha:]][[:alnum:]_]*\\_>" end t)
-        (push (upcase (match-string-no-properties 0)) words)))
+        (let* ((word (match-string-no-properties 0))
+               (word-beg (match-beginning 0))
+               (word-end (match-end 0))
+               ;; `syntax-ppss' moves the point, so keep it out of the search.
+               (state (save-excursion (syntax-ppss word-beg))))
+          ;; The words of the comments and the string literals are not the
+          ;; SQL keywords, e.g. `-- create the orders table'.
+          (unless (or (nth 3 state) (nth 4 state))
+            (push (upcase word) words))
+          (goto-char word-end))))
     words))
 
 (defun ejc-get-clause-keyword (keys)
@@ -151,28 +221,38 @@ PREVIOUS-WORD - the word before the WORD in the SQL expression."
 
 (defun ejc-get-sql-expression-before-point ()
   "Return the SQL expression template for the clause around the point.
-Scan the SQL expression backwards from the point for the nearest known
+Scan the SQL statement backwards from the point for the nearest known
 clause keyword, then for the statement this clause belongs to.  So the
 template of the `WHERE' clause is different for `SELECT' and `UPDATE'
 statements and the clause is shown for the whole clause body, not for
 the clause keyword only."
-  (let* ((boundaries (ejc-get-sql-boundaries-at-point))
+  (let* ((beg (ejc-get-statement-beginning
+               (car (ejc-get-sql-boundaries-at-point))))
          (paren (nth 1 (syntax-ppss)))
-         (in-parens (and paren (>= paren (car boundaries))))
-         (words (ejc-get-words-before-point (car boundaries)))
+         (in-parens (and paren (>= paren beg)))
+         (words (ejc-get-words-before-point beg))
          (clause nil)
          (expression nil))
     (while (and words (not expression))
-      (let* ((word (car words))
-             (statement (assoc word ejc-sql-expressions)))
-        (cond (statement
-               (setq expression
-                     (or (and clause (ejc-plist-get (cdr statement) clause))
-                         (ejc-plist-get (cdr statement) word))))
-              ((not clause)
-               (setq clause (ejc-get-clause-keyword
-                             (ejc-get-clause-keys word (cadr words)
-                                                  in-parens))))))
+      (let ((word (car words))
+            (statement (assoc (car words) ejc-sql-expressions)))
+        (cond
+         ;; The statement keyword is found, so the clause can be resolved.
+         ;; The first word of the statement is always the statement keyword,
+         ;; the rest of them are the nested statements, like the subqueries.
+         ((and statement (or clause (null (cdr words))))
+          (setq expression
+                (or (and clause (ejc-plist-get (cdr statement) clause))
+                    (ejc-plist-get (cdr statement) word))))
+         ((not clause)
+          ;; A word can be both a statement and a clause keyword, like `DROP'
+          ;; in `DROP TABLE' and in `ALTER TABLE ... DROP COLUMN', so prefer
+          ;; the clause here - the statement is searched in the words before.
+          (setq clause (ejc-get-clause-keyword
+                        (ejc-get-clause-keys word (cadr words) in-parens)))
+          (unless clause
+            (when statement
+              (setq expression (ejc-plist-get (cdr statement) word)))))))
       (setq words (cdr words)))
     expression))
 

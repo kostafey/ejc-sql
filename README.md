@@ -272,9 +272,9 @@ Enable ElDoc for `ejc-sql` minor mode:
 ```
 
 ElDoc shows the template of the SQL statement around the point. `SELECT`,
-`INSERT`, `UPDATE`, `DELETE` and `ALTER` statements are supported, the part
-of the expression you are typing right now is highlighted, e.g. for the
-`WHERE` clause of an `UPDATE` statement it shows:
+`INSERT`, `UPDATE`, `DELETE`, `CREATE`, `DROP` and `ALTER` statements are
+supported, the part of the expression you are typing right now is highlighted,
+e.g. for the `WHERE` clause of an `UPDATE` statement it shows:
 
 ```
 UPDATE table SET field = value WHERE predicate
