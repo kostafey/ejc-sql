@@ -1207,4 +1207,4 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 Copyright © 2012-2026 Kostafey <kostafey@gmail.com> and
 [contributors](https://github.com/kostafey/ejc-sql/contributors)
 
-Distributed under the General Public License 2.0+
+Distributed under the [General Public License 2.0+](LICENSE)
