@@ -57,7 +57,7 @@ formatting of SQL scripts are also available.
 - [Requirements](#requirements)
 - [License](#license)
 
-![ejc-screenshot](https://user-images.githubusercontent.com/1282079/73614659-476e7b80-4612-11ea-8681-1c37bda9422e.png)
+![ejc-screenshot](https://github.com/user-attachments/assets/3fa959db-c24b-4269-80c9-8206208b3e66)
 
 ## Installation
 
