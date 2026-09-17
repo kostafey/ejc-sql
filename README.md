@@ -1186,6 +1186,26 @@ Increase `nrepl-sync-request-timeout`, e.g.:
 (setq nrepl-sync-request-timeout 60)
 ```
 
+```
+error in process filter: Sync nREPL request timed out
+(op eval code (require 'ejc-sql.deps-resolver) ...
+```
+
+This one is raised by `ejc-connect` while the `:dependencies` of the
+connection are being resolved. Unlike the rest of the ejc-sql requests, this
+one can download artifacts from the remote maven repositories, so it has a
+timeout of its own - increase it instead of `nrepl-sync-request-timeout`:
+
+```lisp
+(setq ejc-dependencies-resolve-timeout 600) ; 300 seconds by default
+```
+
+When the JDBC driver and all of its dependencies are already installed to the
+local `~/.m2/repository` (see [Install JDBC drivers](#install-jdbc-drivers)),
+the resolution is local and fast. A long wait means something is still being
+looked up in the remote repositories, which is also the case for the drivers
+unavailable in maven central, like the Oracle ones.
+
 ## Requirements:
 
 * [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 26.

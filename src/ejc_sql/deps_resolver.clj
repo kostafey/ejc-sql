@@ -1,6 +1,6 @@
 ;;; deps_resolver.clj -- Discover required jar artifacts.
 
-;;; Copyright © 2020-2023 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2020-2026 - Kostafey <kostafey@gmail.com>
 
 ;;; This program is free software; you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -51,16 +51,19 @@
 (defn get-dependeces-files-list
   "Resolve dependeces and return a list of all requred jar files paths.
   `artifacts-list` is a leningen dependeces vector.
-  E.g. '[[com.ibm.informix/jdbc \"4.50.3\"]]."
+  E.g. '[[com.ibm.informix/jdbc \"4.50.3\"]].
+  The whole dependencies graph is obtained by the single `resolve-dependencies`
+  call, so the remote repositories are contacted at most once per connection.
+  The result is realized inside `try`, otherwise the resolution errors are
+  thrown on the caller side instead of turning into `nil`."
   [artifacts-list]
   (try
-    (map
-     (fn [dep-file] (.getPath dep-file))
-     (flatten
-      (map
-       aether/dependency-files
-       (map
-        (fn [dep] (get-hierarchy (vector dep)))
-        (get-dependeces-list artifacts-list)))))
+    (doall
+     (map
+      (fn [^java.io.File dep-file] (.getPath dep-file))
+      (aether/dependency-files
+       (aether/resolve-dependencies
+        :coordinates artifacts-list
+        :repositories default-repositories))))
     (catch Exception _
       nil)))

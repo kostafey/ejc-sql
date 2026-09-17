@@ -54,16 +54,27 @@
                Class/forName
                :lib-name "ejc-sql")
 
+(defcustom ejc-dependencies-resolve-timeout 300
+  "The time in seconds to wait for the JDBC drivers dependencies resolution.
+Resolving the `:dependencies' of `ejc-create-connection' may download
+artifacts from the remote maven repositories, so it can take much longer
+than any other ejc-sql request and needs a timeout of its own, rather than
+a raised `nrepl-sync-request-timeout' shared with all the rest of them."
+  :group 'ejc-sql
+  :type 'integer)
+
 (clomacs-defun ejc-get-dependeces-files-list
                get-dependeces-files-list
                :lib-name "ejc-sql"
                :namespace ejc-sql.deps-resolver
+               :timeout ejc-dependencies-resolve-timeout
                :return-type :list)
 
 (clomacs-defun ejc-resolve-dependencies
                resolve-dependencies
                :lib-name "ejc-sql"
-               :namespace cemerick.pomegranate.aether)
+               :namespace cemerick.pomegranate.aether
+               :timeout ejc-dependencies-resolve-timeout)
 
 (defun ejc-connect-to-db (conn-struct)
   (let* ((jars-to-load

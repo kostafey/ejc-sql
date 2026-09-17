@@ -10,4 +10,4 @@
                  [leiningen-core "2.9.3"]
                  [org.apache.commons/commons-lang3 "3.5"]
                  [org.apache.httpcomponents/httpclient "4.5.5"]
-                 [clomacs "0.0.5-SNAPSHOT"]])
+                 [clomacs "0.0.6-SNAPSHOT"]])
