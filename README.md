@@ -1160,7 +1160,6 @@ List of other interactive functions
  `ejc-get-temp-editor-buffer`       | Create ad-hoc SQL editor buffer, use prefix arg number to get many buffers
  `ejc-print-cache`                  | Output current connection cache
  `ejc-invalidate-cache`             | Clean your current connection cache (database owners and tables list)
- `ejc-direx:pop-to-buffer`          | Create buffer with database structure tree
 
 ## Yasnippet
 
@@ -1214,7 +1213,6 @@ unavailable in maven central, like the Oracle ones.
 * [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.5.8
 * [dash](https://github.com/magnars/dash.el)
 * [spinner.el](https://github.com/Malabarba/spinner.el)
-* [direx.el](https://github.com/m2ym/direx-el)
 * [auto-complete](https://github.com/auto-complete/auto-complete) *(optional)*
 * [company-mode](https://github.com/company-mode/company-mode) *(optional)*
 * [company-quickhelp](https://github.com/company-mode/company-quickhelp) *(optional)*
