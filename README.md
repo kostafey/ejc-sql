@@ -1075,7 +1075,7 @@ Then add `ejc-sql` to your project as a dependency in `project.clj`:
   ...
   :dependencies [[org.clojure/clojure "1.10.0"]
                  ...
-                 [ejc-sql "0.4.1-SNAPSHOT"]]
+                 [ejc-sql "0.4.2-SNAPSHOT"]]
   ...
   )
 ```
@@ -1083,7 +1083,7 @@ or if you don't want to change your `project.clj` file, you can add it globally
 in `~/.lein/profiles.clj`, e.g.:
 ```edn
 {:user {:plugins [[cider/cider-nrepl "0.25.0-alpha1"]]
-        :dependencies [[ejc-sql "0.4.1-SNAPSHOT"]]}}
+        :dependencies [[ejc-sql "0.4.2-SNAPSHOT"]]}}
 ```
 The actual version of `ejc-sql` backend in Clojars:&nbsp;
 [![Clojars Project](https://clojars.org/ejc-sql/latest-version.svg)](https://clojars.org/ejc-sql)
