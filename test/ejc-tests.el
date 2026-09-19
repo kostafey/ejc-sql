@@ -89,7 +89,17 @@
   (should
    (equal [[com.ibm.informix/jdbc "4.50.3"]]
           (ejc-path-to-lein-artifact
-           "~/.m2/repository/com/ibm/informix/jdbc/4.50.3/jdbc-4.50.3.jar"))))
+           "~/.m2/repository/com/ibm/informix/jdbc/4.50.3/jdbc-4.50.3.jar")))
+  ;; There is nothing to derive the coordinates from when the jar file lies
+  ;; outside of the local maven repository, or too shallow inside it.
+  (should
+   (equal nil
+          (ejc-path-to-lein-artifact
+           "/opt/cloudera-jdbc-drivers/lib/2.6.30.1036/ImpalaJDBC42-2.6.30.1036.jar")))
+  (should
+   (equal nil
+          (ejc-path-to-lein-artifact
+           "~/.m2/repository/ojdbc8.jar"))))
 
 (defun ejc-test:get-boundaries (point-position sql)
   (with-temp-buffer

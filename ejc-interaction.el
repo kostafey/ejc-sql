@@ -84,8 +84,14 @@ a raised `nrepl-sync-request-timeout' shared with all the rest of them."
             (let* ((classpath (alist-get :classpath conn-struct))
                    (dependency-jars (-map
                                      (lambda (jar-path)
-                                       (ejc-get-dependeces-files-list
-                                        (ejc-path-to-lein-artifact jar-path)))
+                                       ;; Nothing to resolve for a jar file
+                                       ;; outside of `~/.m2/repository', it is
+                                       ;; added to the classpath as is below.
+                                       (when-let ((artifact
+                                                   (ejc-path-to-lein-artifact
+                                                    jar-path)))
+                                         (ejc-get-dependeces-files-list
+                                          artifact)))
                                      classpath)))
               ;; Join jar files paths from `:classpath' vector of
               ;; `ejc-create-connection' and dependencies for this jars.

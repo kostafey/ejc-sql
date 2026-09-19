@@ -511,8 +511,11 @@ Alternatively, you can pass the exact JDBC driver jar file in the
 ```
 
 `ejc-sql` will try to resolve all required dependencies if this JBDC driver
-requires some dependencies itself anyway. But you can pass all requred
-dependencies manually as a vector of jar files paths. E.g.:
+requires some dependencies itself anyway. A jar file outside of the local
+`~/.m2/repository` is added to the classpath as is, since there is no way to
+tell its artifact coordinates, hence no way to resolve anything for it - pass
+all the required dependencies manually as a vector of jar files paths in this
+case. E.g.:
 
 ```lisp
 (ejc-create-connection

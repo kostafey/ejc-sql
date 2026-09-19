@@ -53,21 +53,27 @@
             version)))
 
 (defun ejc-path-to-lein-artifact (path)
-  "Get leiningen artifact from ~/.m2 jar file path."
+  "Get leiningen artifact from ~/.m2 jar file PATH.
+Return nil when PATH is outside of the local maven repository, or is too
+short to be an artifact inside it: the coordinates are derived from the
+~/.m2/repository directory layout, so there is nothing to derive them from
+in this case."
   (if (not (stringp path))
       (error
        "Expect jar file path."))
   (let* ((path (s-replace "\\" "/" path))
          (path (nth 1 (s-split ".m2/repository/" path)))
-         (path-elements (s-split "/" path))
-         (version (nth (- (length path-elements) 2) path-elements))
-         (name (nth (- (length path-elements) 3) path-elements))
-         (group (s-join "." (-> path-elements -butlast -butlast -butlast))))
-    (read
-     (format "[[%s/%s \"%s\"]]"
-             group
-             name
-             version))))
+         (path-elements (if path (s-split "/" path))))
+    ;; The shortest possible layout is group/name/version/file.
+    (when (> (length path-elements) 3)
+      (let ((version (nth (- (length path-elements) 2) path-elements))
+            (name (nth (- (length path-elements) 3) path-elements))
+            (group (s-join "." (-> path-elements -butlast -butlast -butlast))))
+        (read
+         (format "[[%s/%s \"%s\"]]"
+                 group
+                 name
+                 version))))))
 
 (defun ejc-string-endswith-p (s ending)
   "Return non-nil if string S ends with ENDING."
