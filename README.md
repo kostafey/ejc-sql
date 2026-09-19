@@ -19,6 +19,7 @@ formatting of SQL scripts are also available.
 
 - [Installation](#installation)
 - [Configuration](#configuration)
+  - [Configuration details](#configuration-details)
   - [Set httpd port](#set-httpd-port)
   - [Completion at point](#completion-at-point)
     - [Autocomplete](#autocomplete)
@@ -134,6 +135,11 @@ Nothing has to be configured for the minibuffer part: `ejc-sql` reads the
 connection name with the plain `completing-read`, so `vertico`, `consult` and
 `marginalia` are in charge of it as they are of any other prompt. `consult-line`
 is worth a binding of its own though - the results buffer tends to be wide.
+
+## Configuration details
+
+The rest of this section goes through the same configuration step by step, so
+that every piece of the examples above can be looked up on its own.
 
 First, load `ejc-sql` package:
 ```lisp
