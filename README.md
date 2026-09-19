@@ -77,6 +77,64 @@ formatting of SQL scripts are also available.
 Here is an full-fledged real-world `ejc-sql` configuration example:
 [ejc-sql-conf](https://github.com/kostafey/kostafeys-emacs-confik/blob/master/custom/ejc-sql-conf.el).
 
+A more idiomatic, self-contained one, with
+[corfu](https://github.com/minad/corfu) for the completion at point and the
+[vertico](https://github.com/minad/vertico) /
+[consult](https://github.com/minad/consult) stack in the minibuffer:
+
+```lisp
+(use-package ejc-sql
+  ;; Every command bound here is autoloaded, so the package is loaded on the
+  ;; first call, not on Emacs startup.
+  :bind (("C-c s c" . ejc-connect)
+         :map ejc-sql-mode-keymap
+         ("<f8>" . ejc-eval-user-sql-at-point)
+         ("C-c s t" . ejc-show-tables-list)
+         ("C-c s d" . ejc-describe-table)
+         ("C-c s l" . ejc-show-last-result))
+  :hook ((sql-mode . ejc-sql-mode)
+         ;; `ejc-capf-setup' adds `ejc-capf' to the buffer local
+         ;; `completion-at-point-functions'.
+         (ejc-sql-minor-mode . ejc-capf-setup)
+         (ejc-sql-minor-mode . ejc-eldoc-setup))
+  :custom
+  ;; Emacs side of the Emacs <-> JVM bridge, see "Set httpd port" below.
+  (clomacs-httpd-default-port 8090)
+  ;; Complete right after the dot is typed, regardless of `corfu-auto-prefix'.
+  (ejc-complete-on-dot t)
+  ;; Show the results of the `org-mode' snippets in the dedicated buffer.
+  (ejc-org-mode-show-results nil)
+  ;; `orgtbl-mode' is the default one for the results buffer.
+  (ejc-result-table-impl 'ejc-result-mode)
+  :config
+  (require 'ejc-capf)
+  ;; `corfu' is the frontend showing the `ejc-capf' candidates.  A plain
+  ;; `add-hook' rather than `:hook', which would look for `corfu-mode' in
+  ;; `ejc-sql' and fail to autoload it.  `global-corfu-mode' does the job too.
+  (add-hook 'ejc-sql-minor-mode-hook #'corfu-mode)
+  (defun my-ejc-sql-connected ()
+    "Set the output limits of the connection just established."
+    (ejc-set-fetch-size 100)        ; rows to fetch from the database
+    (ejc-set-max-rows 100)          ; rows to keep in the ResultSet
+    (ejc-set-column-width-limit 25) ; chars per column
+    (ejc-set-use-unicode t))        ; unicode grid borders
+  (add-hook 'ejc-sql-connected-hook #'my-ejc-sql-connected)
+  ;; The `ejc-create-connection' calls, usually kept out of version control.
+  (load "~/.emacs.d/ejc-databases.el" 'noerror))
+
+(use-package corfu
+  :custom
+  (corfu-auto t)
+  (corfu-auto-prefix 2)
+  :config
+  (corfu-popupinfo-mode)) ; the documentation of the candidate
+```
+
+Nothing has to be configured for the minibuffer part: `ejc-sql` reads the
+connection name with the plain `completing-read`, so `vertico`, `consult` and
+`marginalia` are in charge of it as they are of any other prompt. `consult-line`
+is worth a binding of its own though - the results buffer tends to be wide.
+
 First, load `ejc-sql` package:
 ```lisp
 (require 'ejc-sql)
