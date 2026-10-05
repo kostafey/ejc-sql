@@ -386,8 +386,21 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
   (setq-local ejc-db db)
   (ejc-set-mode-name connection-name))
 
+(defvar ejc-org-result-suppressed nil
+  "Non-nil when the last `org-mode' SQL snippet result is shown by ejc-sql.
+Then `ejc-org-insert-result' skips the empty \"#+RESULTS:\" block.")
+
+(defun ejc-org-insert-result (orig-fun result &optional result-params info
+                                       &rest args)
+  "Don't insert results of SQL snippets displayed in the ejc-sql buffer."
+  (if (and ejc-org-result-suppressed
+           (equal "sql" (car info)))
+      (setq ejc-org-result-suppressed nil)
+    (apply orig-fun result result-params info args)))
+
 (defun ejc-eval-org-snippet (&optional orig-fun body params)
   "Used to eval SQL code in `org-mode' code snippets."
+  (setq ejc-org-result-suppressed nil)
   (if (or (not ejc-org-mode-babel-wrapper)
           (and (cdr (assq :engine params))
                (not
@@ -407,7 +420,9 @@ If the current mode is `sql-mode' prepare buffer to operate as `ejc-sql-mode'."
           (with-temp-buffer
             (insert-file-contents (ejc-get-result-file-path))
             (or (org-babel-read-table)
-                (buffer-string)))))))
+                (buffer-string)))
+        (setq ejc-org-result-suppressed t)
+        nil))))
 
 (defun ejc-org-edit-special (orig-fun &rest args)
   (if (and (equal "sql" (car (org-babel-get-src-block-info)))
@@ -571,6 +586,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
         (when (derived-mode-p 'org-mode)
           (require 'ob-sql)
           (advice-add 'org-babel-execute:sql :around 'ejc-eval-org-snippet)
+          (advice-add 'org-babel-insert-result :around #'ejc-org-insert-result)
           (advice-add 'org-edit-special :around #'ejc-org-edit-special))
         (message "Connection started...")
         (clomacs-with-nrepl "ejc-sql"
