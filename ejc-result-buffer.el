@@ -136,7 +136,11 @@ or error messages."
 (defun ejc-show-result-buffer (output-buffer)
   (if ejc-show-result-bottom
       (display-buffer output-buffer '(display-buffer-at-bottom . ()))
-    (display-buffer output-buffer)))
+    ;; Never replace the selected window (typically the SQL source).
+    ;; Without this `display-buffer' may pick it as the least recently
+    ;; used one, e.g. after another window was shown via
+    ;; `save-selected-window', which reselects with NORECORD.
+    (display-buffer output-buffer '(nil . ((inhibit-same-window . t))))))
 
 ;;;###autoload
 (cl-defun ejc-show-last-result (&key result
