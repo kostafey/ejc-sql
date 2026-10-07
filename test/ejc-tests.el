@@ -188,6 +188,34 @@
            (ejc-append-without-duplicates
             '(("a" 1) ("b" 2)) '(("a" 3) ("c" 4)) 'car :right))))
 
+(ert-deftest ejc-test:ejc-org-block-connection ()
+  :tags '(el)
+  (require 'ob-core)
+  (let ((ejc-connections '(("first" (:subprotocol . "h2"))
+                           ("second" (:subprotocol . "sqlite"))))
+        (ejc-org-loaded-connections nil)
+        (loaded nil)
+        (repl (get-buffer-create " *ejc-test-repl*")))
+    (cl-letf (((symbol-function 'clomacs-get-connection)
+               (lambda (&rest _) repl))
+              ((symbol-function 'ejc-connect-to-db)
+               (lambda (db) (push db loaded))))
+      (with-temp-buffer
+        (insert "#+begin_src sql :ejc-sql second\nSELECT 1;\n#+end_src\n")
+        (org-mode)
+        (goto-char (point-min))
+        (forward-line)
+        (let ((params (nth 2 (org-babel-get-src-block-info 'no-eval))))
+          (should (equal '("second" (:subprotocol . "sqlite"))
+                         (ejc-org-block-connection params)))
+          ;; The JDBC driver is loaded only once per nREPL.
+          (ejc-org-block-connection params)
+          (should (equal '(((:subprotocol . "sqlite"))) loaded))))
+      (should-not (ejc-org-block-connection '((:results . "replace"))))
+      (should-error (ejc-org-block-connection '((:ejc-sql . "third")))
+                    :type 'user-error))
+    (kill-buffer repl)))
+
 (cl-defun ejc-test:run-sql (sql &optional connect)
   ;; Type SQL query and eval it.
   (with-current-buffer (ejc-get-temp-editor-buffer "test")

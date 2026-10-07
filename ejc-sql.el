@@ -1,6 +1,6 @@
 ;;; ejc-sql.el --- Emacs SQL client uses Clojure JDBC. -*- lexical-binding: t -*-
 
-;;; Copyright © 2012-2020 - Kostafey <kostafey@gmail.com>
+;;; Copyright © 2012-2026 - Kostafey <kostafey@gmail.com>
 
 ;; Author: Kostafey <kostafey@gmail.com>
 ;; URL: https://github.com/kostafey/ejc-sql
@@ -51,6 +51,7 @@
 (declare-function org-babel-expand-noweb-references "ob-core"
                   (&optional info parent-buffer))
 (declare-function org-babel-read-table "ob-core" ())
+(defvar org-babel-header-args:sql)
 (declare-function pkg-info-version-info "ext:pkg-info" t)
 
 (defvar ejc-connections nil
@@ -398,11 +399,37 @@ Then `ejc-org-insert-result' skips the empty \"#+RESULTS:\" block.")
       (setq ejc-org-result-suppressed nil)
     (apply orig-fun result result-params info args)))
 
+(defvar ejc-org-loaded-connections nil
+  "Connections, named by `:ejc-sql' header arguments, whose JDBC drivers are
+loaded. An alist of connection name and the ejc-sql nREPL connection buffer
+they are loaded to, so the drivers are loaded again into a restarted nREPL.")
+
+(defun ejc-org-block-connection (params)
+  "Return (CONNECTION-NAME . DB) named by `:ejc-sql' header argument in PARAMS.
+E.g. \"#+begin_src sql :ejc-sql my-db-connection\". Load the JDBC driver of
+this connection to the running ejc-sql nREPL first.
+Return nil if PARAMS has no `:ejc-sql' header argument."
+  (when-let* ((name (cdr (assq :ejc-sql params))))
+    (let* ((name (format "%s" name))
+           (db (or (cdr (ejc-find-connection name))
+                   (user-error "Unknown ejc-sql connection: %s" name)))
+           (repl (or (clomacs-get-connection "ejc-sql")
+                     (user-error "Run M-x ejc-connect first!"))))
+      (unless (eq repl (alist-get name ejc-org-loaded-connections
+                                  nil nil #'equal))
+        (ejc-connect-to-db db)
+        (setf (alist-get name ejc-org-loaded-connections nil nil #'equal)
+              repl))
+      (cons name db))))
+
 (defun ejc-eval-org-snippet (&optional orig-fun body params)
-  "Used to eval SQL code in `org-mode' code snippets."
+  "Used to eval SQL code in `org-mode' code snippets.
+If the snippet has `:ejc-sql' header argument, evaluate it in the connection
+named by this argument instead of the buffer one."
   (setq ejc-org-result-suppressed nil)
   (if (or (not ejc-org-mode-babel-wrapper)
           (and (cdr (assq :engine params))
+               (not (cdr (assq :ejc-sql params)))
                (not
                 (yes-or-no-p
                  (concat "ejc-sql is enabled, ignore source block connection"
@@ -411,9 +438,11 @@ Then `ejc-org-insert-result' skips the empty \"#+RESULTS:\" block.")
     (let* ((info (org-babel-get-src-block-info 'no-eval))
            (expanded-body (if (org-babel-noweb-p (nth 2 info) :eval)
                               (org-babel-expand-noweb-references info)
-                            (nth 1 info))))
+                            (nth 1 info)))
+           (connection (ejc-org-block-connection params)))
       (ejc-eval-user-sql
        expanded-body
+       :db (cdr connection)
        :sync ejc-org-mode-show-results
        :display-result (not ejc-org-mode-show-results))
       (if ejc-org-mode-show-results
@@ -425,14 +454,24 @@ Then `ejc-org-insert-result' skips the empty \"#+RESULTS:\" block.")
         nil))))
 
 (defun ejc-org-edit-special (orig-fun &rest args)
-  (if (and (equal "sql" (car (org-babel-get-src-block-info)))
-           (boundp 'ejc-db) ejc-db
-           (boundp 'ejc-connection-name) ejc-connection-name)
-      (let* ((db ejc-db)
-             (connection-name ejc-connection-name))
-        (apply orig-fun args)
-        (ejc-add-connection connection-name db))
-    (apply orig-fun args)))
+  (let* ((info (org-babel-get-src-block-info 'no-eval))
+         (params (nth 2 info))
+         (connection
+          (cond
+           ((not (equal "sql" (car info))) nil)
+           ((assq :ejc-sql params)
+            (condition-case err
+                (ejc-org-block-connection params)
+              ;; Edit the snippet anyway, but not connected.
+              (user-error
+               (message "%s" (error-message-string err))
+               nil)))
+           ((and (boundp 'ejc-db) ejc-db
+                 (boundp 'ejc-connection-name) ejc-connection-name)
+            (cons ejc-connection-name ejc-db)))))
+    (apply orig-fun args)
+    (when connection
+      (ejc-add-connection (car connection) (cdr connection)))))
 
 (defun ejc-read-connection-name ()
   "Read connection-name in minibuffer."
@@ -585,6 +624,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
         (ejc-add-connection connection-name db)
         (when (derived-mode-p 'org-mode)
           (require 'ob-sql)
+          (add-to-list 'org-babel-header-args:sql '(ejc-sql . :any))
           (advice-add 'org-babel-execute:sql :around 'ejc-eval-org-snippet)
           (advice-add 'org-babel-insert-result :around #'ejc-org-insert-result)
           (advice-add 'org-edit-special :around #'ejc-org-edit-special))

@@ -1087,11 +1087,28 @@ expected, add to your `.emacs`:
 (setq ejc-org-mode-show-results nil)
 ```
 
-If your `org-mode` buffer connected via `ejc-connect`, any time you run
-<kbd>C-c '</kbd> (`org-edit-special`) for code snippets, you will get new
-buffer with this minor-mode (`ejc-sql-mode`) and all connection-related data.
-So, you can operate inside it like in ordinary `sql-mode` buffer, which is
-already connected to the database.
+A single `org-mode` buffer can query several databases: the `:ejc-sql`
+header argument names the connection (created by `ejc-create-connection`)
+to evaluate this source block in, instead of the buffer one:
+
+```markdown
+#+begin_src sql :ejc-sql my-db-connection
+SELECT * FROM product;
+#+end_src
+
+#+begin_src sql :ejc-sql my-other-db-connection
+SELECT * FROM customer;
+#+end_src
+```
+
+To use `:ejc-sql` header arguments, connect the `org-mode` buffer to any
+database via `ejc-connect` first, so `ejc-sql` is started.
+
+In a connected `org-mode` buffer <kbd>C-c '</kbd> (`org-edit-special`) opens
+a code snippet in a new buffer with `ejc-sql-mode` enabled and connected to
+the database of the snippet: the one named by its `:ejc-sql` header argument,
+or the buffer one if there is no such argument. So, you can operate inside it
+like in an ordinary `sql-mode` buffer, already connected to the database.
 
 You can use both `ejc-sql` and `org-mode` original `org-babel` execution
 engine simultaneously in one buffer.
