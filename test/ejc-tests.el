@@ -150,6 +150,51 @@
                                                   "  /  \n"
                                                   "  SELECT * FROM user")))))
 
+(ert-deftest ejc-test:ejc-eldoc-function-org-mode ()
+  :tags '(el)
+  (with-temp-buffer
+    (insert "#+begin_src sql
+"
+            "UPDATE users SET name = 'x' WHERE id = 1
+"
+            "#+end_src
+"
+            "
+"
+            "* TODO Check the result
+"
+            "#+begin_src emacs-lisp
+"
+            "(setq where 1)
+"
+            "#+end_src
+")
+    (org-mode)
+    (cl-letf (((symbol-function 'ejc-buffer-connected-p) #'ignore))
+      (goto-char (point-min))
+      (search-forward "WHERE id")
+      (should (ejc-eldoc-function))
+      ;; Outside of the SQL source block body there is no SQL.
+      (dolist (text '("#+begin_src sql" "#+end_src" "TODO Check" "where 1"))
+        (goto-char (point-min))
+        (search-forward text)
+        (should-not (ejc-eldoc-function)))
+      ;; The other ElDoc functions of the buffer are shown outside of SQL.
+      (add-hook 'eldoc-documentation-functions
+                (lambda (&rest _) (when (looking-at "Check") "other doc"))
+                nil t)
+      (cl-letf (((symbol-function 'eldoc-mode) #'ignore))
+        (ejc-eldoc-setup))
+      (let ((doc (lambda ()
+                   (run-hook-with-args-until-success
+                    'eldoc-documentation-functions #'ignore))))
+        (goto-char (point-min))
+        (search-forward "TODO ")
+        (should (equal "other doc" (funcall doc)))
+        (goto-char (point-min))
+        (search-forward "WHERE id")
+        (should (string-match-p "UPDATE" (funcall doc)))))))
+
 (ert-deftest ejc-test:get-log-file-path ()
   :tags '(el+cl)
   (let ((log-file-path (ejc-get-log-file-path)))

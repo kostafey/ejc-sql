@@ -23,6 +23,10 @@
 (require 'ejc-format)
 (require 'ejc-interaction)
 
+(declare-function org-element-at-point "org-element" (&optional pom cached-only))
+(declare-function org-element-property "org-element-ast" (property node &optional dflt force-undefer))
+(declare-function org-in-src-block-p "org" (&optional inside element))
+
 (defun ejc-replace-property-mark (text fmt face)
   (while (string-match fmt text)
     (let ((beg (match-beginning 0))
@@ -293,21 +297,29 @@ the clause keyword only."
                          (error nil))))
       (ejc-propertize expression)))
 
+(defun ejc-eldoc-sql-at-point-p ()
+  "Return non-nil when the point is inside SQL code.
+In `org-mode' buffers it is the body of the SQL source block only, the
+text outside of the code blocks is not SQL."
+  (if (derived-mode-p 'org-mode)
+      (let ((element (org-element-at-point)))
+        (and (org-in-src-block-p t element)
+             (equal "sql" (org-element-property :language element))))
+    t))
+
 (defun ejc-eldoc-function (&rest _ignored)
   "Return a doc string appropriate for the current context, or nil."
-  (or (ejc-eldoc-procedure-doc)
-      (ejc-eldoc-expression-doc)))
+  (when (ejc-eldoc-sql-at-point-p)
+    (or (ejc-eldoc-procedure-doc)
+        (ejc-eldoc-expression-doc))))
 
 ;;;###autoload
 (defun ejc-eldoc-setup ()
   "Set up eldoc function and enable eldoc-mode."
   (interactive)
-  (cond
-   ((boundp 'eldoc-documentation-strategy)
-    (setq-local eldoc-documentation-strategy #'ejc-eldoc-function))
-   ((boundp 'eldoc-documentation-functions)
-    (add-hook 'eldoc-documentation-functions #'ejc-eldoc-function nil t))
-   (t (setq-local eldoc-documentation-function #'ejc-eldoc-function)))
+  ;; Not `eldoc-documentation-strategy': the other functions of the hook,
+  ;; like the ones of `org-mode', are shown where it is not SQL.
+  (add-hook 'eldoc-documentation-functions #'ejc-eldoc-function nil t)
   (eldoc-mode +1))
 
 (provide 'ejc-eldoc)
