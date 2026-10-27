@@ -88,6 +88,15 @@
             :else field))
         row))
 
+(def comments-re
+  "Regex to search comments in SQL expression.
+Line comment starts with `--` or, in MySQL, with `#` and lasts until the line
+break or the end of the SQL expression, hence the trailing line break is
+optional. Both `\\n` and `\\r\\n` line breaks are handled."
+  (java.util.regex.Pattern/compile
+   "(?:/\\*.*?\\*/[\\s;]*(?:\\r?\\n)?)|(?:(?:--|#)[^\\r\\n]*(?:\\r?\\n)?)",
+   java.util.regex.Pattern/DOTALL))
+
 (defn clean-sql [sql]
   (-> sql
       (s/replace #"(--).*\n" "")
@@ -138,3 +147,42 @@
   "Determine if current SQL is Data Definition Language (DDL) case."
   [sql]
   (determine-query sql ddl-words))
+
+(def read-only-words
+  "Statements that only read: the first keyword of SQL `read-only?` accepts."
+  '("SELECT"
+    "WITH"
+    "VALUES"
+    "SHOW"
+    "EXPLAIN"
+    "DESCRIBE"
+    "DESC"))
+
+(def ^:private first-keyword-re
+  "Regex to find the first word of SQL expression after whitespace, `(`, `[`
+and comments. A block comment holding `/*` or starting with `!` or `M!`
+stops the search, and nothing is matched, since the quantifiers are
+possessive."
+  (java.util.regex.Pattern/compile
+   (str "^(?:[\\s(\\[]"
+        "|(?:--|#)[^\\r\\n]*+"
+        "|/\\*(?!M?!)(?:(?!/\\*|\\*/).)*+\\*/"
+        ")*+(\\w+)")
+   java.util.regex.Pattern/DOTALL))
+
+(defn first-keyword
+  "The first word of `sql` upper-cased, leading comments and `(`/`[` skipped.
+  nil if `sql` doesn't start with a word, or a comment before the word may
+  be read differently by the database: a block comment holding `/*`, which
+  PostgreSQL and SQL Server nest, or an executable comment of MySQL and
+  MariaDB, `/*!...*/` or `/*M!...*/`, which they run."
+  [sql]
+  (when-let [[_ word] (re-find first-keyword-re sql)]
+    (s/upper-case word)))
+
+(defn read-only?
+  "Determine if `sql` starts with one of `read-only-words`, as
+  `first-keyword` finds it. Unlike `determine-query` the whole word is
+  matched: `SELECTX` is not `SELECT`."
+  [sql]
+  (boolean (in? read-only-words (first-keyword sql))))

@@ -22,7 +22,8 @@
             [clojure.string :as s]
             [clomacs :refer [clomacs-defn]]
             [ejc-sql.output :as o]
-            [ejc-sql.lib :refer [select? ddl? lob-to-string-row *max-column-width*]]
+            [ejc-sql.lib :refer [select? ddl? lob-to-string-row *max-column-width*
+                                 comments-re]]
             [ejc-sql.cache :refer [invalidate-cache]])
   (:import [java.sql SQLException]))
 
@@ -116,15 +117,6 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
   "Regex to search a `delimiter` command in SQL expression."
   (re-pattern "(?i)delimiter\\s+(.+)"))
 
-(def comments-re
-  "Regex to search comments in SQL expression.
-Line comment lasts until the line break or the end of the SQL expression,
-hence the trailing line break is optional. Both `\\n` and `\\r\\n` line
-breaks are handled."
-  (java.util.regex.Pattern/compile
-   "(?:/\\*.*?\\*/[\\s;]*(?:\\r?\\n)?)|(?:--[^\\r\\n]*(?:\\r?\\n)?)",
-   java.util.regex.Pattern/DOTALL))
-
 (clomacs-defn complete-query 'ejc-complete-query
               :doc "Show file contents with SQL query evaluation results.")
 
@@ -154,6 +146,37 @@ breaks are handled."
    :db db
    :goto-symbol goto-symbol))
 
+(defn read-lobs
+  "Convert LOB fields of `rows`, `[[column...] row...]`, to strings.
+  A CLOB is cut to `*max-column-width*` unless there is only one row."
+  [rows]
+  (let [single-record? (not (next (next rows)))]
+    (mapv #(lob-to-string-row % single-record?) rows)))
+
+(defn fetch-rows
+  "Run the SELECT `sql` on the open connection `conn`, return its result set
+  as `[[column...] row...]` with LOBs converted by `read-lobs`.
+  `opts` are passed to `j/prepare-statement` (`:fetch-size`, `:max-rows`,
+  `:timeout`), `on-statement` is called with the statement before it runs."
+  [db conn sql opts & [on-statement]]
+  (let [stmt (j/prepare-statement conn sql opts)]
+    (when on-statement
+      (on-statement stmt))
+    (j/query db stmt {:as-arrays? true
+                      :result-set-fn read-lobs})))
+
+(defn execution-message
+  "Describe the outcome of `(.execute statement sql)`, which returned
+  `result-set?`: \"Records affected: N\" or \"Executed\"."
+  [^java.sql.Statement statement result-set?]
+  (if-let [result (when
+                   (and
+                    (not result-set?)
+                    (> (.getUpdateCount statement) 0))
+                    (.getUpdateCount statement))]
+    (str "Records affected: " result)
+    "Executed"))
+
 (defn eval-sql-core
   "The core SQL evaluation function."
   [& {:keys [db sql-list fetch-size max-rows]
@@ -168,8 +191,7 @@ breaks are handled."
                   ;; SELECT
                   (list
                    :result-set
-                   (let [stmt (j/prepare-statement
-                               conn sql
+                   (fetch-rows db conn sql
                                {:fetch-size (or fetch-size @o/fetch-size 0)
                                 :max-rows (or max-rows
                                               (if (and (> @o/max-rows 0)
@@ -179,29 +201,14 @@ breaks are handled."
                                                 ;; query is bigger than `max-rows`.
                                                 (+ @o/max-rows 1)
                                                 @o/max-rows)
-                                              0)})]
-                     (swap! current-query assoc
-                            :stmt stmt
-                            :conn conn)
-                     (j/query db stmt
-                              {:as-arrays? true
-                               :result-set-fn
-                               (fn [rs]
-                                 (let [single-record?
-                                       (not (next (next rs)))]
-                                   (mapv
-                                    #(lob-to-string-row
-                                      % single-record?)
-                                    rs)))})))
+                                              0)}
+                               (fn [stmt]
+                                 (swap! current-query assoc
+                                        :stmt stmt
+                                        :conn conn))))
                   ;; DML or DDL
                   (let [result-set? (.execute statement sql)
-                        message (if-let [result (when
-                                                 (and
-                                                  (not result-set?)
-                                                  (> (.getUpdateCount statement) 0))
-                                                  (.getUpdateCount statement))]
-                                  (str "Records affected: " result)
-                                  "Executed")]
+                        message (execution-message statement result-set?)]
                     (when (ddl? sql)
                       (invalidate-cache db))
                     (list :message message))))

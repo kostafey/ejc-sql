@@ -1,5 +1,7 @@
 (ns ejc-sql.structure-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as s]
+            [clojure.test :refer :all]
+            [ejc-sql.output :as o]
             [ejc-sql.structure :refer :all]))
 
 (deftest get-db-name-test
@@ -122,3 +124,36 @@
     (is (= nil
            (update-sql?
             "SELECT * FROM product")))))
+
+(deftest print-table-description-test
+  (testing "print-table-description fn test."
+    (let [db {:subprotocol "mysql" :subname "//localhost:3306/shop"}
+          columns (fn [_ _] {:success true
+                             :result [{:name "ID" :type "INT"}]})
+          describe (fn [& {:keys [table-meta-fn query-fn]}]
+                     (with-out-str
+                       (binding [o/*add-outside-borders* true]
+                         (print-table-description db "users"
+                                                  :table-meta-fn table-meta-fn
+                                                  :query-fn query-fn
+                                                  :row-limit 0))))
+          sql (atom nil)
+          text (describe :table-meta-fn columns
+                         :query-fn (fn [_ q]
+                                     (reset! sql q)
+                                     [[:column_name :constraint_name]
+                                      ["ID" "PRIMARY"]]))]
+      (is (s/starts-with? text "Table \"users\" description:"))
+      (is (s/includes? text "| ID    | INT   |"))
+      (is (s/includes? text "Constraints:"))
+      (is (s/includes? text "| ID          | PRIMARY         |"))
+      (is (s/includes? @sql "table_name = 'users'"))
+      ;; A failing constraints query is printed, not thrown.
+      (is (s/ends-with? (describe :table-meta-fn columns
+                                  :query-fn (fn [_ _] "Error: no access"))
+                        "Constraints:\n\nError: no access\n"))
+      ;; No columns - no constraints.
+      (is (= "Error: no table\n"
+             (describe :table-meta-fn (fn [_ _] {:success false
+                                                 :result "Error: no table"})
+                       :query-fn (fn [_ _] (throw (Exception. "not called")))))))))

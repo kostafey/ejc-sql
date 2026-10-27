@@ -1143,8 +1143,11 @@
       (c/complete (format "Can't determine type of %s." sql-object)
                   :result-file result-file))))
 
-(defn print-table-meta [db table-name]
-  (let [result-map (c/table-meta db table-name)
+(defn print-table-meta
+  "Print the columns of `table-name`, obtained by `table-meta-fn`
+  (`c/table-meta` by default). Return true on success."
+  [db table-name & [table-meta-fn]]
+  (let [result-map ((or table-meta-fn c/table-meta) db table-name)
         success (:success result-map)
         result-data (:result result-map)]
     (if success
@@ -1153,6 +1156,26 @@
           (o/print-maps result-data true))
       (println result-data))
     success))
+
+(defn print-table-description
+  "Print the columns and the constraints of `table`, of `owner` if given.
+  The database is reached only through the functions passed:
+  `table-meta-fn` - `(fn [db table-name])` returning what `c/table-meta` does,
+  `query-fn` - `(fn [db sql])` returning `[[column...] row...]` or an error message.
+  `row-limit` is passed to `o/print-table` for the constraints."
+  [db table & {:keys [owner table-meta-fn query-fn row-limit]}]
+  (when (print-table-meta db (if owner (str owner "." table) table)
+                          table-meta-fn)
+    (when-let [sql (select-db-meta-script db :constraints
+                                          :owner owner
+                                          :table table)]
+      (println)
+      (println "Constraints:")
+      (println)
+      (let [result (query-fn db sql)]
+        (if (string? result)
+          (println result)
+          (o/print-table result row-limit))))))
 
 (defn describe-table [& {:keys [db
                                 connection-name
@@ -1163,19 +1186,18 @@
   (with-open [out (io/writer result-file)]
     (binding [*out* out
               o/*add-outside-borders* add-outside-borders]
-      (when (print-table-meta db (if owner (str owner "." table) table))
-        (when-let [sql (select-db-meta-script db :constraints
-                                              :owner owner
-                                              :table table)]
-          (println)
-          (println "Constraints:")
-          (println)
-          (o/print-table (second
-                          (first
-                           (c/eval-sql-core :db db
-                                            :sql-list (list sql)
-                                            :fetch-size 0
-                                            :max-rows 0))))))))
+      (print-table-description
+       db table
+       :owner owner
+       :table-meta-fn c/table-meta
+       :query-fn (fn [db sql]
+                   (second
+                    (first
+                     (c/eval-sql-core :db db
+                                      :sql-list (list sql)
+                                      :fetch-size 0
+                                      :max-rows 0))))
+       :row-limit @o/fetch-size)))
   (c/complete
    nil
    :display-result true
