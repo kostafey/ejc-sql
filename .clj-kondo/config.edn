@@ -22,4 +22,6 @@
                        ejc-sql.structure/get-packages-candidates
                        ejc-sql.structure/get-entity-type-fmt
                        ejc-sql.structure/get-entity-description
-                       ejc-sql.structure/describe-table}}}}
+                       ejc-sql.structure/describe-table
+                       ejc-sql.mcp-http/connected!
+                       ejc-sql.mcp-http/status}}}}

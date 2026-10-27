@@ -76,7 +76,10 @@ a raised `nrepl-sync-request-timeout' shared with all the rest of them."
                :namespace cemerick.pomegranate.aether
                :timeout ejc-dependencies-resolve-timeout)
 
-(defun ejc-connect-to-db (conn-struct)
+(defun ejc-connect-to-db (conn-struct &optional connection-name)
+  "Load the JDBC driver of CONN-STRUCT and make it the current database.
+CONNECTION-NAME, the name of the connection, makes it available to the
+ejc-sql MCP server too."
   (let* ((jars-to-load
           (if-let (dependencies (alist-get :dependencies conn-struct))
               ;; Resolve dependencies and prepare jars paths list to load.
@@ -104,7 +107,7 @@ a raised `nrepl-sync-request-timeout' shared with all the rest of them."
   (when-let ((classname (alist-get :classname conn-struct)))
     (ejc-class-for-name classname)
     (ejc-import (read classname)))
-  (ejc-sql-set-db conn-struct))
+  (ejc-sql-set-db conn-struct connection-name))
 
 (clomacs-defun ejc--eval-sql-and-log-print
                eval-sql-and-log-print

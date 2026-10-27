@@ -417,7 +417,7 @@ Return nil if PARAMS has no `:ejc-sql' header argument."
                      (user-error "Run M-x ejc-connect first!"))))
       (unless (eq repl (alist-get name ejc-org-loaded-connections
                                   nil nil #'equal))
-        (ejc-connect-to-db db)
+        (ejc-connect-to-db db name)
         (setf (alist-get name ejc-org-loaded-connections nil nil #'equal)
               repl))
       (cons name db))))
@@ -631,7 +631,7 @@ Apropriate artifacts list located in `ejc-jdbc-drivers'."
         (message "Connection started...")
         (clomacs-with-nrepl "ejc-sql"
           (lambda (db connection-name)
-            (ejc-connect-to-db db)
+            (ejc-connect-to-db db connection-name)
             (let ((validation-result
                    (ejc-validate-connection
                     :db db

@@ -97,6 +97,18 @@ keeps a background, idle-timer-driven cache so typing never waits on the
 database - column candidates are the exception, since they depend on the SQL
 expression around point. `ejc-eldoc.el` reuses the same metadata for signatures.
 
+**The MCP server** for AI agents lives in the same JVM: `src/ejc_sql/mcp.clj`
+(the connection registry, `~/.ejc-sql/mcp.edn`, the tools, a pure JSON-RPC
+dispatcher) and `src/ejc_sql/mcp_http.clj` (Streamable HTTP on `127.0.0.1`
+over the JDK `HttpServer`, both the `2026-07-28` and the older MCP revisions).
+`connect/set-db` gets the Emacs connection name from `ejc-connect-to-db`,
+registers the connection and starts the server when `mcp.edn` exists, through
+`requiring-resolve`, since `mcp` requires `connect`. The MCP path opens a
+connection of its own per call and never writes `connect/db` or
+`connect/current-query`, so an agent's query and `ejc-cancel-query` never meet.
+It doesn't call Emacs either, but for one message on the server start: agent
+results don't go to the results ring.
+
 **Output formatting** is Clojure-side (`src/ejc_sql/output.clj`, plain-text
 tables with optional unicode borders and column width limits, tuned by the
 `ejc-set-*` commands on `ejc-sql-connected-hook`). The Emacs side only displays

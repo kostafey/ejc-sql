@@ -244,7 +244,7 @@
     (cl-letf (((symbol-function 'clomacs-get-connection)
                (lambda (&rest _) repl))
               ((symbol-function 'ejc-connect-to-db)
-               (lambda (db) (push db loaded))))
+               (lambda (db name) (push (cons name db) loaded))))
       (with-temp-buffer
         (insert "#+begin_src sql :ejc-sql second\nSELECT 1;\n#+end_src\n")
         (org-mode)
@@ -255,7 +255,7 @@
                          (ejc-org-block-connection params)))
           ;; The JDBC driver is loaded only once per nREPL.
           (ejc-org-block-connection params)
-          (should (equal '(((:subprotocol . "sqlite"))) loaded))))
+          (should (equal '(("second" (:subprotocol . "sqlite"))) loaded))))
       (should-not (ejc-org-block-connection '((:results . "replace"))))
       (should-error (ejc-org-block-connection '((:ejc-sql . "third")))
                     :type 'user-error))
@@ -278,6 +278,12 @@
   ;; Get the results.
   (with-current-buffer ejc-results-buffer
     (buffer-substring-no-properties (point-max) (point-min))))
+
+(clomacs-defun ejc-test:mcp-connection-names
+               connection-names
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.mcp
+               :return-type :list)
 
 (ert-deftest ejc-test:get-connection ()
   :tags '(el+cl)
@@ -396,7 +402,10 @@
                    (ejc-ac-setup)
                    (insert "SERS.")
                    (auto-complete)
-                   (ejc-get-cached-colomns-list ejc-db "USERS" t)))))))))
+                   (ejc-get-cached-colomns-list ejc-db "USERS" t)))))))
+    ;; ---------------------------------------------------
+    ;; The connection is registered for the MCP server
+    (should (member "H2-test-connection" (ejc-test:mcp-connection-names)))))
 
 
 (ejc-test:run-maven-dependency-plugin)

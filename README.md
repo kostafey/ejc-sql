@@ -53,6 +53,7 @@ formatting of SQL scripts are also available.
     - [Dedicated ejc-sql nREPL](#dedicated-nrepl)
     - [Different project nREPL](#different-nrepl)
   - [Goto definition & results ring](#goto-definition-results-ring)
+  - [MCP server for AI agents](#mcp-server)
 - [List of keybindings & functions](#keybindings)
 - [Yasnippet](#yasnippet)
 - [Troubleshooting](#troubleshooting)
@@ -1201,6 +1202,131 @@ it looks like goto definition, then return back. For the purpose of convenience,
 the following keybindings are provided:
 * <kbd>M-.</kbd> `ejc-describe-entity`
 * <kbd>M-,</kbd> `ejc-show-prev-result`
+
+<a id="mcp-server"></a>
+### MCP server for AI agents
+
+`ejc-sql` can serve the databases you have connected to as tools for AI
+coding agents: Claude Code or any other [MCP](https://modelcontextprotocol.io)
+client. The server runs inside the `ejc-sql` nREPL, so it reuses the JDBC
+drivers, the database structure cache and the output formatting already there.
+It is off by default and needs Java 11 or newer.
+
+To turn it on, create `~/.ejc-sql/mcp.edn`:
+
+```clojure
+{:port 8765               ; optional, 8765 by default
+ :token "some-secret"     ; optional, require "Authorization: Bearer some-secret"
+ :writable #{"dev-db"}}   ; optional, the connections an agent may change
+```
+
+An empty file means all the defaults. The server starts with the next
+`M-x ejc-connect` and listens on `http://127.0.0.1:8765/mcp`, reachable from
+this machine only. `*Messages*` shows its URL, or why it could not start, e.g.
+the port is busy. `:port` is read once, when the server starts; `:token` and
+`:writable` on every request, so their changes take effect at once. Remove the
+file to turn the server off: it answers `503` to everything while the file is
+gone.
+
+**What an agent sees.** Only the connections you have connected to with
+`ejc-connect` (or used from an org-mode block with `:ejc-sql`) since the
+`ejc-sql` nREPL was started, by their names. Users, passwords and JDBC URLs of
+the connections are never shown.
+
+ Tool               | What it does
+--------------------|------------------------------------------------------------
+ `list_connections` | Connection names, database types, hosts, ports, databases, writable or not
+ `list_tables`      | Tables of a connection, of an owner (schema) if given, filtered by a substring
+ `describe_table`   | Columns with types and constraints, as `ejc-describe-table` shows them
+ `query`            | One read-only statement: `SELECT`, `WITH`, `VALUES`, `SHOW`, `EXPLAIN`, `DESCRIBE`
+ `execute`          | One statement that changes data or schema, on writable connections only
+
+Every statement an agent runs is written to the query log (`M-x ejc-open-log`)
+under a `-- [mcp <connection>]` line.
+
+**`query` is read-only in layers.** Only one statement per call, starting
+with one of the words above, is accepted, with no `;` inside it, not even in a
+string literal or a comment: a quote or a comment the database reads
+differently could hide a second statement there. SQL Server and Sybase need
+no `;` between statements, so there the SQL is rejected as well if it holds,
+outside string literals, quoted names and comments, a word of a statement
+that writes, runs code or controls transactions: `INSERT`, `DROP`, `EXEC`,
+`SET`, `INTO`, `COMMIT` and the like. It runs on a connection of its own,
+marked read-only for the JDBC driver, switched to the read-only mode of the
+database for PostgreSQL, MySQL, MariaDB, Oracle and SQLite, in a transaction
+which is always rolled back. These layers make writes through `query`
+unlikely, not impossible: e.g. PostgreSQL's `dblink_exec` writes outside of
+the transaction. The only guarantee is a database user with read-only grants,
+so connect to a database that must not change as such a user.
+
+A result is limited to 200 rows (`max_rows`, up to 1000), a statement to 30
+seconds (`timeout_s`, up to 50: Claude Code waits for 60 seconds at most for
+the response of an HTTP server).
+
+**`execute` changes data with your consent.** It takes both: the connection
+listed in `:writable` and your approval of the call in the client. The server
+marks `execute` so that Claude Code asks for every call, in every permission
+mode, without "don't ask again". Every call is one statement committed at
+once, there are no transactions across calls. To send a statement containing
+`;`, e.g. a procedure body or a string literal with it, start the SQL with a
+`delimiter` line, see [Separators & delimiters](#separators-delimiters).
+
+**Claude Code setup.**
+
+```sh
+claude mcp add --transport http --scope user ejc-sql http://127.0.0.1:8765/mcp
+# or, with a :token
+claude mcp add --transport http --scope user ejc-sql http://127.0.0.1:8765/mcp \
+    --header "Authorization: Bearer some-secret"
+```
+
+The same in a project's `.mcp.json`, the token taken from the environment:
+
+```json
+{"mcpServers": {"ejc-sql": {"type": "http",
+                            "url": "http://127.0.0.1:8765/mcp",
+                            "headers": {"Authorization": "Bearer ${EJC_SQL_MCP_TOKEN}"}}}}
+```
+
+The permissions in `~/.claude/settings.json`: run the read tools without
+asking, ask for every `execute` (in every permission mode, for the clients that
+ignore the server's mark too), keep the agent from editing
+`~/.ejc-sql/mcp.edn`, and so from making connections writable:
+
+```json
+{"permissions": {"allow": ["mcp__ejc-sql__list_connections",
+                           "mcp__ejc-sql__list_tables",
+                           "mcp__ejc-sql__describe_table",
+                           "mcp__ejc-sql__query"],
+                 "ask": ["mcp__ejc-sql__execute"],
+                 "deny": ["Edit(~/.ejc-sql/**)"]}}
+```
+
+The `Edit` rule covers the file tools of Claude Code and the shell redirections,
+not a script opening the file itself; the Claude Code
+[sandbox](https://code.claude.com/docs/en/sandboxing) does.
+
+An agent knows nothing about a server it can't reach, so tell it in
+`~/.claude/CLAUDE.md`:
+
+```markdown
+## Databases
+
+Reach databases only through the `ejc-sql` MCP server, never by other means
+(psql, mysql, sqlplus, JDBC or database drivers in scripts). If the server is
+unavailable, or the database is missing from `list_connections`, ask me to
+connect to it with `M-x ejc-connect` in Emacs.
+```
+
+Claude Code started before the server gives up on it after a few attempts:
+reconnect it from `/mcp` once you have connected in Emacs.
+
+**Not supported.** The results of the agent are not shown in
+`*ejc-sql-output*`, run the statement from the query log to see one. An agent
+can't start the `ejc-sql` nREPL or connect to a database. MCP resources,
+prompts, SSE streams, sessions, OAuth and the stdio transport are not
+supported either. The MCP revisions served are `2026-07-28` and the earlier
+`2025-03-26` to `2025-11-25`.
 
 <a id="keybindings"></a>
 ## List of keybindings & functions
