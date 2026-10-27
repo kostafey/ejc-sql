@@ -22,7 +22,7 @@
    (shell-command-to-string
     (concat
      "mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get "
-     "-Dartifact=com.h2database:h2:1.4.192"))))
+     "-Dartifact=com.h2database:h2:2.5.252"))))
 
 (defun ejc-test:run-lein ()
   (print "Run lein test")
@@ -291,7 +291,7 @@
                           "database;AUTO_SERVER=TRUE"))
          (classpath (vector
                      (expand-file-name
-                      "repository/com/h2database/h2/1.4.192/h2-1.4.192.jar"
+                      "repository/com/h2database/h2/2.5.252/h2-2.5.252.jar"
                       (ejc-test:get-m2-path))))
          (conn (ejc-create-connection
                 "H2-test-connection"
@@ -327,14 +327,14 @@
       (ejc-test:run-sql
        (concat
         "CREATE TABLE IF NOT EXISTS users (           \n"
-        "  id int(11) NOT NULL AUTO_INCREMENT,        \n"
+        "  id int NOT NULL AUTO_INCREMENT,            \n"
         "  login varchar(45),                         \n"
         "  email varchar(45),                         \n"
         "  first_name varchar(255) NOT NULL,          \n"
         "  last_name varchar(45) NOT NULL,            \n"
-        "  register_date datetime DEFAULT NULL,       \n"
+        "  register_date timestamp DEFAULT NULL,      \n"
         "  PRIMARY KEY (id),                          \n"
-        "  UNIQUE KEY id_UNIQUE (id)                  \n"
+        "  CONSTRAINT id_UNIQUE UNIQUE (id)           \n"
         ")                                            \n")
        "H2-test-connection")))
     ;; -----------
