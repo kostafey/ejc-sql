@@ -66,7 +66,7 @@ formatting of SQL scripts are also available.
 ## Installation
 
 1. To run Clojure, install [Leiningen](http://leiningen.org) (assuming you have
-   already installed Java 7+).
+   already installed Java 11+).
 
 2. Add [MELPA](https://github.com/melpa/melpa#usage) (if not yet present) to your
    `package-archives` list.
@@ -1439,10 +1439,11 @@ unavailable in maven central, like the Oracle ones.
 
 ## Requirements:
 
-* [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 26.
+* [GNU Emacs](http://www.gnu.org/software/emacs/emacs.html) 30.2 or newer
+* [Java](https://openjdk.org) 11 or newer
 * [Leiningen](http://leiningen.org) 2.x
 * [clomacs](https://github.com/clojure-emacs/clomacs)
-* [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.5.8
+* [clojure/java.jdbc](https://github.com/clojure/java.jdbc) 0.7.10
 * [dash](https://github.com/magnars/dash.el)
 * [spinner.el](https://github.com/Malabarba/spinner.el)
 * [auto-complete](https://github.com/auto-complete/auto-complete) *(optional)*
