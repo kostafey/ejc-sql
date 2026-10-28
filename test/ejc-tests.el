@@ -410,6 +410,12 @@
 
 (ejc-test:run-maven-dependency-plugin)
 
+;; Keep the queries of the tests off the user's log, as `lein test' does.
+(setenv "JVM_OPTS" (mapconcat #'identity
+                              (delq nil (list (getenv "JVM_OPTS")
+                                              "-Dejc-sql.log-dir=ejc-sql"))
+                              " "))
+
 (if noninteractive
     (clomacs-with-nrepl "ejc-sql"
       (lambda ()

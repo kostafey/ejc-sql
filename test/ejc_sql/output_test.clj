@@ -1,5 +1,8 @@
 (ns ejc-sql.output-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as s]
+            [clojure.test :refer :all]
+            [ejc-sql.lib :refer [windows?]]
             [ejc-sql.output :refer :all]))
 
 (deftest print-table-test
@@ -118,3 +121,59 @@
                      "consectetur adipiscing 宇宙洪荒 日月盈昃" nl
                      "incididunt ut labore et dolore magna aliqua.")]])
                  (str out))))))))
+
+(defn- with-log-dir
+  "Call `f` with the `ejc-sql.log-dir` system property set to `dir`, or
+  cleared if `dir` is nil, restoring it afterwards."
+  [dir f]
+  (let [saved (System/getProperty "ejc-sql.log-dir")
+        set-dir #(if %
+                   (System/setProperty "ejc-sql.log-dir" %)
+                   (System/clearProperty "ejc-sql.log-dir"))]
+    (try
+      (set-dir dir)
+      (f)
+      (finally
+        (set-dir saved)))))
+
+(deftest log-dir-test
+  (testing "windows? tells Windows only."
+    (is (= (s/starts-with? (System/getProperty "os.name") "Windows")
+           windows?)))
+  (testing "The log is kept with the user's ejc-sql files."
+    (with-log-dir nil
+      #(is (= (if windows?
+                (io/file (or (System/getenv "AppData")
+                             (System/getProperty "user.home"))
+                         "ejc-sql")
+                (io/file (System/getProperty "user.home") ".ejc-sql" "log"))
+              (get-log-dir)))))
+  (testing "The tests keep off the user's log."
+    (is (= (io/file "ejc-sql") (get-log-dir)))))
+
+(deftest log-sql-test
+  (let [dir (.toFile (java.nio.file.Files/createTempDirectory
+                      "ejc-log-test"
+                      (make-array java.nio.file.attribute.FileAttribute 0)))
+        blocker (io/file dir "file")]
+    (try
+      (testing "The query is appended to the log of today."
+        (with-log-dir (str (io/file dir "log"))
+          (fn []
+            (log-sql "SELECT 1")
+            (log-sql "SELECT 2")
+            (let [text (slurp (get-log-file))]
+              (is (s/starts-with? text "-- -*- mode: sql; -*-"))
+              (is (re-find #"(?s)SELECT 1\n.*SELECT 2\n$" text))))))
+      (testing "A log that can't be written doesn't fail the query."
+        (spit blocker "")
+        (with-log-dir (str (io/file blocker "log"))
+          (fn []
+            (let [err (java.io.StringWriter.)]
+              (binding [*err* err]
+                (is (nil? (log-sql "SELECT 1"))))
+              (is (s/starts-with? (str err)
+                                  "ejc-sql: can't write the query log:"))))))
+      (finally
+        (doseq [f (reverse (file-seq dir))]
+          (.delete ^java.io.File f))))))

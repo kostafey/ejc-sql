@@ -20,7 +20,7 @@
   (:require [clojure.string :as s]
             [clojure.java.io :refer [file writer]]
             [ejc-sql.lib :refer [*max-column-width* dml? simple-join windows?]])
-  (:import (java.io File)
+  (:import (java.io File IOException)
            (java.lang Character$UnicodeBlock)
            (org.apache.commons.lang3 StringUtils)
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl
@@ -28,11 +28,17 @@
 
 (def ^:dynamic *add-outside-borders* true)
 
-(defn get-log-dir []
-  (file (if windows?
-          (System/getenv "AppData")
-          "/var/log/")
-        "ejc-sql"))
+(defn get-log-dir
+  "The query log directory: `ejc-sql` in `%AppData%` on Windows,
+  `~/.ejc-sql/log` elsewhere, or the `ejc-sql.log-dir` system property, which
+  the tests set to keep off the user's log."
+  []
+  (let [home (System/getProperty "user.home")]
+    (if-let [dir (System/getProperty "ejc-sql.log-dir")]
+      (file dir)
+      (if windows?
+        (file (or (System/getenv "AppData") home) "ejc-sql")
+        (file home ".ejc-sql" "log")))))
 
 (defn get-log-file [& [create-new]]
   (loop [xs (take 100 (range))]
@@ -56,23 +62,30 @@
 (defn print-log-file-path []
   (print (.getAbsolutePath (or (get-log-file) (get-log-dir)))))
 
-(defn log-sql [sql]
-  (let [log-file (get-log-file true)
-        is-new-file (not (.exists log-file))]
-    (when is-new-file
-      (.mkdirs (File. (.getParent log-file)))
-      (.createNewFile log-file))
-    (with-open [wrtr (writer log-file :append true)]
+(defn log-sql
+  "Append `sql` to the query log of today. A log that can't be written is
+  reported to stderr, the query runs anyway."
+  [sql]
+  (try
+    (let [^File log-file (get-log-file true)
+          is-new-file (not (.exists log-file))]
       (when is-new-file
-        (.write wrtr (str "-- -*- mode: sql; -*-\n"
-                          "-- Local Variables:\n"
-                          "-- eval: (ejc-sql-mode)\n"
-                          "-- End:\n")))
-      (.write wrtr (str (simple-join 50 "-") " "
-                        (.format (new java.text.SimpleDateFormat
-                                      "yyyy.MM.dd HH:mm:ss.S")
-                                 (new java.util.Date))
-                        " " (simple-join 2 "-") "\n" sql "\n")))))
+        (.mkdirs (File. (.getParent log-file)))
+        (.createNewFile log-file))
+      (with-open [wrtr (writer log-file :append true)]
+        (when is-new-file
+          (.write wrtr (str "-- -*- mode: sql; -*-\n"
+                            "-- Local Variables:\n"
+                            "-- eval: (ejc-sql-mode)\n"
+                            "-- End:\n")))
+        (.write wrtr (str (simple-join 50 "-") " "
+                          (.format (new java.text.SimpleDateFormat
+                                        "yyyy.MM.dd HH:mm:ss.S")
+                                   (new java.util.Date))
+                          " " (simple-join 2 "-") "\n" sql "\n"))))
+    (catch IOException e
+      (binding [*out* *err*]
+        (println "ejc-sql: can't write the query log:" (.getMessage e))))))
 
 (def fetch-size
   "Limit number of records to output."

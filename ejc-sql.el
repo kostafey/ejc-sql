@@ -923,9 +923,14 @@ Buffer can be saved to file with `ejc-temp-editor-file' path."
         (get-buffer tmp-buffer-name)))))
 
 (defun ejc-open-log ()
+  "Open the query log of the last day queries were run on."
   (interactive)
-  (find-file-read-only (ejc-get-log-file-path))
-  (goto-char (point-max)))
+  (let ((path (ejc-get-log-file-path)))
+    (if (file-regular-p path)
+        (progn
+          (find-file-read-only path)
+          (goto-char (point-max)))
+      (message "No queries logged yet, the log will be in %s" path))))
 
 ;;;###autoload
 (defun ejc-version ()

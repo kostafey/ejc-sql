@@ -24,7 +24,7 @@
 
 (def windows?
   "The value is true if it runs under the os Windows."
-  (>= 0 (.indexOf (System/getProperty "os.name") "Windows")))
+  (s/includes? (System/getProperty "os.name") "Windows"))
 
 (defn in?
   "true if `seq` contains `elm`.

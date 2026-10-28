@@ -64,9 +64,11 @@ returns immediately; on the Clojure side `eval-sql-and-log-print` runs the query
 in a `future`, writes the formatted table to a *result file*, then calls
 `ejc-complete-query` back in Emacs over the HTTP bridge, which loads that file
 into the results buffer. There is a ring of result files behind
-`ejc-show-prev-result` / `ejc-show-next-result`. The result files and the query
-log land in an `ejc-sql/` directory relative to the JVM working directory
-(gitignored).
+`ejc-show-prev-result` / `ejc-show-next-result`. The result files go to
+`ejc-results-path` (the temporary directory by default), the query log to
+`~/.ejc-sql/log/` (`%AppData%\ejc-sql` on Windows). `lein test` and the ERT
+suite set the `ejc-sql.log-dir` system property, so their queries are logged
+to the gitignored `ejc-sql/` of the repository instead.
 
 **Connections.** `ejc-create-connection` normalizes its arguments into an alist
 in `ejc-connections`; `:classpath` is always stored as a vector of

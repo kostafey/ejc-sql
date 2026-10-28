@@ -12,4 +12,6 @@
                  [org.apache.httpcomponents/httpclient "4.5.5"]
                  [clomacs "0.0.6-SNAPSHOT"]
                  [org.clojure/data.json "2.5.2"]]
-  :profiles {:test {:dependencies [[com.h2database/h2 "2.5.252"]]}})
+  :profiles {:test {:dependencies [[com.h2database/h2 "2.5.252"]]
+                    ;; Keep the queries of the tests off the user's log.
+                    :jvm-opts ["-Dejc-sql.log-dir=ejc-sql"]}})

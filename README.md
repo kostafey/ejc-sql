@@ -1367,7 +1367,7 @@ List of other interactive functions
  `ejc-mark-this-sql`                | Mark SQL script bounded by the `ejc-sql-separator` or/and buffer boundaries
  `ejc-show-tables-list`             | Show tables list
  `ejc-show-constraints-list`        | Show constraints list
- `ejc-open-log`                     | Open log
+ `ejc-open-log`                     | Open the query log, kept in `~/.ejc-sql/log/` (`%AppData%\ejc-sql` on Windows)
  `ejc-get-temp-editor-buffer`       | Create ad-hoc SQL editor buffer, use prefix arg number to get many buffers
  `ejc-print-cache`                  | Output current connection cache
  `ejc-invalidate-cache`             | Clean your current connection cache (database owners and tables list)
