@@ -412,7 +412,7 @@
                     SELECT type_desc AS constraint_type,
                            name
                     FROM sys.objects
-                    WHERE type_desc LIKE '%CONSTRAINT'
+                    WHERE type_desc LIKE '%%CONSTRAINT'
                       AND OBJECT_NAME(parent_object_id)='%s' " table))
          :entity      (fn [& {:keys [db entity-name]}]
                         (if (is-modern-sql-server? db)

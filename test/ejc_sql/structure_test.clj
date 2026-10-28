@@ -157,3 +157,11 @@
              (describe :table-meta-fn (fn [_ _] {:success false
                                                  :result "Error: no table"})
                        :query-fn (fn [_ _] (throw (Exception. "not called")))))))))
+
+(deftest sqlserver-constraints-test
+  (testing "The `%` of the LIKE pattern is not taken by `format`."
+    (is (s/includes? (select-db-meta-script {:subprotocol "sqlserver"
+                                             :subname "//localhost:1433"
+                                             :database "my_db_name"}
+                                            :constraints :table "users")
+                     "LIKE '%CONSTRAINT'"))))
