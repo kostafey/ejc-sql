@@ -165,6 +165,15 @@
             (let [text (slurp (get-log-file))]
               (is (s/starts-with? text "-- -*- mode: sql; -*-"))
               (is (re-find #"(?s)SELECT 1\n.*SELECT 2\n$" text))))))
+      (testing "Nothing is written with the log off."
+        (with-log-dir (str (io/file dir "off"))
+          (fn []
+            (try
+              (set-log-queries nil)
+              (is (nil? (log-sql "SELECT 1")))
+              (is (not (.exists (io/file dir "off"))))
+              (finally
+                (set-log-queries true))))))
       (testing "A log that can't be written doesn't fail the query."
         (spit blocker "")
         (with-log-dir (str (io/file blocker "log"))

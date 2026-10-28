@@ -13,6 +13,7 @@
                        ejc-sql.output/set-show-too-many-rows-message
                        ejc-sql.output/set-column-width-limit
                        ejc-sql.output/set-use-unicode
+                       ejc-sql.output/set-log-queries
                        ejc-sql.output/format-sql-print
                        ejc-sql.structure/get-parameters
                        ejc-sql.structure/get-keywords

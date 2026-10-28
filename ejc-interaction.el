@@ -223,6 +223,14 @@ ejc-sql MCP server too."
                :namespace ejc-sql.output
                :doc "Set using unicode for grid borders.")
 
+(clomacs-defun ejc-set-log-queries
+               set-log-queries
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.output
+               :doc (concat "Turn the query log on, or off with nil.\n"
+                            "Off, the queries of the agents are not logged "
+                            "either."))
+
 (clomacs-defun ejc-get-stucture
                get-stucture
                :lib-name "ejc-sql"

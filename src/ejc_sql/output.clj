@@ -62,30 +62,41 @@
 (defn print-log-file-path []
   (print (.getAbsolutePath (or (get-log-file) (get-log-dir)))))
 
+(def log-queries
+  "Write the queries to the query log, see `set-log-queries`."
+  (atom true))
+
+(defn set-log-queries
+  "Turn the query log on, or off with nil. Off, `log-sql` writes nothing,
+  the queries of the agents included."
+  [val]
+  (reset! log-queries (boolean val)))
+
 (defn log-sql
-  "Append `sql` to the query log of today. A log that can't be written is
-  reported to stderr, the query runs anyway."
+  "Append `sql` to the query log of today, unless `log-queries` is off.
+  A log that can't be written is reported to stderr, the query runs anyway."
   [sql]
-  (try
-    (let [^File log-file (get-log-file true)
-          is-new-file (not (.exists log-file))]
-      (when is-new-file
-        (.mkdirs (File. (.getParent log-file)))
-        (.createNewFile log-file))
-      (with-open [wrtr (writer log-file :append true)]
+  (when @log-queries
+    (try
+      (let [^File log-file (get-log-file true)
+            is-new-file (not (.exists log-file))]
         (when is-new-file
-          (.write wrtr (str "-- -*- mode: sql; -*-\n"
-                            "-- Local Variables:\n"
-                            "-- eval: (ejc-sql-mode)\n"
-                            "-- End:\n")))
-        (.write wrtr (str (simple-join 50 "-") " "
-                          (.format (new java.text.SimpleDateFormat
-                                        "yyyy.MM.dd HH:mm:ss.S")
-                                   (new java.util.Date))
-                          " " (simple-join 2 "-") "\n" sql "\n"))))
-    (catch IOException e
-      (binding [*out* *err*]
-        (println "ejc-sql: can't write the query log:" (.getMessage e))))))
+          (.mkdirs (File. (.getParent log-file)))
+          (.createNewFile log-file))
+        (with-open [wrtr (writer log-file :append true)]
+          (when is-new-file
+            (.write wrtr (str "-- -*- mode: sql; -*-\n"
+                              "-- Local Variables:\n"
+                              "-- eval: (ejc-sql-mode)\n"
+                              "-- End:\n")))
+          (.write wrtr (str (simple-join 50 "-") " "
+                            (.format (new java.text.SimpleDateFormat
+                                          "yyyy.MM.dd HH:mm:ss.S")
+                                     (new java.util.Date))
+                            " " (simple-join 2 "-") "\n" sql "\n"))))
+      (catch IOException e
+        (binding [*out* *err*]
+          (println "ejc-sql: can't write the query log:" (.getMessage e)))))))
 
 (def fetch-size
   "Limit number of records to output."

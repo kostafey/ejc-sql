@@ -53,6 +53,7 @@ formatting of SQL scripts are also available.
     - [Dedicated ejc-sql nREPL](#dedicated-nrepl)
     - [Different project nREPL](#different-nrepl)
   - [Goto definition & results ring](#goto-definition-results-ring)
+  - [Query log](#query-log)
   - [MCP server for AI agents](#mcp-server)
 - [List of keybindings & functions](#keybindings)
 - [Yasnippet](#yasnippet)
@@ -1203,6 +1204,25 @@ the following keybindings are provided:
 * <kbd>M-.</kbd> `ejc-describe-entity`
 * <kbd>M-,</kbd> `ejc-show-prev-result`
 
+<a id="query-log"></a>
+### Query log
+
+Every query you run is written to the query log, one file a day, in
+`~/.ejc-sql/log/` (`%AppData%\ejc-sql\` on Windows), e.g.
+`~/.ejc-sql/log/2026-10-29.log`. `M-x ejc-open-log` opens the log of the last
+day queries were run on. The statements of the AI agents are logged too, see
+[MCP server for AI agents](#mcp-server).
+
+To turn the log off, add `ejc-set-log-queries` to the `ejc-sql-connected-hook`,
+like the settings of [Performance & output
+customization](#performance-output-customization):
+```lisp
+(add-hook 'ejc-sql-connected-hook
+          (lambda ()
+            (ejc-set-log-queries nil)))
+```
+With the log off, the statements of the agents are not logged either.
+
 <a id="mcp-server"></a>
 ### MCP server for AI agents
 
@@ -1241,8 +1261,9 @@ the connections are never shown.
  `query`            | One read-only statement: `SELECT`, `WITH`, `VALUES`, `SHOW`, `EXPLAIN`, `DESCRIBE`
  `execute`          | One statement that changes data or schema, on writable connections only
 
-Every statement an agent runs is written to the query log (`M-x ejc-open-log`)
-under a `-- [mcp <connection>]` line.
+Every statement an agent runs is written to the [query log](#query-log)
+(`M-x ejc-open-log`) under a `-- [mcp <connection>]` line, unless the log is
+turned off.
 
 **`query` is read-only in layers.** Only one statement per call, starting
 with one of the words above, is accepted, with no `;` inside it, not even in a
