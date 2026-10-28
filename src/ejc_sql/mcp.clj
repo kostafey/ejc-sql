@@ -37,6 +37,7 @@
   (:import [java.io File]
            [java.sql Connection SQLException SQLTimeoutException]
            [java.util Base64]
+           [java.util.concurrent Executor]
            [java.util.regex Pattern]))
 
 ;;; Registry
@@ -151,7 +152,10 @@
                   :openWorldHint false}}
    {:name "describe_table"
     :title "Describe table"
-    :description "Show the columns of a table with their types, and its constraints."
+    :description (str "Show the columns of a table: types with sizes, "
+                      "NOT NULL, defaults, comments; its primary key, its "
+                      "foreign keys, the foreign keys referencing it, and the "
+                      "constraints the database lists.")
     :inputSchema {:type "object"
                   :properties {:connection connection-property
                                :table {:type "string"
@@ -672,6 +676,22 @@
           (catch SQLException e
             (sql-error db e timeout (elapsed-ms start))))))))
 
+(def ^:private calling-thread
+  "An executor running a task in the calling thread, for `.setNetworkTimeout`."
+  (reify Executor
+    (execute [_ task]
+      (.run ^Runnable task))))
+
+(defn- limit-network-wait
+  "Make the calls on `conn` fail after `metadata-timeout` with no answer from
+  the database, since the metadata calls of a driver take no query timeout.
+  A driver not supporting it waits as long as it takes."
+  [^Connection conn]
+  (try
+    (.setNetworkTimeout conn calling-thread (* 1000 metadata-timeout))
+    (catch SQLException _)
+    (catch AbstractMethodError _)))
+
 (defn- describe-table-tool
   "Run the `describe_table` tool: what `describe-table` shows in Emacs, over
   a read-only connection of its own to `db`, with a timeout on every query."
@@ -686,9 +706,12 @@
                  (with-read-only-connection
                    db
                    (fn [conn]
+                     (limit-network-wait conn)
                      (structure/print-table-description
                       db table
                       :owner owner
+                      :details-fn (fn [_ owner table]
+                                    (structure/table-details conn owner table))
                       :table-meta-fn (fn [_ table-name]
                                        (let [result (c/query-meta
                                                      (meta-db conn)

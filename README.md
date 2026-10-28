@@ -1237,7 +1237,7 @@ the connections are never shown.
 --------------------|------------------------------------------------------------
  `list_connections` | Connection names, database types, hosts, ports, databases, writable or not
  `list_tables`      | Tables of a connection, of an owner (schema) if given, filtered by a substring
- `describe_table`   | Columns with types and constraints, as `ejc-describe-table` shows them
+ `describe_table`   | Columns with types, sizes, `NOT NULL`, defaults and comments, primary and foreign keys, as `ejc-describe-table` shows them
  `query`            | One read-only statement: `SELECT`, `WITH`, `VALUES`, `SHOW`, `EXPLAIN`, `DESCRIBE`
  `execute`          | One statement that changes data or schema, on writable connections only
 

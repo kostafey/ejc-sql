@@ -26,7 +26,8 @@
    [ejc-sql.cache :refer [cache cache-creation-promises]]
    [ejc-sql.connect :as c]
    [ejc-sql.output :as o]
-   [ejc-sql.keywords :as k]))
+   [ejc-sql.keywords :as k])
+  (:import [java.sql Connection DatabaseMetaData ResultSet SQLException Types]))
 
 (defn- safe-query
   "Return `sql` query result or nil in case of error."
@@ -1143,6 +1144,196 @@
       (c/complete (format "Can't determine type of %s." sql-object)
                   :result-file result-file))))
 
+;;; Table details from the JDBC metadata, the same way for every driver.
+
+(defn- result-maps
+  "The rows of the metadata result set `rs` as maps with lower-cased keys,
+  read before `rs` is closed."
+  [^ResultSet rs]
+  (with-open [rs rs]
+    (doall (j/result-set-seq rs))))
+
+(defn- current-schema
+  "The current schema of `conn`, nil if the driver can't tell: `.getSchema`
+  came with JDBC 4.1."
+  [^Connection conn]
+  (try
+    (.getSchema conn)
+    (catch SQLException _ nil)
+    (catch AbstractMethodError _ nil)))
+
+(defn- identifier-variants
+  "`identifier` as given, upper-cased and lower-cased: the database keeps an
+  unquoted identifier in one of these."
+  [identifier]
+  (distinct [identifier (s/upper-case identifier) (s/lower-case identifier)]))
+
+(defn- table-locations
+  "The [catalog schema] pairs to look for a table in: `owner` as a schema,
+  then as a catalog, which is what MySQL calls a database, or, with no
+  `owner`, the current catalog and schema of `conn`."
+  [^Connection conn owner]
+  (if owner
+    (mapcat (fn [o] [[nil o] [o nil]]) (identifier-variants owner))
+    [[(.getCatalog conn) (current-schema conn)]]))
+
+(defn- table-columns
+  "The `.getColumns` rows of `table`, of `owner` if given, nil if the metadata
+  of `conn` knows no such table. Since `.getColumns` takes patterns, where
+  `_` matches any character, only the rows of the exact name are kept, of
+  the first table found."
+  [^DatabaseMetaData meta ^Connection conn owner table]
+  (some (fn [[catalog schema table]]
+          (let [rows (filter #(and (= table (:table_name %))
+                                   (or (nil? schema)
+                                       (= schema (:table_schem %))))
+                             (result-maps
+                              (.getColumns meta catalog schema table "%")))
+                location (juxt :table_cat :table_schem)]
+            (seq (filter #(= (location (first rows)) (location %)) rows))))
+        (for [[catalog schema] (table-locations conn owner)
+              table (identifier-variants table)]
+          [catalog schema table])))
+
+(defn- foreign-keys
+  "Group the `.getImportedKeys` or `.getExportedKeys` rows into one row list
+  per foreign key, in the `:key_seq` order."
+  [rows]
+  (->> rows
+       (group-by (juxt :fk_name :fktable_schem :fktable_name
+                       :pktable_schem :pktable_name))
+       vals
+       (map #(sort-by (comp long :key_seq) %))
+       (sort-by (comp (juxt :fktable_name :fk_name) first))))
+
+(defn table-details
+  "The columns, the primary key and the foreign keys of `table`, of `owner`
+  if given, from the JDBC metadata of `conn`. The name and the owner are
+  tried as given, upper-cased and lower-cased. Return a map of
+  `:catalog`, `:schema` and `:table`, as the database keeps them,
+  `:columns` - `.getColumns` rows,
+  `:primary-key` - `.getPrimaryKeys` rows,
+  `:foreign-keys` - lists of `.getImportedKeys` rows, one per key,
+  `:referenced-by` - lists of `.getExportedKeys` rows, one per key.
+  nil if the metadata knows no such table, e.g. for a synonym."
+  [^Connection conn owner table]
+  (let [meta (.getMetaData conn)]
+    (when-let [columns (table-columns meta conn owner table)]
+      (let [{catalog :table_cat schema :table_schem table :table_name}
+            (first columns)]
+        {:catalog catalog
+         :schema schema
+         :table table
+         :columns (sort-by (comp long :ordinal_position) columns)
+         :primary-key (sort-by (comp long :key_seq)
+                               (result-maps
+                                (.getPrimaryKeys meta catalog schema table)))
+         :foreign-keys (foreign-keys
+                        (result-maps
+                         (.getImportedKeys meta catalog schema table)))
+         :referenced-by (foreign-keys
+                         (result-maps
+                          (.getExportedKeys meta catalog schema table)))}))))
+
+(def ^:private sized-types
+  "The `java.sql.Types` of the columns shown with their size."
+  #{Types/CHAR Types/VARCHAR Types/NCHAR Types/NVARCHAR
+    Types/BINARY Types/VARBINARY Types/DECIMAL Types/NUMERIC})
+
+(defn- column-type
+  "The type of the `.getColumns` row `column`, with the size of a string, a
+  binary or a decimal one, e.g. `VARCHAR(20)`, `DECIMAL(10,2)`. A size of a
+  billion or more means no limit, e.g. `text` or `VARCHAR` with no length,
+  and is left out."
+  [{:keys [type_name data_type column_size decimal_digits]}]
+  (let [data-type (some-> data_type long)
+        size (some-> column_size long)
+        digits (some-> decimal_digits long)]
+    (if (and (contains? sized-types data-type)
+             size
+             (< 0 size 1000000000)
+             (not (s/includes? (str type_name) "(")))
+      (str type_name "(" size
+           (when (and (contains? #{Types/DECIMAL Types/NUMERIC} data-type)
+                      digits
+                      (pos? digits))
+             (str "," digits))
+           ")")
+      type_name)))
+
+(defn- qualified-name
+  "`table` prefixed with `schema`, unless `schema` is blank or `this-schema`."
+  [schema table & [this-schema]]
+  (if (or (s/blank? schema) (= schema this-schema))
+    table
+    (str schema "." table)))
+
+(defn- print-rows
+  "Print the maps `rows` as a table of the keys `ks`, leaving out the
+  `optional` ones no row has a value of."
+  [ks optional rows]
+  (o/print-maps (filter (fn [k]
+                          (or (not (contains? optional k))
+                              (some #(not (s/blank? (str (get % k)))) rows)))
+                        ks)
+                rows
+                true))
+
+(defn- key-text
+  "The table and the columns of the foreign key rows `rows`, e.g.
+  `ORDERS(USER_ID)`: of the referenced table for `side` \"pk\", of the
+  referencing one for \"fk\". The table is prefixed with its owner, unless
+  it is `this-owner`."
+  [rows side this-owner]
+  (let [row (first rows)
+        k #(keyword (str side "table_" %))
+        owner (if (s/blank? ((k "schem") row)) ((k "cat") row) ((k "schem") row))]
+    (str (qualified-name owner ((k "name") row) this-owner)
+         "(" (s/join ", " (map (keyword (str side "column_name")) rows)) ")")))
+
+(defn print-table-details
+  "Print the table `details`, as `table-details` returns them: the columns,
+  the primary key and the foreign keys, to and from the table."
+  [{:keys [catalog schema table columns primary-key foreign-keys
+           referenced-by]}]
+  (let [owner (if (s/blank? schema) catalog schema)]
+    (println (format "Table \"%s\" description:" (qualified-name owner table)))
+    (println)
+    (print-rows [:name :type :nullable :default :comment]
+                #{:nullable :default :comment}
+                (for [column columns]
+                  {:name (:column_name column)
+                   :type (column-type column)
+                   :nullable (when (= DatabaseMetaData/columnNoNulls
+                                      (some-> (:nullable column) long))
+                               "not null")
+                   :default (o/trim-max-width
+                             (or (some-> (:column_def column) s/trim not-empty)
+                                 (when (= "YES" (:is_autoincrement column))
+                                   "auto increment")))
+                   :comment (o/trim-max-width (:remarks column))}))
+    (when (seq primary-key)
+      (println)
+      (println (str "Primary key"
+                    (some->> (:pk_name (first primary-key)) not-empty (str " "))
+                    ": "
+                    (s/join ", " (map :column_name primary-key)))))
+    (doseq [[title key-rows key-fn]
+            [["Foreign keys:" foreign-keys
+              #(s/join ", " (map :fkcolumn_name %))]
+             ["Referenced by:" referenced-by
+              #(key-text % "fk" owner)]]
+            :when (seq key-rows)]
+      (println)
+      (println title)
+      (println)
+      (print-rows [:name :key :references]
+                  #{:name}
+                  (for [rows key-rows]
+                    {:name (:fk_name (first rows))
+                     :key (key-fn rows)
+                     :references (key-text rows "pk" owner)})))))
+
 (defn print-table-meta
   "Print the columns of `table-name`, obtained by `table-meta-fn`
   (`c/table-meta` by default). Return true on success."
@@ -1160,12 +1351,28 @@
 (defn print-table-description
   "Print the columns and the constraints of `table`, of `owner` if given.
   The database is reached only through the functions passed:
+  `details-fn` - `(fn [db owner table])` returning what `table-details` does,
   `table-meta-fn` - `(fn [db table-name])` returning what `c/table-meta` does,
   `query-fn` - `(fn [db sql])` returning `[[column...] row...]` or an error message.
+  The columns, the keys and the names the database keeps come from
+  `details-fn`, if it's given and finds the table. If not, the columns
+  come from `table-meta-fn`, i.e. `SELECT * FROM table`, which the database
+  resolves itself, synonyms too.
   `row-limit` is passed to `o/print-table` for the constraints."
-  [db table & {:keys [owner table-meta-fn query-fn row-limit]}]
-  (when (print-table-meta db (if owner (str owner "." table) table)
-                          table-meta-fn)
+  [db table & {:keys [owner details-fn table-meta-fn query-fn row-limit]}]
+  (when-let [[owner table]
+             (if-let [details (when details-fn
+                                (try
+                                  (details-fn db owner table)
+                                  (catch SQLException _ nil)))]
+               (do (print-table-details details)
+                   [(if (s/blank? (:schema details))
+                      (:catalog details)
+                      (:schema details))
+                    (:table details)])
+               (when (print-table-meta db (if owner (str owner "." table) table)
+                                       table-meta-fn)
+                 [owner table]))]
     (when-let [sql (select-db-meta-script db :constraints
                                           :owner owner
                                           :table table)]
@@ -1189,6 +1396,10 @@
       (print-table-description
        db table
        :owner owner
+       :details-fn (fn [db owner table]
+                     (c/set-db db)
+                     (j/with-db-connection [conn db]
+                       (table-details (j/db-connection conn) owner table)))
        :table-meta-fn c/table-meta
        :query-fn (fn [db sql]
                    (second

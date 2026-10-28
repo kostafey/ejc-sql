@@ -498,9 +498,10 @@
   (testing "describe_table."
     (let [result (call "describe_table" {"connection" "h2" "table" "users"})]
       (is (not (:isError result)))
-      (is (s/starts-with? (text result) "Table \"users\" description:"))
-      (is (re-find #"\| ID +\| INTEGER +\|" (text result)))
-      (is (re-find #"\| LOGIN +\| CHARACTER VARYING +\|" (text result))))
+      (is (s/starts-with? (text result) "Table \"PUBLIC.USERS\" description:"))
+      (is (re-find #"\| ID +\| INTEGER +\| not null +\|" (text result)))
+      (is (re-find #"\| LOGIN +\| CHARACTER VARYING\(20\) +\| +\|" (text result)))
+      (is (re-find #"\nPrimary key \w+: ID\n" (text result))))
     (let [result (call "describe_table" {"connection" "h2" "table" "nope"})]
       (is (:isError result))
       (is (s/starts-with? (text result) "Error: ")))))

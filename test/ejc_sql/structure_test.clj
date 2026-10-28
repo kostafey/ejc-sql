@@ -1,5 +1,6 @@
 (ns ejc-sql.structure-test
-  (:require [clojure.string :as s]
+  (:require [clojure.java.jdbc :as j]
+            [clojure.string :as s]
             [clojure.test :refer :all]
             [ejc-sql.output :as o]
             [ejc-sql.structure :refer :all]))
@@ -165,3 +166,98 @@
                                              :database "my_db_name"}
                                             :constraints :table "users")
                      "LIKE '%CONSTRAINT'"))))
+
+(def h2-db
+  {:subprotocol "h2"
+   :subname "mem:ejc_structure_test;DB_CLOSE_DELAY=-1"})
+
+(deftest table-details-test
+  (j/db-do-commands h2-db
+                    ["DROP ALL OBJECTS"
+                     "CREATE TABLE orgs (id INT PRIMARY KEY, name VARCHAR(50))"
+                     (str "CREATE TABLE pairs (a INT, b INT, "
+                          "CONSTRAINT pk_pairs PRIMARY KEY (a, b))")
+                     (str "CREATE TABLE users ("
+                          "id INT AUTO_INCREMENT PRIMARY KEY, "
+                          "org_id INT NOT NULL, "
+                          "login VARCHAR(20) DEFAULT 'guest' NOT NULL, "
+                          "balance DECIMAL(10,2), note VARCHAR, x INT, y INT, "
+                          "CONSTRAINT fk_org FOREIGN KEY (org_id) "
+                          "REFERENCES orgs(id), "
+                          "CONSTRAINT fk_pair FOREIGN KEY (x, y) "
+                          "REFERENCES pairs(a, b))")
+                     "COMMENT ON COLUMN users.note IS 'free text'"
+                     (str "CREATE TABLE orders (id INT, "
+                          "user_id INT CONSTRAINT fk_user REFERENCES users(id))")
+                     "CREATE SCHEMA other"
+                     "CREATE TABLE other.users (z INT)"
+                     "CREATE TABLE user1s (w INT)"])
+  (j/with-db-connection [conn h2-db]
+    (let [conn (j/db-connection conn)
+          details (fn [owner table] (table-details conn owner table))
+          describe (fn [owner table]
+                     (with-out-str
+                       (binding [o/*add-outside-borders* true]
+                         (print-table-description
+                          h2-db table
+                          :owner owner
+                          :details-fn (fn [_ owner table] (details owner table))
+                          :table-meta-fn (fn [_ table-name]
+                                           {:success false
+                                            :result (str "Fallback " table-name)})
+                          :query-fn (fn [_ _] (throw (Exception. "not called")))
+                          :row-limit 0))))]
+      (testing "The name and the owner are tried in the case the database keeps."
+        (is (= ["PUBLIC" "USERS"] ((juxt :schema :table) (details nil "users"))))
+        (is (= ["OTHER" "USERS"] ((juxt :schema :table) (details "other" "users"))))
+        (is (= ["Z"] (map :column_name (:columns (details "other" "users"))))))
+      (testing "The `_` of the name is not a wildcard."
+        (is (= ["W"] (map :column_name (:columns (details nil "user1s")))))
+        (is (nil? (details nil "user_s"))))
+      (testing "Unknown tables."
+        (is (nil? (details nil "nope")))
+        (is (nil? (details "nope" "users")))
+        (is (= "Fallback nope\n" (describe nil "nope"))))
+      (testing "Columns, keys and references."
+        (let [text (describe nil "users")]
+          (is (s/starts-with? text "Table \"PUBLIC.USERS\" description:"))
+          (is (re-find #"\| ID +\| INTEGER +\| not null +\| auto increment +\| +\|"
+                       text))
+          (is (re-find #"\| LOGIN +\| CHARACTER VARYING\(20\) +\| not null +\| 'guest' +\|"
+                       text))
+          (is (re-find #"\| BALANCE +\| DECIMAL\(10,2\) +\| +\| +\| +\|" text))
+          (is (re-find #"\| NOTE +\| CHARACTER VARYING +\| +\| +\| free text +\|"
+                       text))
+          (is (re-find #"\nPrimary key \w+: ID\n" text))
+          (is (re-find #"\| FK_ORG +\| ORG_ID +\| ORGS\(ID\) +\|" text))
+          (is (re-find #"\| FK_PAIR +\| X, Y +\| PAIRS\(A, B\) +\|" text))
+          (is (re-find #"Referenced by:\n\n.*\n.*\n\| FK_USER +\| ORDERS\(USER_ID\) +\| USERS\(ID\) +\|"
+                       text))))
+      (testing "The optional columns and sections are left out when empty."
+        (is (= (str "Table \"OTHER.USERS\" description:\n\n"
+                    "| name  | type    |\n"
+                    "|-------+---------|\n"
+                    "| Z     | INTEGER |\n")
+               (describe "OTHER" "users"))))
+      (testing "A failing details-fn gives way to table-meta-fn."
+        (is (= "Fallback users\n"
+               (with-out-str
+                 (print-table-description
+                  h2-db "users"
+                  :details-fn (fn [& _] (throw (java.sql.SQLException. "no")))
+                  :table-meta-fn (fn [_ table-name]
+                                   {:success false
+                                    :result (str "Fallback " table-name)})))))))))
+
+(deftest table-details-constraints-test
+  (testing "The constraints are asked for by the names the database keeps."
+    (let [sql (atom nil)]
+      (with-out-str
+        (print-table-description
+         {:subprotocol "mysql" :subname "//localhost:3306/shop"} "users"
+         :details-fn (fn [& _] {:catalog "shop" :schema nil :table "USERS"
+                                :columns [{:column_name "ID"
+                                           :type_name "INT"}]})
+         :query-fn (fn [_ q] (reset! sql q) "Error: no access")))
+      (is (s/includes? @sql "constraint_schema = 'shop'"))
+      (is (s/includes? @sql "table_name = 'USERS'")))))
