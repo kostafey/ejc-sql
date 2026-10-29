@@ -34,14 +34,15 @@ For debug purpose."
 
 (defn set-db
   "Set the db-spec `ejc-db` as the last used one. With `connection-name`, the
-  name of the Emacs connection, also make it available to the MCP server,
-  see `ejc-sql.mcp-http/connected!`."
-  [ejc-db & [connection-name]]
+  name of the Emacs connection, also make it available to the MCP server
+  configured in `mcp-config-file`, see `ejc-sql.mcp-http/connected!`."
+  [ejc-db & [connection-name mcp-config-file]]
   (reset! db ejc-db)
   (when connection-name
     (try
       ;; Resolved at runtime, since `ejc-sql.mcp` requires this namespace.
-      ((requiring-resolve 'ejc-sql.mcp-http/connected!) connection-name ejc-db)
+      ((requiring-resolve 'ejc-sql.mcp-http/connected!)
+       connection-name ejc-db mcp-config-file)
       (catch Throwable e
         (binding [*out* *err*]
           (println "ejc-sql MCP server:" e)))))

@@ -65,8 +65,16 @@
 ;;; Configuration
 
 (def config-file
-  "The MCP server configuration. The server runs only while the file exists."
+  "The MCP server configuration. The server runs only while the file exists.
+  Emacs sets it with `set-config-file!` to `ejc-mcp-config-file`, since its
+  `~` can differ from `user.home`: on Windows it may be `%AppData%`, while
+  `user.home` is always `%UserProfile%`."
   (io/file (System/getProperty "user.home") ".ejc-sql" "mcp.edn"))
+
+(defn set-config-file!
+  "Read the MCP server configuration from `path` from now on."
+  [path]
+  (alter-var-root #'config-file (constantly (io/file path))))
 
 (defn- config-problem
   "Describe what's wrong with the parsed `config`, nil if nothing."

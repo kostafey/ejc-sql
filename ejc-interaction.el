@@ -63,6 +63,14 @@ a raised `nrepl-sync-request-timeout' shared with all the rest of them."
   :group 'ejc-sql
   :type 'integer)
 
+(defcustom ejc-mcp-config-file "~/.ejc-sql/mcp.edn"
+  "The configuration of the ejc-sql MCP server, which runs only while the
+file exists. It's passed to the nREPL on connect, since the home directory
+of Emacs can differ from the one of Java: on Windows Emacs may take
+`%AppData%' for it, Java always takes `%UserProfile%'."
+  :group 'ejc-sql
+  :type 'file)
+
 (clomacs-defun ejc-get-dependeces-files-list
                get-dependeces-files-list
                :lib-name "ejc-sql"
@@ -107,7 +115,8 @@ ejc-sql MCP server too."
   (when-let ((classname (alist-get :classname conn-struct)))
     (ejc-class-for-name classname)
     (ejc-import (read classname)))
-  (ejc-sql-set-db conn-struct connection-name))
+  (ejc-sql-set-db conn-struct connection-name
+                  (expand-file-name ejc-mcp-config-file)))
 
 (clomacs-defun ejc--eval-sql-and-log-print
                eval-sql-and-log-print

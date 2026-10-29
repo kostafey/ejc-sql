@@ -267,10 +267,13 @@
 (defn connected!
   "Called by `ejc-sql.connect/set-db` when the user connects to the db-spec
   `db` named `connection-name` in Emacs: register it for the agents and,
-  when `mcp/config-file` exists, start the server unless it's running.
-  Report the start, or why it failed, to Emacs. Never throw."
-  [connection-name db]
+  when `mcp/config-file`, or `config-file` if given, exists, start the server
+  unless it's running. Report the start, or why it failed, to Emacs. Never
+  throw."
+  [connection-name db & [config-file]]
   (try
+    (when config-file
+      (mcp/set-config-file! config-file))
     (mcp/register-db! connection-name db)
     (when-not (running?)
       (when-let [config (mcp/read-config)]

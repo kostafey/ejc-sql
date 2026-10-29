@@ -1232,7 +1232,8 @@ client. The server runs inside the `ejc-sql` nREPL, so it reuses the JDBC
 drivers, the database structure cache and the output formatting already there.
 It is off by default and needs Java 11 or newer.
 
-To turn it on, create `~/.ejc-sql/mcp.edn`:
+To turn it on, create `~/.ejc-sql/mcp.edn` (or the file set in
+`ejc-mcp-config-file`):
 
 ```clojure
 {:port 8765               ; optional, 8765 by default
@@ -1322,6 +1323,10 @@ ignore the server's mark too), keep the agent from editing
                  "ask": ["mcp__ejc-sql__execute"],
                  "deny": ["Edit(~/.ejc-sql/**)"]}}
 ```
+
+`~/.ejc-sql` is the directory in the home of Emacs. On Windows, where Emacs may
+take `%AppData%` for its home while Claude Code takes `%UserProfile%`, write
+the full path in the rule, e.g. `Edit(//c/Users/me/AppData/Roaming/.ejc-sql/**)`.
 
 The `Edit` rule covers the file tools of Claude Code and the shell redirections,
 not a script opening the file itself; the Claude Code
