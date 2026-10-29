@@ -283,6 +283,12 @@
         (s/replace #"(?i)(password\s*=\s*)[^;&\s]*" "$1***")
         (s/replace #"(//[^:/@\s]+:)[^@/\s]*@" "$1***@"))))
 
+(defn- mask-all-secrets
+  "`mask-secrets` of every registered connection, for a `text` which may
+  come from any of them."
+  [text]
+  (reduce #(mask-secrets %2 %1) (mask-secrets {} text) (vals (connections))))
+
 (defn- exception-message [^Throwable e]
   (or (.getMessage e) (str (class e))))
 
@@ -698,7 +704,9 @@
 
 (defn- execute-tool
   "Run the `execute` tool: one statement on a connection of its own to `db`,
-  in autocommit mode, if `config` makes the connection writable."
+  in autocommit mode, if `config` makes the connection writable. The
+  completion cache of `db` is dropped after any statement: not only DDL
+  changes the schema, a procedure or `SELECT INTO` of SQL Server may too."
   [db connection-name config {:strs [sql timeout_s]}]
   (let [[sql separator] (split-delimiter sql)
         [sql error] (if separator
@@ -739,11 +747,11 @@
                               (when timeout-clamped?
                                 (format "\n(timeout_s clamped to %d)"
                                         timeout-limit))))]
-              (when (lib/ddl? sql)
-                (cache/invalidate-cache db))
               (text-result text)))
           (catch SQLException e
-            (sql-error db e timeout (elapsed-ms start))))))))
+            (sql-error db e timeout (elapsed-ms start)))
+          (finally
+            (cache/invalidate-cache db)))))))
 
 (def ^:private calling-thread
   "An executor running a task in the calling thread, for `.setNetworkTimeout`."
@@ -763,7 +771,9 @@
 
 (defn- describe-table-tool
   "Run the `describe_table` tool: what `describe-table` shows in Emacs, over
-  a read-only connection of its own to `db`, with a timeout on every query."
+  a read-only connection of its own to `db`, with a timeout on every query.
+  An error of the constraints query is shown after the columns, which are
+  still of use, and makes the result an error too."
   [db {:strs [table owner]}]
   (let [success (atom true)
         ;; java.jdbc passes the keys of a db-spec map on to
@@ -786,55 +796,46 @@
                                                      (meta-db conn)
                                                      (str "SELECT * FROM "
                                                           table-name))]
-                                         (reset! success (:success result))
+                                         (when-not (:success result)
+                                           (reset! success false))
                                          result))
                       :query-fn (fn [_ sql]
                                   (try
                                     (c/fetch-rows (meta-db conn) conn sql
                                                   {:timeout metadata-timeout})
                                     (catch SQLException e
+                                      (reset! success false)
                                       (str "Error: " (.getMessage e)))))
                       :row-limit 0)))))]
     (text-result (mask-secrets db text) (not @success))))
 
-(defn- cache-error
-  "The exception the table list query of `db` failed with, if it did."
-  [db owner]
-  (let [p (get-in @cache/cache-creation-promises
-                  [db (if owner (keyword (str "tables-" owner)) :all-tables)])]
-    (when (and p (realized? p) (instance? Throwable @p))
-      @p)))
-
 (defn- list-tables-tool
-  "Run the `list_tables` tool on the `structure` cache of `db`, the one
-  completion uses, waiting at most `metadata-timeout` for it to load."
-  [db connection-name {:strs [owner pattern]}]
-  (let [tables (deref (future
-                        (if owner
-                          (structure/get-tables db owner true)
-                          (structure/get-all-tables db)))
-                      (* 1000 metadata-timeout)
-                      ::timeout)]
-    (cond
-      (= tables ::timeout)
-      (error-result
-       (format (str "Error: the table list of %s is still loading after %d s. "
-                    "It keeps loading in the background, call list_tables "
-                    "again in a while.")
-               connection-name metadata-timeout))
-      (and (empty? tables) (cache-error db owner))
-      (error-result
-       (mask-secrets db (str "Error: " (exception-message
-                                        (cache-error db owner)))))
-      :else
-      (let [tables (cond->> (sort (distinct (map str tables)))
-                     pattern (filter #(s/includes? (s/lower-case %)
-                                                   (s/lower-case pattern))))]
-        (text-result
-         (if (seq tables)
-           (str (count tables) (if (= 1 (count tables)) " table:\n" " tables:\n")
-                (s/join "\n" tables))
-           "No tables found."))))))
+  "Run the `list_tables` tool: the table list query of completion, on a
+  read-only connection of its own to `db`, with a timeout. Not through the
+  completion cache: it takes an error for no tables and may be stale."
+  [db {:strs [owner pattern]}]
+  (if-let [sql (if owner
+                 (structure/select-db-meta-script db :tables :owner owner)
+                 (or (structure/select-db-meta-script db :all-tables)
+                     (structure/select-db-meta-script db :tables)))]
+    (let [rows (with-read-only-connection
+                 db
+                 (fn [conn]
+                   (limit-network-wait conn)
+                   (j/query {:connection conn :timeout metadata-timeout}
+                            [sql] {:as-arrays? true})))
+          ;; The name comes first in the list of an owner, last in the
+          ;; one of all owners, as `structure/get-tables` takes it.
+          tables (cond->> (sort (distinct (map (comp str (if owner first last))
+                                               (rest rows))))
+                   pattern (filter #(s/includes? (s/lower-case %)
+                                                 (s/lower-case pattern))))]
+      (text-result
+       (if (seq tables)
+         (str (count tables) (if (= 1 (count tables)) " table:\n" " tables:\n")
+              (s/join "\n" tables))
+         "No tables found.")))
+    (error-result "Error: ejc-sql can't list the tables of this database.")))
 
 (defn- host-and-port
   "Host and port of `db`, from its keys or from the `//host:port` part of
@@ -952,7 +953,7 @@
             :else
             (try
               (case tool-name
-                "list_tables" (list-tables-tool db connection-name args)
+                "list_tables" (list-tables-tool db args)
                 "describe_table" (describe-table-tool db args)
                 "query" (query-tool db connection-name args)
                 "execute" (execute-tool db connection-name config args))
@@ -1135,7 +1136,8 @@
 
   The revision is chosen per request: `initialize` and a request with a
   legacy `MCP-Protocol-Version`, or with none, are served by the legacy
-  rules, a request with `protocol-version` by the modern ones."
+  rules, a request with `protocol-version` by the modern ones. An exception
+  no tool caught is the JSON-RPC error -32603, its text masked."
   [headers message config]
   (let [version (get headers "mcp-protocol-version")
         kind (message-kind message)
@@ -1156,7 +1158,12 @@
       (response 202 nil)
       (not (map? params))
       (response 400 (rpc-error id -32602 "Invalid params: must be an object."))
-      (and (= version protocol-version) (not= method "initialize"))
-      (modern-request headers id method params config)
       :else
-      (legacy-request id method params config))))
+      (try
+        (if (and (= version protocol-version) (not= method "initialize"))
+          (modern-request headers id method params config)
+          (legacy-request id method params config))
+        (catch Throwable e
+          (response 200 (rpc-error id -32603
+                                   (str "Internal error: "
+                                        (mask-all-secrets (str e))))))))))

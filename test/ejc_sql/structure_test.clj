@@ -160,12 +160,40 @@
                        :query-fn (fn [_ _] (throw (Exception. "not called")))))))))
 
 (deftest sqlserver-constraints-test
-  (testing "The `%` of the LIKE pattern is not taken by `format`."
-    (is (s/includes? (select-db-meta-script {:subprotocol "sqlserver"
-                                             :subname "//localhost:1433"
-                                             :database "my_db_name"}
-                                            :constraints :table "users")
-                     "LIKE '%CONSTRAINT'"))))
+  (let [db {:subprotocol "sqlserver"
+            :subname "//localhost:1433"
+            :database "my_db_name"}]
+    (testing "The `%` of the LIKE pattern is not taken by `format`."
+      (is (s/includes? (select-db-meta-script db :constraints :table "users")
+                       "LIKE '%CONSTRAINT'")))
+    (testing "The schema of the table, if known."
+      (is (s/includes? (select-db-meta-script db :constraints
+                                              :owner "sales" :table "users")
+                       "OBJECT_SCHEMA_NAME(parent_object_id)='sales'"))
+      (is (not (s/includes? (select-db-meta-script db :constraints
+                                                   :table "users")
+                            "OBJECT_SCHEMA_NAME"))))))
+
+(deftest h2-tables-test
+  (testing "The tables of the owner given, of PUBLIC by default."
+    (let [db {:subprotocol "h2" :subname "mem:x"}]
+      (is (s/includes? (select-db-meta-script db :tables :owner "OTHER")
+                       "table_schema = 'OTHER'"))
+      (is (s/includes? (select-db-meta-script db :tables)
+                       "table_schema = 'PUBLIC'")))))
+
+(deftest column-type-test
+  (testing "The scale of a decimal is shown unless it is 0 or unknown."
+    (doseq [[digits type] [[2 "NUMERIC(10,2)"]
+                           [-3 "NUMERIC(10,-3)"]
+                           [0 "NUMERIC(10)"]
+                           [nil "NUMERIC(10)"]]]
+      (is (= type (#'ejc-sql.structure/column-type
+                   {:type_name "NUMERIC"
+                    :data_type java.sql.Types/NUMERIC
+                    :column_size 10
+                    :decimal_digits digits}))
+          (pr-str digits)))))
 
 (def h2-db
   {:subprotocol "h2"

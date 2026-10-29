@@ -6,7 +6,8 @@
             [ejc-sql.connect :as c]
             [ejc-sql.lib :as lib]
             [ejc-sql.mcp :as mcp]
-            [ejc-sql.output :as o]))
+            [ejc-sql.output :as o]
+            [ejc-sql.structure :as structure]))
 
 (def h2-db
   {:classname "org.h2.Driver"
@@ -197,6 +198,21 @@
       (let [{:keys [status body]} (mcp/handle-rpc {} message config)]
         (is (= 400 status) (pr-str message))
         (is (= -32600 (get-in body [:error :code])) (pr-str message)))))
+  (testing "An exception no tool caught is an internal error, masked."
+    (with-redefs [mcp/call-tool (fn [& _]
+                                  (throw (AssertionError.
+                                          "s3cret at jdbc:x://u:pw@h")))]
+      (doseq [{:keys [status body]} [(legacy "tools/call"
+                                             {"name" "list_connections"})
+                                     (modern "tools/call"
+                                             {"name" "list_connections"})]]
+        (is (= 200 status))
+        (is (= {:jsonrpc "2.0"
+                :id 1
+                :error {:code -32603
+                        :message (str "Internal error: java.lang.AssertionError: "
+                                      "*** at jdbc:x://u:***@h")}}
+               body)))))
   (testing "tools/call protocol errors."
     (doseq [params [{"name" "no_such_tool"}
                     {"arguments" {}}
@@ -497,11 +513,12 @@
     (is (re-find #"\| login +\|[\s\S]*\n6 rows, \d+ ms$"
                  (text (call "execute" {"connection" "h2-rw"
                                         "sql" "SELECT login FROM users"})))))
-  (testing "DDL invalidates the cache."
-    (swap! cache/cache assoc-in [h2-db :all-tables] (future ["USERS"]))
-    (is (= "Executed" (text (call "execute" {"connection" "h2-rw"
-                                             "sql" "CREATE TABLE t2 (id INT)"}))))
-    (is (nil? (get @cache/cache h2-db))))
+  (testing "Any statement invalidates the cache, DDL after a comment too."
+    (doseq [sql ["/* migration */ CREATE TABLE t2 (id INT)"
+                 "INSERT INTO t2 VALUES (1)"]]
+      (swap! cache/cache assoc-in [h2-db :all-tables] (future ["USERS"]))
+      (is (not (:isError (call "execute" {"connection" "h2-rw" "sql" sql}))))
+      (is (nil? (get @cache/cache h2-db)) sql)))
   (testing "SQL errors."
     (let [result (call "execute" {"connection" "h2-rw"
                                   "sql" "INSERT INTO nope VALUES (1)"})]
@@ -510,12 +527,32 @@
 
 (deftest metadata-test
   (testing "list_tables."
-    (is (= "1 table:\nUSERS" (text (call "list_tables" {"connection" "h2"}))))
+    (j/db-do-commands h2-db ["CREATE SCHEMA other"
+                             "CREATE TABLE other.other_only (id INT)"])
+    (is (= "2 tables:\nOTHER_ONLY\nUSERS"
+           (text (call "list_tables" {"connection" "h2"}))))
     (is (= "1 table:\nUSERS" (text (call "list_tables" {"connection" "h2"
                                                          "owner" "PUBLIC"
                                                          "pattern" "sE"}))))
+    (is (= "1 table:\nOTHER_ONLY" (text (call "list_tables"
+                                               {"connection" "h2"
+                                                "owner" "OTHER"}))))
+    (is (= "No tables found." (text (call "list_tables" {"connection" "h2"
+                                                          "owner" "MISSING"}))))
     (is (= "No tables found." (text (call "list_tables" {"connection" "h2"
                                                           "pattern" "zzz"})))))
+  (testing "list_tables doesn't take the stale completion cache."
+    (swap! cache/cache assoc-in [h2-db :tables "PUBLIC"] (future ["STALE"]))
+    (is (= "1 table:\nUSERS" (text (call "list_tables" {"connection" "h2"
+                                                         "owner" "PUBLIC"})))))
+  (testing "list_tables errors, with an owner and without."
+    (with-redefs [structure/select-db-meta-script
+                  (fn [& _] "SELECT table_name FROM no_such_view")]
+      (doseq [args [{"connection" "h2" "owner" "PUBLIC"} {"connection" "h2"}]]
+        (let [result (call "list_tables" args)]
+          (is (:isError result) (pr-str args))
+          (is (s/includes? (text result) "NO_SUCH_VIEW") (pr-str args))
+          (is (not (s/includes? (text result) "s3cret")) (pr-str args))))))
   (testing "describe_table."
     (let [result (call "describe_table" {"connection" "h2" "table" "users"})]
       (is (not (:isError result)))
@@ -525,7 +562,21 @@
       (is (re-find #"\nPrimary key \w+: ID\n" (text result))))
     (let [result (call "describe_table" {"connection" "h2" "table" "nope"})]
       (is (:isError result))
-      (is (s/starts-with? (text result) "Error: ")))))
+      (is (s/starts-with? (text result) "Error: "))))
+  (testing "describe_table with the constraints query failing."
+    (let [script structure/select-db-meta-script]
+      (with-redefs [structure/select-db-meta-script
+                    (fn [db meta-type & args]
+                      (if (= meta-type :constraints)
+                        "SELECT * FROM missing_constraints_view"
+                        (apply script db meta-type args)))]
+        (let [result (call "describe_table" {"connection" "h2"
+                                             "table" "users"})]
+          (is (:isError result))
+          (is (s/starts-with? (text result)
+                              "Table \"PUBLIC.USERS\" description:"))
+          (is (re-find #"Constraints:\s+Error: .*MISSING_CONSTRAINTS_VIEW"
+                       (text result))))))))
 
 (deftest shared-state-test
   (testing "The tools don't touch the state shared with Emacs."

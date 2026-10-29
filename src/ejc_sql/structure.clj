@@ -350,7 +350,8 @@
         ;;--------
         h2
         ;;--------
-        {:tables  (fn [& _] ((default-queries :tables) :schema "PUBLIC"))
+        {:tables  (fn [& {:keys [schema]}]
+                    ((default-queries :tables) :schema (or schema "PUBLIC")))
          :views   (default-queries :views)
          :all-tables (fn [& _] "
                  SELECT s.schema_owner, s.schema_name, t.table_name
@@ -408,13 +409,19 @@
          :tables  (default-queries :tables)
          :all-tables (default-queries :all-tables)
          :columns (default-queries :columns)
-         :constraints (fn [& {:keys [table]}]
+         :constraints (fn [& {:keys [owner table]}]
                         (format "
                     SELECT type_desc AS constraint_type,
                            name
                     FROM sys.objects
                     WHERE type_desc LIKE '%%CONSTRAINT'
-                      AND OBJECT_NAME(parent_object_id)='%s' " table))
+                      AND OBJECT_NAME(parent_object_id)='%s' %s"
+                                table
+                                (if owner
+                                  (format "
+                      AND OBJECT_SCHEMA_NAME(parent_object_id)='%s' "
+                                          owner)
+                                  "")))
          :entity      (fn [& {:keys [db entity-name]}]
                         (if (is-modern-sql-server? db)
                           (format "
@@ -1244,7 +1251,8 @@
   "The type of the `.getColumns` row `column`, with the size of a string, a
   binary or a decimal one, e.g. `VARCHAR(20)`, `DECIMAL(10,2)`. A size of a
   billion or more means no limit, e.g. `text` or `VARCHAR` with no length,
-  and is left out."
+  and is left out. A scale of 0 is left out too, a negative one is not:
+  `NUMERIC(2,-3)` of PostgreSQL rounds to thousands."
   [{:keys [type_name data_type column_size decimal_digits]}]
   (let [data-type (some-> data_type long)
         size (some-> column_size long)
@@ -1256,7 +1264,7 @@
       (str type_name "(" size
            (when (and (contains? #{Types/DECIMAL Types/NUMERIC} data-type)
                       digits
-                      (pos? digits))
+                      (not (zero? digits)))
              (str "," digits))
            ")")
       type_name)))
