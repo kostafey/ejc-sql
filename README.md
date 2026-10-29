@@ -1227,9 +1227,10 @@ With the log off, the statements of the agents are not logged either.
 ### MCP server for AI agents
 
 `ejc-sql` can serve the databases you have connected to as tools for AI
-coding agents: Claude Code or any other [MCP](https://modelcontextprotocol.io)
-client. The server runs inside the `ejc-sql` nREPL, so it reuses the JDBC
-drivers, the database structure cache and the output formatting already there.
+coding agents: Claude Code or Codex, or any other
+[MCP](https://modelcontextprotocol.io) client. The server runs inside the
+`ejc-sql` nREPL, so it reuses the JDBC drivers, the database structure cache
+and the output formatting already there.
 It is off by default and needs Java 11 or newer.
 
 To turn it on, create `~/.ejc-sql/mcp.edn` (or the file set in
@@ -1284,15 +1285,16 @@ guarantee is a database user with read-only grants, so connect to a database
 that must not change as such a user.
 
 A result is limited to 200 rows (`max_rows`, up to 1000), a statement to 30
-seconds (`timeout_s`, up to 50: Claude Code waits for 60 seconds at most for
-the response of an HTTP server).
+seconds (`timeout_s`, up to 50), below the default 60-second tool timeout in
+Claude Code and Codex.
 
 **`execute` changes data with your consent.** It takes both: the connection
 listed in `:writable` and your approval of the call in the client. The server
 marks `execute` so that Claude Code asks for every call, in every permission
-mode, without "don't ask again". Every call is one statement committed at
-once, there are no transactions across calls. To send a statement containing
-`;`, e.g. a procedure body or a string literal with it, start the SQL with a
+mode, without "don't ask again". For Codex, configure the tool approval policy
+shown below. Every call is one statement committed at once, there are no
+transactions across calls. To send a statement containing `;`, e.g. a
+procedure body or a string literal with it, start the SQL with a
 `delimiter` line, see [Separators & delimiters](#separators-delimiters).
 
 **Claude Code setup.**
@@ -1334,8 +1336,41 @@ The `Edit` rule covers the file tools of Claude Code and the shell redirections,
 not a script opening the file itself; the Claude Code
 [sandbox](https://code.claude.com/docs/en/sandboxing) does.
 
+**Codex setup.**
+
+Register the server in a local Codex client on the same machine as Emacs:
+
+```sh
+codex mcp add ejc-sql --url http://127.0.0.1:8765/mcp
+# or, with a :token
+export EJC_SQL_MCP_TOKEN='some-secret'
+codex mcp add ejc-sql --url http://127.0.0.1:8765/mcp \
+    --bearer-token-env-var EJC_SQL_MCP_TOKEN
+```
+
+Set the environment variable to the configured `:token` before starting Codex.
+The equivalent configuration in `~/.codex/config.toml`, with an approval
+policy that runs read tools without asking and prompts for `execute`:
+
+```toml
+[mcp_servers.ejc-sql]
+url = "http://127.0.0.1:8765/mcp"
+bearer_token_env_var = "EJC_SQL_MCP_TOKEN" # omit when :token is not set
+tool_timeout_sec = 60
+default_tools_approval_mode = "writes"
+
+[mcp_servers.ejc-sql.tools.execute]
+approval_mode = "prompt"
+```
+
+For read tools only, add `disabled_tools = ["execute"]` to
+`[mcp_servers.ejc-sql]`. Codex CLI and the IDE extension share this
+configuration; see the [Codex MCP documentation](https://developers.openai.com/codex/mcp).
+After `M-x ejc-connect`, start or restart Codex. In the CLI, `/mcp` shows the
+connected server and its tools; `codex mcp list` shows its configuration.
+
 An agent knows nothing about a server it can't reach, so tell it in
-`~/.claude/CLAUDE.md`:
+`~/.claude/CLAUDE.md` for Claude Code or `~/.codex/AGENTS.md` for Codex:
 
 ```markdown
 ## Databases
