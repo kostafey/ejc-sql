@@ -262,9 +262,16 @@
 (defn- error-result [text]
   (text-result text true))
 
+(def ^:private oracle-credentials-re
+  "Regex to find the credentials of an Oracle URL, `user/password@` after
+  `thin:` or `oci:`, with that prefix as group 1. A quoted password may hold
+  `@` and spaces."
+  #"(?i)\b((?:thin|oci8?):)(?:\"[^\"]*\"|[^\s\"@])++@")
+
 (defn mask-secrets
   "Replace the password of the db-spec `db`, and whatever looks like a
-  password in a JDBC URL, by *** in `text`."
+  password in a JDBC URL, by *** in `text`. The user of an Oracle URL,
+  `user/password@`, goes too."
   [db text]
   (let [password (:password db)
         text (str text)
@@ -272,6 +279,7 @@
                (s/replace text password "***")
                text)]
     (-> text
+        (s/replace oracle-credentials-re "$1***@")
         (s/replace #"(?i)(password\s*=\s*)[^;&\s]*" "$1***")
         (s/replace #"(//[^:/@\s]+:)[^@/\s]*@" "$1***@"))))
 
@@ -486,6 +494,37 @@
   [c]
   (or (Character/isLetterOrDigit (char c)) (contains? #{\_ \@ \# \$} c)))
 
+(defn- word-end
+  "The index after the T-SQL word which starts at `i` of `sql`."
+  [^String sql i]
+  (loop [j (inc i)]
+    (if (and (< j (count sql)) (word-char? (.charAt sql j)))
+      (recur (inc j))
+      j)))
+
+(defn tsql-first-word
+  "The first word of the T-SQL `sql` upper-cased, whitespace, `(` and
+  comments skipped, as the server reads it: with its `@`, `#` and `$`,
+  letters of any alphabet included, so `SELECT$X` is a word of its own.
+  nil if `sql` starts with anything else, a quoted name among them."
+  [^String sql]
+  (let [n (count sql)]
+    (loop [i 0]
+      (when (< i n)
+        (let [c (.charAt sql i)]
+          (cond
+            (#{\space \tab \newline \return \formfeed \(} c)
+            (recur (inc i))
+            (.startsWith sql "--" i)
+            (let [j (.indexOf sql "\n" i)]
+              (when-not (neg? j)
+                (recur (long j))))
+            (.startsWith sql "/*" i)
+            (when-let [j (comment-end sql i)]
+              (recur (long j)))
+            (word-char? c)
+            (s/upper-case (subs sql i (word-end sql i)))))))))
+
 (defn tsql-words
   "The words of the T-SQL `sql` upper-cased, string literals, quoted names
   and comments skipped. nil if one of these is not closed. A variable keeps
@@ -508,11 +547,8 @@
             (when-let [j (comment-end sql i)]
               (recur (long j) words))
             (word-char? c)
-            (let [j (loop [j (inc i)]
-                      (if (and (< j n) (word-char? (.charAt sql j)))
-                        (recur (inc j))
-                        j))]
-              (recur (long j) (conj words (s/upper-case (subs sql i j)))))
+            (let [j (long (word-end sql i))]
+              (recur j (conj words (s/upper-case (subs sql i j)))))
             :else
             (recur (inc i) words)))))))
 
@@ -521,23 +557,47 @@
   [db]
   (boolean (some->> (db-type db) name (re-find #"sqlserver|sybase"))))
 
+(defn- hash-comments?
+  "Check if `#` starts a line comment on `db`: MySQL and MariaDB. Elsewhere
+  it may start a word, on SQL Server the name of a temporary procedure."
+  [db]
+  (contains? #{:mysql :mariadb} (db-type db)))
+
+(def tsql-read-words
+  "The first words of the read-only T-SQL statements. SQL Server and Sybase
+  take any other word starting a batch, or a quoted name, for the name of a
+  procedure to call, `EXEC` left out: `SHOW` or `[SELECT]` may run one."
+  #{"SELECT" "WITH"})
+
 (defn tsql-error
   "The error for the read-only statement `sql` of T-SQL if it may do more:
-  it holds a word of `tsql-write-words`, or `NEXT VALUE FOR`, which moves a
-  sequence on, or a quote or a comment which is not closed. nil if it can't."
+  its `tsql-first-word` is not one of `tsql-read-words`, it holds a word of
+  `tsql-write-words`, or `NEXT VALUE FOR`, which moves a sequence on, or a
+  quote or a comment which is not closed. nil if it can't."
   [sql]
-  (if-let [words (tsql-words sql)]
-    (when-let [word (or (some tsql-write-words words)
-                        (when (some #{["NEXT" "VALUE"]} (partition 2 1 words))
-                          "NEXT VALUE FOR"))]
-      (format (str "Error: SQL Server runs statements with no ';' between "
-                   "them, so query rejects a word of another statement "
-                   "anywhere, and this SQL holds %s outside string "
-                   "literals, quoted names and comments. Use execute to "
-                   "change data.")
-              word))
-    (str "Error: this SQL has a string literal, a quoted name or a comment "
-         "which is not closed.")))
+  (let [first-word (tsql-first-word sql)
+        words (tsql-words sql)]
+    (cond
+      (not (tsql-read-words first-word))
+      (format (str "Error: SQL Server calls the procedure named by the first "
+                   "word of a batch, EXEC left out, so query takes only the "
+                   "statements starting with %s there, not %s.")
+              (s/join " or " (sort tsql-read-words))
+              (or first-word "this one"))
+      (nil? words)
+      (str "Error: this SQL has a string literal, a quoted name or a comment "
+           "which is not closed.")
+      :else
+      (when-let [word (or (some tsql-write-words words)
+                          (when (some #{["NEXT" "VALUE"]}
+                                      (partition 2 1 words))
+                            "NEXT VALUE FOR"))]
+        (format (str "Error: SQL Server runs statements with no ';' between "
+                     "them, so query rejects a word of another statement "
+                     "anywhere, and this SQL holds %s outside string "
+                     "literals, quoted names and comments. Use execute to "
+                     "change data.")
+                word)))))
 
 (defn- log-sql
   "Write `sql` to the query log, marked as the agent's."
@@ -604,12 +664,13 @@
                           "out the comments holding it, build a string "
                           "holding it with a function, e.g. CHR(59)."))
         error (or error
-                  (when-not (lib/read-only? sql)
+                  (when-not (lib/read-only? sql (hash-comments? db))
                     (format (str "Error: query runs only read-only "
                                  "statements (%s), not %s. Use execute to "
                                  "change data.")
                             (s/join ", " lib/read-only-words)
-                            (or (lib/first-keyword sql) "this one")))
+                            (or (lib/first-keyword sql (hash-comments? db))
+                                "this one")))
                   (when (tsql? db)
                     (tsql-error sql)))]
     (if error
@@ -784,22 +845,59 @@
     (when-let [[_ host port] (some
                               #(when (string? %)
                                  (re-find
-                                  #"^(?:jdbc:[^/]*:)?//(?:[^@/]*@)?([^:/;?@]+)(?::(\d+))?"
+                                  #"^(?:jdbc:[^/]*:)?//(?:[^@/;?]*@)?([^:/;?@]+)(?::(\d+))?"
                                   %))
                               [(:subname db) (:connection-uri db)])]
       [host port])))
+
+(defn- without-credentials
+  "`db` with the user and the password stripped from its URL, so that no
+  part of the address parsed from it shows them: `//user:password@`,
+  `password=...` and the Oracle `user/password@`."
+  [db]
+  (let [strip #(-> %
+                   (s/replace oracle-credentials-re "$1@")
+                   (s/replace #"(?i)(password\s*=\s*)[^;&\s]*" "$1")
+                   ;; Not past `;` or `?`: `;user=alice@corp.com` of
+                   ;; SQL Server is a property.
+                   (s/replace #"//[^/@\s;?]*@" "//"))]
+    (cond-> db
+      (string? (:subname db)) (update :subname strip)
+      (string? (:connection-uri db)) (update :connection-uri strip))))
+
+(defn- oracle-address
+  "Host, port and database of the Oracle URL of `db`: `@host:port:SID` or
+  `@[//]host[:port]/service`. nil for a TNS alias or a `(DESCRIPTION=...)`,
+  which `structure/get-db-name` takes for the database whole."
+  [db]
+  (some->> [(:subname db) (:connection-uri db)]
+           (some #(when (string? %) %))
+           (re-find
+            #"@(?:\w+://|//)?([^:/@()\s]+)(?::(\d+))?[:/]([^:/?@()\s]+)")
+           rest
+           vec))
+
+(defn- address
+  "Host, port and database of `db` for `list_connections`, as far as its
+  keys or its URL tell them, the unknown ones nil. The credentials are
+  stripped from the URL first."
+  [db]
+  (let [safe (fn [f] (try (f) (catch Exception _ nil)))
+        db (without-credentials db)]
+    (if (and (= :oracle (db-type db)) (not (:host db)))
+      (safe #(oracle-address db))
+      (let [[host port] (safe #(host-and-port db))]
+        [host port (safe #(some-> (structure/get-db-name db)
+                                  (s/split #"[?;&]")
+                                  first
+                                  not-empty))]))))
 
 (defn- connection-line
   "Describe the connection `db` for `list_connections`: enough to choose
   it, nothing about the user and the password."
   [connection-name db writable?]
-  (let [safe (fn [f] (try (f) (catch Exception _ nil)))
-        type (safe #(some-> (structure/get-db-type db) name))
-        [host port] (safe #(host-and-port db))
-        dbname (safe #(some-> (structure/get-db-name db)
-                              (s/split #"[?;&]")
-                              first
-                              not-empty))]
+  (let [type (some-> (db-type db) name)
+        [host port dbname] (address db)]
     (str "- " connection-name ": "
          (s/join ", " (remove nil? [type
                                     (when host (str "host " host))

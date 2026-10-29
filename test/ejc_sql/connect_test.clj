@@ -87,7 +87,6 @@ select * from urls;""")
                  "SELECT 1"
                  "-- comment\nselect * from t"
                  "/* comment */ select * from t"
-                 "# comment\nselect * from t"
                  "/*+ hint */ select * from t"
                  "/*Main*/ select * from t"
                  "(select 1) union (select 2)"
@@ -113,8 +112,16 @@ select * from urls;""")
                  "/*M!100100 insert into t */ select 1"
                  "/* /* */ select 1 */ delete from t"
                  "{call p()}"
+                 "[select]"
+                 "[select] * from t"
+                 "# comment\nselect * from t"
                  ""]]
       (is (not (read-only? sql)) sql))
+    (testing "# starts a line comment if hash-comments?, as in MySQL."
+      (is (read-only? "# comment\nselect * from t" true))
+      (is (not (read-only? "# select\ndelete from t" true)))
+      (is (= "SELECT" (first-keyword "#p\n select 1" true)))
+      (is (= nil (first-keyword "#p\n select 1"))))
     (is (= "DELETE" (first-keyword "/* select */ delete from t")))
     (is (= nil (first-keyword "  ")))
     (is (= nil (first-keyword "-- select")))))

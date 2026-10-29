@@ -305,10 +305,28 @@
                  "SELECT [update], 'DROP' AS x, \"delete\" FROM t -- commit"
                  "SELECT 1 /* /* */ DROP TABLE users */"
                  "WITH x AS (SELECT 1 AS a) SELECT a FROM x FOR JSON PATH"
-                 "SELECT @@TRANCOUNT"]]
+                 "SELECT @@TRANCOUNT"
+                 "(SELECT 1) UNION (SELECT 2)"
+                 "-- p\n/* a /* nested */ p */ select 1"]]
       (is (nil? (mcp/tsql-error sql)) sql)))
+  (testing "The first word, as SQL Server reads it."
+    (doseq [[sql word] [["\n ( select 1)" "SELECT"]
+                        ["SELECT$x FROM t" "SELECT$X"]
+                        ["#p\nSELECT 1" "#P"]
+                        ["/* /* */ */ sp_who" "SP_WHO"]
+                        ["[SELECT]" nil]
+                        ["\"SELECT\"" nil]
+                        ["-- SELECT" nil]
+                        ["/* SELECT" nil]]]
+      (is (= word (mcp/tsql-first-word sql)) sql)))
   (testing "Other statements, writes and unclosed quotes are rejected."
-    (doseq [[sql word] [["SELECT 1 DROP TABLE users COMMIT" "holds DROP"]
+    (doseq [[sql word] [["[SELECT]" "not this one"]
+                        ["[p] SELECT 1" "not this one"]
+                        ["SHOW" "not SHOW"]
+                        ["DESCRIBE users" "not DESCRIBE"]
+                        ["#p\nSELECT 1" "not #P"]
+                        ["SELECT$x" "not SELECT$X"]
+                        ["SELECT 1 DROP TABLE users COMMIT" "holds DROP"]
                         ["SELECT * INTO users2 FROM users" "holds INTO"]
                         ["SELECT 1 EXEC('DROP TABLE users')" "holds EXEC"]
                         ["SELECT 1 /* */ */ DELETE FROM users" "holds DELETE"]
@@ -320,11 +338,14 @@
                                                :subname "//nowhere:1433"}
                                       "sybase" {:subprotocol "jtds:sybase"
                                                 :subname "//nowhere:5000"}})]
-      (doseq [connection ["mssql" "sybase"]]
-        (let [result (call "query" {"connection" connection
-                                    "sql" "SELECT 1 DROP TABLE users COMMIT"})]
-          (is (:isError result) connection)
-          (is (s/includes? (text result) "holds DROP") connection))))
+      (doseq [connection ["mssql" "sybase"]
+              [sql error] [["SELECT 1 DROP TABLE users COMMIT" "holds DROP"]
+                           ["[SELECT]" "not this one"]
+                           ["SHOW" "not SHOW"]
+                           ["#p\nSELECT 1" "not this one"]]]
+        (let [result (call "query" {"connection" connection "sql" sql})]
+          (is (:isError result) [connection sql])
+          (is (s/includes? (text result) error) [connection sql]))))
     (is (= 0 @opened))
     (is (not (:isError (call "query" {"connection" "h2"
                                       "sql" (str "SELECT login FROM users "
@@ -540,7 +561,51 @@
     (testing "Error texts."
       (is (= "Login failed for *** at jdbc:x://u:***@h;password=***"
              (mcp/mask-secrets db (str "Login failed for pw2 at "
-                                       "jdbc:x://u:pw3@h;password=pw1")))))
+                                       "jdbc:x://u:pw3@h;password=pw1"))))
+      (doseq [[url masked]
+              [["jdbc:oracle:thin:alice/swordfish@dbhost:1521:XE"
+                "jdbc:oracle:thin:***@dbhost:1521:XE"]
+               ["jdbc:oracle:oci:alice/\"sword fish@\"@prod"
+                "jdbc:oracle:oci:***@prod"]
+               ["jdbc:oracle:thin:@//dbhost:1521/ORCL"
+                "jdbc:oracle:thin:@//dbhost:1521/ORCL"]]]
+        (is (= (str "No suitable driver found for " masked)
+               (mcp/mask-secrets {} (str "No suitable driver found for "
+                                         url)))
+            url)))
+    (testing "Credentials in URLs, Oracle ones among them."
+      (with-redefs [mcp/registry
+                    (atom {"sid" {:subprotocol "oracle"
+                                  :subname "thin:alice/swordfish@dbhost:1521:XE"}
+                           "service" {:connection-uri
+                                      (str "jdbc:oracle:thin:alice/"
+                                           "\"sword fish@\"@//dbhost:1522/ORCL")}
+                           "tns" {:subprotocol "oracle"
+                                  :subname "thin:alice/swordfish@prod"}
+                           "keys" {:dbtype "oracle" :host "dbhost" :port 1521
+                                   :dbname "XE" :user "alice"
+                                   :password "swordfish"}
+                           "mysql" {:connection-uri
+                                    "jdbc:mysql://alice:swordfish@dbhost/shop"}
+                           "azure" {:connection-uri
+                                    (str "jdbc:sqlserver://dbhost:1433;"
+                                         "databaseName=shop;"
+                                         "user=alice@corp.com")}})]
+        (let [listing (text (call "list_connections" {}))]
+          (is (= (str "Connections:\n"
+                      "- azure: sqlserver, host dbhost, port 1433, "
+                      "database shop, read-only\n"
+                      "- keys: oracle, host dbhost, port 1521, database XE, "
+                      "read-only\n"
+                      "- mysql: mysql, host dbhost, database shop, read-only\n"
+                      "- service: oracle, host dbhost, port 1522, "
+                      "database ORCL, read-only\n"
+                      "- sid: oracle, host dbhost, port 1521, database XE, "
+                      "read-only\n"
+                      "- tns: oracle, read-only")
+                 listing))
+          (doseq [secret ["alice" "sword"]]
+            (is (not (s/includes? listing secret)) secret)))))
     (testing "Writable."
       (is (s/includes? (text (call "list_connections" {}))
                        "- h2-rw: h2, database ejc_mcp_test, writable")))))

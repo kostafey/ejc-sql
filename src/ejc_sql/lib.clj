@@ -158,31 +158,40 @@ optional. Both `\\n` and `\\r\\n` line breaks are handled."
     "DESCRIBE"
     "DESC"))
 
-(def ^:private first-keyword-re
-  "Regex to find the first word of SQL expression after whitespace, `(`, `[`
-and comments. A block comment holding `/*` or starting with `!` or `M!`
-stops the search, and nothing is matched, since the quantifiers are
-possessive."
+(defn- first-keyword-re
+  "Regex to find the first word of SQL expression after whitespace, `(` and
+comments, the line ones starting with `line-comment`, a regex. A block
+comment holding `/*` or starting with `!` or `M!` stops the search, and
+nothing is matched, since the quantifiers are possessive."
+  [line-comment]
   (java.util.regex.Pattern/compile
-   (str "^(?:[\\s(\\[]"
-        "|(?:--|#)[^\\r\\n]*+"
+   (str "^(?:[\\s(]"
+        "|(?:" line-comment ")[^\\r\\n]*+"
         "|/\\*(?!M?!)(?:(?!/\\*|\\*/).)*+\\*/"
         ")*+(\\w+)")
    java.util.regex.Pattern/DOTALL))
 
+(def ^:private first-keyword-res
+  "`first-keyword-re` by whether `#` starts a line comment."
+  {false (first-keyword-re "--")
+   true (first-keyword-re "--|#")})
+
 (defn first-keyword
-  "The first word of `sql` upper-cased, leading comments and `(`/`[` skipped.
+  "The first word of `sql` upper-cased, leading comments and `(` skipped,
+  `#` lines among the comments if `hash-comments?`, as in MySQL and MariaDB.
   nil if `sql` doesn't start with a word, or a comment before the word may
   be read differently by the database: a block comment holding `/*`, which
   PostgreSQL and SQL Server nest, or an executable comment of MySQL and
-  MariaDB, `/*!...*/` or `/*M!...*/`, which they run."
-  [sql]
-  (when-let [[_ word] (re-find first-keyword-re sql)]
+  MariaDB, `/*!...*/` or `/*M!...*/`, which they run. A quoted name is not
+  a word: `[SELECT]` calls a procedure on SQL Server."
+  [sql & [hash-comments?]]
+  (when-let [[_ word] (re-find (first-keyword-res (boolean hash-comments?))
+                               sql)]
     (s/upper-case word)))
 
 (defn read-only?
   "Determine if `sql` starts with one of `read-only-words`, as
-  `first-keyword` finds it. Unlike `determine-query` the whole word is
-  matched: `SELECTX` is not `SELECT`."
-  [sql]
-  (boolean (in? read-only-words (first-keyword sql))))
+  `first-keyword` finds it, `hash-comments?` passed on. Unlike
+  `determine-query` the whole word is matched: `SELECTX` is not `SELECT`."
+  [sql & [hash-comments?]]
+  (boolean (in? read-only-words (first-keyword sql hash-comments?))))

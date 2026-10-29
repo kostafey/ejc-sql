@@ -1269,17 +1269,19 @@ turned off.
 **`query` is read-only in layers.** Only one statement per call, starting
 with one of the words above, is accepted, with no `;` inside it, not even in a
 string literal or a comment: a quote or a comment the database reads
-differently could hide a second statement there. SQL Server and Sybase need
-no `;` between statements, so there the SQL is rejected as well if it holds,
-outside string literals, quoted names and comments, a word of a statement
-that writes, runs code or controls transactions: `INSERT`, `DROP`, `EXEC`,
-`SET`, `INTO`, `COMMIT` and the like. It runs on a connection of its own,
-marked read-only for the JDBC driver, switched to the read-only mode of the
-database for PostgreSQL, MySQL, MariaDB, Oracle and SQLite, in a transaction
-which is always rolled back. These layers make writes through `query`
-unlikely, not impossible: e.g. PostgreSQL's `dblink_exec` writes outside of
-the transaction. The only guarantee is a database user with read-only grants,
-so connect to a database that must not change as such a user.
+differently could hide a second statement there. SQL Server and Sybase call
+the procedure named by the first word of a batch, `EXEC` left out, so there
+only `SELECT` and `WITH` are accepted. They need no `;` between statements
+either, so the SQL is rejected as well if it holds, outside string literals,
+quoted names and comments, a word of a statement that writes, runs code or
+controls transactions: `INSERT`, `DROP`, `EXEC`, `SET`, `INTO`, `COMMIT` and
+the like. It runs on a connection of its own, marked read-only for the JDBC
+driver, switched to the read-only mode of the database for PostgreSQL, MySQL,
+MariaDB, Oracle and SQLite, in a transaction which is always rolled back.
+These layers make writes through `query` unlikely, not impossible: e.g.
+PostgreSQL's `dblink_exec` writes outside of the transaction. The only
+guarantee is a database user with read-only grants, so connect to a database
+that must not change as such a user.
 
 A result is limited to 200 rows (`max_rows`, up to 1000), a statement to 30
 seconds (`timeout_s`, up to 50: Claude Code waits for 60 seconds at most for
