@@ -24,10 +24,11 @@ lein check                         # reflection warnings - not a clean baseline,
 
 `make test` runs `cask exec emacs --script test/ejc-tests.el`, which starts a
 real nREPL via `clomacs-with-nrepl` and runs every ERT test. It needs `lein`,
-and `mvn` too - the script calls `ejc-test:run-maven-dependency-plugin` to fetch
-the H2 driver first. Unlike `clomacs`, the `test` target here does **not**
-depend on `elpa`, so a fresh clone fails with `Cannot open load file: sesman`
-until `make elpa` is run (CI runs them in that order).
+and `mvn` too unless the H2 driver is in `~/.m2` already - the script calls
+`ejc-test:fetch-h2-jar` to fetch it first, and tells why if it can't; the
+tests connecting to H2 fail then. Unlike `clomacs`, the `test` target here
+does **not** depend on `elpa`, so a fresh clone fails with `Cannot open load
+file: sesman` until `make elpa` is run (CI runs them in that order).
 
 ERT tests are tagged: `el` (pure Emacs Lisp), `cl` (shells out to `lein test`),
 `el+cl` (needs the live nREPL bridge). There is no command line selector - the

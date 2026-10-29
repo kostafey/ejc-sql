@@ -16,28 +16,44 @@
 (require 'ejc-sql)
 (require 'ejc-autocomplete)
 
-(defun ejc-test:run-maven-dependency-plugin ()
-  (print "Run maven-dependency-plugin")
-  (print
-   (shell-command-to-string
-    (concat
-     "mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:get "
-     "-Dartifact=com.h2database:h2:2.5.252"))))
+(defun ejc-test:h2-jar ()
+  "The H2 jar the tests connect with, in the local Maven repository."
+  (expand-file-name "repository/com/h2database/h2/2.5.252/h2-2.5.252.jar"
+                    (ejc-test:get-m2-path)))
+
+(defun ejc-test:fetch-h2-jar ()
+  "Fetch the H2 jar with Maven, unless it is in the local repository.
+Tell why if it can't, the tests needing it fail then."
+  (let ((jar (ejc-test:h2-jar)))
+    (unless (file-exists-p jar)
+      (print "Run maven-dependency-plugin")
+      (if (not (executable-find "mvn"))
+          (message "No mvn to fetch %s" jar)
+        (with-temp-buffer
+          (let ((status (call-process-shell-command
+                         (concat
+                          "mvn org.apache.maven.plugins:"
+                          "maven-dependency-plugin:2.10:get "
+                          "-Dartifact=com.h2database:h2:2.5.252")
+                         nil t)))
+            (print (buffer-string))
+            (cond
+             ((not (eql status 0))
+              (message "mvn failed with %s to fetch %s" status jar))
+             ((not (file-exists-p jar))
+              (message "mvn succeeded, but there is no %s" jar)))))))))
 
 (defun ejc-test:run-lein ()
+  "Run `lein test', print its output, return its exit status."
   (print "Run lein test")
-  (let ((result (shell-command-to-string "lein test")))
-    (print result)
-    result))
+  (with-temp-buffer
+    (let ((status (call-process-shell-command "lein test" nil t)))
+      (print (buffer-string))
+      status)))
 
 (ert-deftest ejc-test:run-lein-test ()
   :tags '(cl)
-  (should
-   (not
-    (equal
-     "Tests failed."
-     (-last (lambda (x) (not (equal "" x)))
-            (s-split "\n" (ejc-test:run-lein)))))))
+  (should (eql 0 (ejc-test:run-lein))))
 
 (ert-deftest ejc-test:ejc-lein-artifact-to-path ()
   :tags '(el)
@@ -289,10 +305,7 @@
   :tags '(el+cl)
   (let* ((db-path (concat "file://" (ejc-test:get-temp-path)
                           "database;AUTO_SERVER=TRUE"))
-         (classpath (vector
-                     (expand-file-name
-                      "repository/com/h2database/h2/2.5.252/h2-2.5.252.jar"
-                      (ejc-test:get-m2-path))))
+         (classpath (vector (ejc-test:h2-jar)))
          (conn (ejc-create-connection
                 "H2-test-connection"
                 :classpath classpath
@@ -301,6 +314,7 @@
                 :subname db-path
                 :user "a_user"
                 :password "secret")))
+    (should (file-exists-p (ejc-test:h2-jar)))
     (should
      (equal
       `("H2-test-connection"
@@ -408,7 +422,7 @@
     (should (member "H2-test-connection" (ejc-test:mcp-connection-names)))))
 
 
-(ejc-test:run-maven-dependency-plugin)
+(ejc-test:fetch-h2-jar)
 
 ;; Keep the queries of the tests off the user's log, as `lein test' does.
 (setenv "JVM_OPTS" (mapconcat #'identity
