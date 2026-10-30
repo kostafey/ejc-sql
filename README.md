@@ -375,8 +375,9 @@ default).
 `ejc-set-column-width-limit` sets limit for outputing the number of chars per
 column (`30` by default). The rest will be replaced by `...`. Set to
 `nil` if you want to disable this limit. This setting is applied to the text
-representation of any field type, but it is especially useful for `varchar` and
-`CLOB` fields.
+representation of any field type but numbers, and it is especially useful for
+`varchar` and `CLOB` fields. Numbers are never cut: in a column of numbers they
+are right-aligned, their decimal points one under another.
 
 `ejc-set-use-unicode` sets using unicode for grid borders, e.g. use `─┼─`
 instead of `-+-` (`nil` by default).
@@ -1258,8 +1259,10 @@ the connections are never shown.
  Tool               | What it does
 --------------------|------------------------------------------------------------
  `list_connections` | Connection names, database types, hosts, ports, databases, writable or not
+ `connection_info`  | Database and driver versions, current catalog and schema, the case of unquoted names
  `list_tables`      | Tables of a connection, of an owner (schema) if given, filtered by a substring
- `describe_table`   | Columns with types, sizes, `NOT NULL`, defaults and comments, primary and foreign keys, as `ejc-describe-table` shows them
+ `find_columns`     | Columns whose names hold a substring, of an owner if given, of all of them otherwise
+ `describe_table`   | Columns with types, sizes, `NOT NULL`, defaults and comments, primary key, indexes and foreign keys, as `ejc-describe-table` shows them
  `query`            | One read-only statement: `SELECT`, `WITH`, `VALUES`, `SHOW`, `EXPLAIN`, `DESCRIBE`
  `execute`          | One statement that changes data or schema, on writable connections only
 
@@ -1286,7 +1289,17 @@ that must not change as such a user.
 
 A result is limited to 200 rows (`max_rows`, up to 1000), a statement to 30
 seconds (`timeout_s`, up to 50), below the default 60-second tool timeout in
-Claude Code and Codex.
+Claude Code and Codex. Text values of `query` and `describe_table` are cut to
+the `ejc-set-column-width-limit` of Emacs, 30 characters by default, unless the
+agent asks for another width (`max_column_width`, 0 for no limit); numbers and
+dates are never cut.
+
+The tables an agent gets are drawn in ASCII, whatever `ejc-set-use-unicode`
+says, with no outside borders, as psql draws them: fewer tokens. A result of
+`query` is a row per line, a single row is a line per column,
+`column | value`. `NULL` tells a null from an empty string, line breaks and
+tabs inside a value are written as `\n`, `\r` and `\t`, not replaced with
+spaces as in Emacs.
 
 **`execute` changes data with your consent.** It takes both: the connection
 listed in `:writable` and your approval of the call in the client. The server
@@ -1321,7 +1334,9 @@ ignore the server's mark too), keep the agent from editing
 
 ```json
 {"permissions": {"allow": ["mcp__ejc-sql__list_connections",
+                           "mcp__ejc-sql__connection_info",
                            "mcp__ejc-sql__list_tables",
+                           "mcp__ejc-sql__find_columns",
                            "mcp__ejc-sql__describe_table",
                            "mcp__ejc-sql__query"],
                  "ask": ["mcp__ejc-sql__execute"],

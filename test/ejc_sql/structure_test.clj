@@ -215,6 +215,8 @@
                           "CONSTRAINT fk_pair FOREIGN KEY (x, y) "
                           "REFERENCES pairs(a, b))")
                      "COMMENT ON COLUMN users.note IS 'free text'"
+                     "CREATE UNIQUE INDEX users_login ON users (login)"
+                     "CREATE INDEX users_balance ON users (balance DESC, note)"
                      (str "CREATE TABLE orders (id INT, "
                           "user_id INT CONSTRAINT fk_user REFERENCES users(id))")
                      "CREATE SCHEMA other"
@@ -261,6 +263,18 @@
           (is (re-find #"\| FK_PAIR +\| X, Y +\| PAIRS\(A, B\) +\|" text))
           (is (re-find #"Referenced by:\n\n.*\n.*\n\| FK_USER +\| ORDERS\(USER_ID\) +\| USERS\(ID\) +\|"
                        text))))
+      (testing "Indexes, but the one of the primary key."
+        (let [text (describe nil "users")]
+          (is (re-find #"\nIndexes:\n\n\| name +\| columns +\| unique +\|\n" text))
+          (is (re-find #"\| USERS_BALANCE +\| BALANCE DESC, NOTE +\| +\|" text))
+          (is (re-find #"\| USERS_LOGIN +\| LOGIN +\| unique +\|" text))
+          (is (not (re-find #"PRIMARY_KEY" text))))
+        (is (= [["USERS_BALANCE" "BALANCE" "D"] ["USERS_BALANCE" "NOTE" "A"]]
+               (->> (:indexes (details nil "users"))
+                    (filter #(= "USERS_BALANCE" (:index_name (first %))))
+                    first
+                    (map (juxt :index_name :column_name :asc_or_desc)))))
+        (is (not (re-find #"Indexes:" (describe nil "orgs")))))
       (testing "The optional columns and sections are left out when empty."
         (is (= (str "Table \"OTHER.USERS\" description:\n\n"
                     "| name  | type    |\n"

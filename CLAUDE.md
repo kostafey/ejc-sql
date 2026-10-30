@@ -110,7 +110,11 @@ registers the connection and starts the server when `mcp.edn` exists, through
 connection of its own per call and never writes `connect/db` or
 `connect/current-query`, so an agent's query and `ejc-cancel-query` never meet.
 It doesn't call Emacs either, but for one message on the server start: agent
-results don't go to the results ring.
+results don't go to the results ring. `mcp/render-rows` prepares the result
+sets for the agent: line breaks escaped, dates never cut; `o/print-table`
+draws them with no outside borders, so a single row as a line per column,
+nil as `o/*null-text*`, NULL there. All the tools print with
+`o/*ascii-borders*` bound.
 
 **Output formatting** is Clojure-side (`src/ejc_sql/output.clj`, plain-text
 tables with optional unicode borders and column width limits, tuned by the

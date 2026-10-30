@@ -35,7 +35,8 @@
             [ejc-sql.output :as o]
             [ejc-sql.structure :as structure])
   (:import [java.io File]
-           [java.sql Connection SQLException SQLTimeoutException]
+           [java.sql Connection DatabaseMetaData SQLException
+            SQLTimeoutException]
            [java.util Base64]
            [java.util.concurrent Executor]
            [java.util.regex Pattern]))
@@ -125,6 +126,21 @@
   {:type "string"
    :description "Connection name, as list_connections shows it."})
 
+(def ^:private owner-property
+  {:type "string"
+   :description "Owner or schema name."})
+
+(def ^:private max-column-width-property
+  {:type "integer"
+   :minimum 0
+   :description (str "Cut longer text values to this many characters, "
+                     "ending with ..., 30 by default (as set in Emacs), 0 "
+                     "for no limit. Numbers and dates are never cut.")})
+
+(def find-columns-limit
+  "The most columns `find_columns` returns."
+  200)
+
 (def tools
   "The tools, in the order `tools/list` returns them."
   [{:name "list_connections"
@@ -140,6 +156,18 @@
                   :additionalProperties false}
     :annotations {:readOnlyHint true
                   :openWorldHint false}}
+   {:name "connection_info"
+    :title "Show database version"
+    :description (str "Show the database product and version, the JDBC "
+                      "driver, the current catalog and schema, and how the "
+                      "database keeps unquoted names: upper-cased, "
+                      "lower-cased or as written.")
+    :inputSchema {:type "object"
+                  :properties {:connection connection-property}
+                  :required ["connection"]
+                  :additionalProperties false}
+    :annotations {:readOnlyHint true
+                  :openWorldHint false}}
    {:name "list_tables"
     :title "List tables"
     :description (str "List the tables of a connection, of one owner (schema) "
@@ -147,8 +175,7 @@
                       "substring of the name.")
     :inputSchema {:type "object"
                   :properties {:connection connection-property
-                               :owner {:type "string"
-                                       :description "Owner or schema name."}
+                               :owner owner-property
                                :pattern {:type "string"
                                          :description (str "Return only names "
                                                            "containing this "
@@ -158,18 +185,38 @@
                   :additionalProperties false}
     :annotations {:readOnlyHint true
                   :openWorldHint false}}
+   {:name "find_columns"
+    :title "Find columns"
+    :description (format (str "Find the columns, of tables and views, whose "
+                              "names contain a substring, as given, "
+                              "upper-cased or lower-cased, in one owner "
+                              "(schema) or, if none is given, in the "
+                              "current schema first, then in all of them. "
+                              "At most %d columns are returned.")
+                         find-columns-limit)
+    :inputSchema {:type "object"
+                  :properties {:connection connection-property
+                               :column {:type "string"
+                                        :description (str "Part of the "
+                                                          "column name.")}
+                               :owner owner-property}
+                  :required ["connection" "column"]
+                  :additionalProperties false}
+    :annotations {:readOnlyHint true
+                  :openWorldHint false}}
    {:name "describe_table"
     :title "Describe table"
     :description (str "Show the columns of a table: types with sizes, "
                       "NOT NULL, defaults, comments; its primary key, its "
-                      "foreign keys, the foreign keys referencing it, and the "
-                      "constraints the database lists.")
+                      "indexes, its foreign keys, the foreign keys "
+                      "referencing it, and the constraints the database "
+                      "lists.")
     :inputSchema {:type "object"
                   :properties {:connection connection-property
                                :table {:type "string"
                                        :description "Table name, without the owner."}
-                               :owner {:type "string"
-                                       :description "Owner or schema name."}}
+                               :owner owner-property
+                               :max_column_width max-column-width-property}
                   :required ["connection" "table"]
                   :additionalProperties false}
     :annotations {:readOnlyHint true
@@ -187,7 +234,8 @@
                       "another statement (INSERT, DROP, EXEC, SET, INTO, "
                       "COMMIT...) outside string literals, quoted names and "
                       "comments is rejected too. Rows are limited by "
-                      "max_rows, the run time by timeout_s.")
+                      "max_rows, the run time by timeout_s, the values "
+                      "shown by max_column_width.")
     :inputSchema {:type "object"
                   :properties {:connection connection-property
                                :sql {:type "string"
@@ -211,7 +259,8 @@
                                                               "default, at most "
                                                               "%d.")
                                                          default-timeout
-                                                         timeout-limit)}}
+                                                         timeout-limit)}
+                               :max_column_width max-column-width-property}
                   :required ["connection" "sql"]
                   :additionalProperties false}
     :annotations {:readOnlyHint true
@@ -342,8 +391,8 @@
               args))))
 
 (defn- name-error
-  "The error for an owner or table name in `args` not matching `name-re`,
-  nil if they match it."
+  "The error for an owner, table or column name in `args` not matching
+  `name-re`, nil if they match it."
   [args]
   (some (fn [k]
           (when-let [v (get args k)]
@@ -351,7 +400,7 @@
               (format (str "Error: argument %s is not a valid name: only "
                            "letters, digits, _, $, # and @ are accepted.")
                       k))))
-        ["owner" "table"]))
+        ["owner" "table" "column"]))
 
 (defn- limit
   "`value` or `default` if it's nil, at most `max`. Return [value clamped?]."
@@ -359,6 +408,14 @@
   (if (and value (> value max))
     [max true]
     [(long (or value default)) false]))
+
+(defn- column-width
+  "The `lib/*max-column-width*` for the `max_column_width` argument `value`:
+  the limit set in Emacs for nil, none, nil, for 0."
+  [value]
+  (let [width (if (nil? value) @o/column-width-limit value)]
+    (when (and width (pos? width))
+      (long width))))
 
 ;;; SQL
 
@@ -614,24 +671,70 @@
 (defn- elapsed-ms [start]
   (quot (- (System/nanoTime) start) 1000000))
 
+(defn- cell
+  "The value `value` for the agent, cut to `width`, ending with ..., and
+  whether it is cut: [value cut?]. nil and a number are left to
+  `o/print-table`, which shows nil as NULL and aligns the numbers. The
+  line breaks and the tabs of any other value's text are written as
+  `\\r`, `\\n` and `\\t`, so that nothing of them is lost and a row
+  stays a line. A value `width` long ending with ... is a LOB
+  `c/read-lobs` has cut already. A date is never cut: it's short, and of
+  no use cut."
+  [value width]
+  (let [text (when-not (or (nil? value) (number? value))
+               (s/escape (str value)
+                         {\return "\\r" \newline "\\n" \tab "\\t"}))
+        width (when-not (or (instance? java.util.Date value)
+                            (instance? java.time.temporal.Temporal value))
+                width)]
+    (cond
+      (nil? text)
+      [value false]
+      (and width (> (count text) width))
+      [(str (subs text 0 (max 0 (- width 3))) "...") true]
+      (and width (= (count text) width) (s/ends-with? text "..."))
+      [text true]
+      :else
+      [text false])))
+
 (defn render-rows
-  "Print `rows`, `[[column...] row...]`, as `o/print-table` does with the outside
-  borders, with a footer: rows, `elapsed` ms and `notes`. Up to `max-rows`
-  rows are printed, one more tells the result was truncated."
-  [rows max-rows elapsed notes]
+  "Print `rows`, `[[column...] row...]`, for the agent, with a footer: rows,
+  `elapsed` ms, `notes`. Up to `max-rows` rows are printed, one more tells
+  the result was truncated. The values are `cell`s, cut to
+  `lib/*max-column-width*`, but for a single value; the footer tells it,
+  followed by `cut-hint`. `o/print-table` draws them with no outside
+  borders, and so a single row as a line per column, `column | value`: no
+  counting of separators in a long line to find the column of a value."
+  [rows max-rows elapsed notes & [cut-hint]]
   (let [[header & data] rows
         truncated? (> (count data) max-rows)
         data (take max-rows data)
+        width (let [width lib/*max-column-width*]
+                (when (and width
+                           (pos? width)
+                           (not= [1 1] [(count data) (count header)]))
+                  width))
+        names (map #(if (keyword? %) (name %) (str %)) header)
+        cells (map (fn [row] (map #(cell % width) row)) data)
         table (with-out-str
-                (binding [o/*add-outside-borders* true]
-                  (o/print-table (cons header data) 0)))]
+                (binding [o/*add-outside-borders* false
+                          o/*null-text* "NULL"
+                          ;; Cut by `cell`, dates not.
+                          lib/*max-column-width* nil]
+                  (o/print-table (cons names (map #(map first %) cells))
+                                 0)))]
     (str table
          "\n"
          (format "%d row%s, %d ms" (count data) (if (= 1 (count data)) "" "s")
                  elapsed)
          (when truncated?
            (format ", truncated at max_rows %d" max-rows))
-         (apply str (map #(str "; " %) notes)))))
+         (apply str (map #(str "; " %)
+                         (cond-> notes
+                           (some second (apply concat cells))
+                           (conj (str (format "values cut to %d characters"
+                                              width)
+                                      cut-hint))))))))
 
 (defn- timed-out?
   "Check if `e` means the statement was cancelled by its `timeout`, in s.
@@ -663,7 +766,7 @@
 (defn- query-tool
   "Run the `query` tool: one read-only statement on a read-only connection
   of its own to `db`, rolled back."
-  [db connection-name {:strs [sql max_rows timeout_s]}]
+  [db connection-name {:strs [sql max_rows timeout_s max_column_width]}]
   (let [[sql error] (single-statement
                      (statements sql ";") ";"
                      (str "query takes no ';' inside a statement: leave "
@@ -685,10 +788,11 @@
                                                 max-rows-limit)
             [timeout timeout-clamped?] (limit timeout_s default-timeout
                                               timeout-limit)
+            width (column-width max_column_width)
             _ (log-sql connection-name sql)
             start (System/nanoTime)]
         (try
-          (binding [lib/*max-column-width* @o/column-width-limit]
+          (binding [lib/*max-column-width* width]
             (let [rows (with-read-only-connection
                          db
                          (fn [conn]
@@ -698,7 +802,8 @@
                                           :timeout timeout})))]
               (text-result
                (render-rows rows max-rows (elapsed-ms start)
-                            (notes max-rows-clamped? timeout-clamped?)))))
+                            (notes max-rows-clamped? timeout-clamped?)
+                            ", see max_column_width"))))
           (catch SQLException e
             (sql-error db e timeout (elapsed-ms start))))))))
 
@@ -773,14 +878,15 @@
   "Run the `describe_table` tool: what `describe-table` shows in Emacs, over
   a read-only connection of its own to `db`, with a timeout on every query.
   An error of the constraints query is shown after the columns, which are
-  still of use, and makes the result an error too."
-  [db {:strs [table owner]}]
+  still of use, and makes the result an error too. Only the errors are
+  masked: the password of `db` may be part of a name or a value too."
+  [db {:strs [table owner max_column_width]}]
   (let [success (atom true)
         ;; java.jdbc passes the keys of a db-spec map on to
         ;; `prepare-statement`, `:timeout` too.
         meta-db (fn [conn] {:connection conn :timeout metadata-timeout})
-        text (binding [lib/*max-column-width* @o/column-width-limit
-                       o/*add-outside-borders* true]
+        text (binding [lib/*max-column-width* (column-width max_column_width)
+                       o/*add-outside-borders* false]
                (with-out-str
                  (with-read-only-connection
                    db
@@ -796,18 +902,21 @@
                                                      (meta-db conn)
                                                      (str "SELECT * FROM "
                                                           table-name))]
-                                         (when-not (:success result)
-                                           (reset! success false))
-                                         result))
+                                         (if (:success result)
+                                           result
+                                           (do (reset! success false)
+                                               (update result :result
+                                                       #(mask-secrets db %))))))
                       :query-fn (fn [_ sql]
                                   (try
                                     (c/fetch-rows (meta-db conn) conn sql
                                                   {:timeout metadata-timeout})
                                     (catch SQLException e
                                       (reset! success false)
-                                      (str "Error: " (.getMessage e)))))
+                                      (mask-secrets
+                                       db (str "Error: " (.getMessage e))))))
                       :row-limit 0)))))]
-    (text-result (mask-secrets db text) (not @success))))
+    (text-result text (not @success))))
 
 (defn- list-tables-tool
   "Run the `list_tables` tool: the table list query of completion, on a
@@ -836,6 +945,66 @@
               (s/join "\n" tables))
          "No tables found.")))
     (error-result "Error: ejc-sql can't list the tables of this database.")))
+
+(defn- find-columns-tool
+  "Run the `find_columns` tool: `structure/find-columns` on a read-only
+  connection of its own to `db`, with the network wait limited, since the
+  metadata calls take no query timeout."
+  [db {:strs [column owner]}]
+  (let [found (with-read-only-connection
+                db
+                (fn [conn]
+                  (limit-network-wait conn)
+                  (structure/find-columns conn owner column
+                                          (inc find-columns-limit))))
+        shown (take find-columns-limit found)]
+    (text-result
+     (if (seq shown)
+       (str (with-out-str
+              (binding [o/*add-outside-borders* false]
+                (o/print-maps [:owner :table :column :type] shown true)))
+            "\n"
+            (count shown) (if (= 1 (count shown)) " column" " columns")
+            (when (> (count found) find-columns-limit)
+              (format (str ", truncated at %d; give the owner or a longer "
+                           "part of the name")
+                      find-columns-limit)))
+       "No columns found."))))
+
+(defn- identifier-case
+  "How the database of `meta` keeps unquoted names, for `connection_info`."
+  [^DatabaseMetaData meta]
+  (cond
+    (.storesUpperCaseIdentifiers meta) "upper-cased"
+    (.storesLowerCaseIdentifiers meta) "lower-cased"
+    :else "as written"))
+
+(defn- connection-info-tool
+  "Run the `connection_info` tool: what the JDBC metadata of a read-only
+  connection of its own to `db` tells of the database, nothing of the user
+  or the URL."
+  [db]
+  (text-result
+   (with-read-only-connection
+     db
+     (fn [^Connection conn]
+       (limit-network-wait conn)
+       (let [meta (.getMetaData conn)
+             quote (s/trim (str (.getIdentifierQuoteString meta)))]
+         (s/join "\n"
+                 (remove nil?
+                         [(str "Database: " (.getDatabaseProductName meta) " "
+                               (.getDatabaseProductVersion meta))
+                          (str "Driver: " (.getDriverName meta) " "
+                               (.getDriverVersion meta))
+                          (some->> (.getCatalog conn) not-empty
+                                   (str "Catalog: "))
+                          (some->> (structure/current-schema conn) not-empty
+                                   (str "Schema: "))
+                          (str "Unquoted names are kept "
+                               (identifier-case meta)
+                               (when (seq quote)
+                                 (str "; quote names with " quote)))])))))))
 
 (defn- host-and-port
   "Host and port of `db`, from its keys or from the `//host:port` part of
@@ -909,7 +1078,11 @@
                                       "read-only")])))))
 
 (defn- list-connections-tool
-  "Run the `list_connections` tool. `config` tells the writable ones."
+  "Run the `list_connections` tool. `config` tells the writable ones. The
+  credentials are stripped from a URL before its address is parsed, and
+  what looks like them in a URL is masked still, but not the password
+  wherever it occurs: a dev database is often named as its password, the
+  connection too."
   [config]
   (let [registered (connections)]
     (text-result
@@ -918,7 +1091,7 @@
             (s/join "\n"
                     (for [connection-name (connection-names)
                           :let [db (registered connection-name)]]
-                      (mask-secrets db (connection-line
+                      (mask-secrets {} (connection-line
                                         connection-name db
                                         (contains? (:writable config)
                                                    connection-name))))))
@@ -952,11 +1125,15 @@
             (nil? db) (unknown-connection connection-name)
             :else
             (try
-              (case tool-name
-                "list_tables" (list-tables-tool db args)
-                "describe_table" (describe-table-tool db args)
-                "query" (query-tool db connection-name args)
-                "execute" (execute-tool db connection-name config args))
+              ;; The tables printed by `output.clj` for Emacs too.
+              (binding [o/*ascii-borders* true]
+                (case tool-name
+                  "connection_info" (connection-info-tool db)
+                  "list_tables" (list-tables-tool db args)
+                  "find_columns" (find-columns-tool db args)
+                  "describe_table" (describe-table-tool db args)
+                  "query" (query-tool db connection-name args)
+                  "execute" (execute-tool db connection-name config args)))
               (catch Exception e
                 (error-result
                  (mask-secrets db (str "Error: " (exception-message e))))))))))))

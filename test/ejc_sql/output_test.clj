@@ -122,6 +122,63 @@
                      "incididunt ut labore et dolore magna aliqua.")]])
                  (str out))))))))
 
+(deftest print-table-numbers-test
+  (let [nl (System/getProperty "line.separator")
+        table (fn [rows & {:keys [width null-text]}]
+                (with-out-str
+                  (binding [*add-outside-borders* false
+                            ejc-sql.lib/*max-column-width* width
+                            *null-text* (or null-text *null-text*)]
+                    (print-table rows 0))))]
+    (testing "Numbers to the right, their points one under another."
+      (is (= (str "    amount |   n | mixed" nl
+                  "-----------+-----+------" nl
+                  "    123.56 |   1 | a    " nl
+                  "      0.13 |     | 2    " nl
+                  "2342343.38 | 100 |      " nl)
+             (table [[:amount :n :mixed]
+                     [123.56M 1 "a"] [0.13M nil 2] [2342343.38M 100 nil]])))
+      (is (= (str "     d" nl
+                  "------" nl
+                  " 1.5  " nl
+                  "12.345" nl
+                  " 7    " nl)
+             (table [[:d] [1.5] [12.345] [7]]))))
+    (testing "A column of NULLs only is no column of numbers."
+      (is (= (str "x | n" nl
+                  "--+--" nl
+                  "  | 1" nl
+                  "  | 2" nl)
+             (table [[:x :n] [nil 1] [nil 2]]))))
+    (testing "Numbers are not cut, other values are."
+      (is (= (str "                                       n | s         " nl
+                  "-----------------------------------------+-----------" nl
+                  "1234567890123456789012345678901234567890 | abcdefg..." nl
+                  "                                       1 | b         " nl)
+             (table [[:n :s]
+                     [1234567890123456789012345678901234567890M "abcdefghijkl"]
+                     [1 "b"]]
+                    :width 10))))
+    (testing "NULL is blank as in psql, unless told otherwise."
+      (is (= (str "n | s" nl
+                  "--+--" nl
+                  "  | a" nl
+                  "2 |  " nl)
+             (table [[:n :s] [nil "a"] [2 nil]])))
+      (is (= (str "   n | s   " nl
+                  "-----+-----" nl
+                  "NULL | a   " nl
+                  "   2 | NULL" nl
+                  "   3 |     " nl)
+             (table [[:n :s] [nil "a"] [2 nil] [3 ""]] :null-text "NULL")))
+      (is (= (str "n   " nl
+                  "----" nl
+                  "NULL" nl)
+             (table [[:n] [nil]] :null-text "NULL")))
+      (is (= (str "n | NULL" nl
+                  "s | a" nl)
+             (table [[:n :s] [nil "a"]] :null-text "NULL"))))))
+
 (defn- with-log-dir
   "Call `f` with the `ejc-sql.log-dir` system property set to `dir`, or
   cleared if `dir` is nil, restoring it afterwards."

@@ -181,7 +181,7 @@
         (is (= 200 status))
         (is (s/includes? (get-in (json/read-str body)
                                  ["result" "content" 0 "text"])
-                         "| Привет |"))))
+                         "\nПривет\n"))))
     (testing "Statuses."
       (is (= 202 (:status (send-request
                            port "POST"

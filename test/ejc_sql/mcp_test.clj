@@ -236,7 +236,8 @@
 
 (deftest tools-test
   (testing "tools/list shape."
-    (is (= ["list_connections" "list_tables" "describe_table" "query" "execute"]
+    (is (= ["list_connections" "connection_info" "list_tables" "find_columns"
+            "describe_table" "query" "execute"]
            (map :name mcp/tools)))
     (doseq [{:keys [title description inputSchema annotations] :as tool} mcp/tools]
       (is (string? title))
@@ -255,7 +256,9 @@
         (do (is (true? (:readOnlyHint annotations)))
             (is (nil? (:_meta tool))))))
     (is (= {"list_connections" nil
+            "connection_info" ["connection"]
             "list_tables" ["connection"]
+            "find_columns" ["connection" "column"]
             "describe_table" ["connection" "table"]
             "query" ["connection" "sql"]
             "execute" ["connection" "sql"]}
@@ -372,7 +375,10 @@
     (doseq [[tool args] [["describe_table" {"connection" "h2" "table" bad}]
                          ["describe_table" {"connection" "h2" "table" "users"
                                             "owner" bad}]
-                         ["list_tables" {"connection" "h2" "owner" bad}]]]
+                         ["list_tables" {"connection" "h2" "owner" bad}]
+                         ["find_columns" {"connection" "h2" "column" bad}]
+                         ["find_columns" {"connection" "h2" "column" "id"
+                                          "owner" bad}]]]
       (let [result (call tool args)]
         (is (:isError result) (pr-str args))
         (is (s/includes? (text result) "is not a valid name") (pr-str args)))))
@@ -384,7 +390,7 @@
                                 "sql" "SELECT id, login FROM users ORDER BY id"})]
       (is (not (:isError result)))
       (is (re-matches
-           #"(?s)\| id \| login +\|\n\|----\+-+\|\n\| 1  \| admin +\|\n.*\| 3  \| trinity \|\n\n3 rows, \d+ ms"
+           #"(?s)id \| login +\n---\+-+\n 1 \| admin +\n.*\n 3 \| trinity\n\n3 rows, \d+ ms"
            (text result))
           (text result)))
     (is (= ["-- [mcp h2]\nSELECT id, login FROM users ORDER BY id\n"] @logged)))
@@ -402,6 +408,73 @@
                                       "sql" "SELECT * FROM users"
                                       "max_rows" 5000
                                       "timeout_s" 500})))))
+  (testing "Values cut to max_column_width."
+    (with-redefs [o/column-width-limit (atom 30)]
+      (let [query #(text (call "query" (merge {"connection" "h2"} %)))
+            x40 (apply str (repeat 40 "x"))
+            pair "SELECT REPEAT('x', 40) AS v, x AS n FROM SYSTEM_RANGE(1, 2)"]
+        (is (re-find #"\nxxxxxxxxxxxxxxxxxxxxxxxxxxx\.\.\. \| 1\n"
+                     (query {"sql" pair})))
+        (is (re-find #"\n2 rows, \d+ ms; values cut to 30 characters, see max_column_width$"
+                     (query {"sql" pair})))
+        (is (re-find #"\nxxxxxxx\.\.\. \| 2\n\n.*; values cut to 10 characters"
+                     (query {"sql" pair "max_column_width" 10})))
+        (let [full (query {"sql" pair "max_column_width" 0})]
+          (is (s/includes? full (str "\n" x40 " | 1\n")))
+          (is (re-find #"\n2 rows, \d+ ms$" full)))
+        (testing "A single row is a line per column, cut too."
+          (is (= (str "v | xxxxxxxxxxxxxxxxxxxxxxxxxxx...\n"
+                      "n | 1\n\n"
+                      "1 row, 0 ms; values cut to 30 characters, see max_column_width")
+                 (s/replace (query {"sql" "SELECT REPEAT('x', 40) AS v, 1 AS n"})
+                            #"\d+ ms" "0 ms"))))
+        (testing "Numbers and dates are not cut."
+          (let [result (query {"sql" (str "SELECT TIMESTAMP '2026-01-28 "
+                                          "21:13:46.040123' AS t, "
+                                          "12345678901234567890.123 AS d, "
+                                          "REPEAT('x', 40) AS s "
+                                          "FROM SYSTEM_RANGE(1, 2)")
+                               "max_column_width" 10})]
+            (is (s/includes? result (str "\n2026-01-28 21:13:46.040123 | "
+                                         "12345678901234567890.123 | "
+                                         "xxxxxxx...\n"))
+                result)))
+        (testing "A single value is not cut."
+          (is (s/includes? (query {"sql" "SELECT REPEAT('x', 40) AS v"}) x40))
+          (is (re-find #"\n1 row, \d+ ms$"
+                       (query {"sql" "SELECT REPEAT('x', 40) AS v"}))))
+        (testing "A LOB is cut as it's read."
+          (let [sql (str "SELECT CAST(REPEAT('y', 40) AS CLOB) AS c, x AS n "
+                         "FROM SYSTEM_RANGE(1, 2)")]
+            (is (re-find #"; values cut to 30 characters"
+                         (query {"sql" sql})))
+            (is (s/includes? (query {"sql" sql "max_column_width" 0})
+                             (apply str (repeat 40 "y"))))))
+        (testing "NULL, line breaks and tabs."
+          (is (= (str "   n | e | s      \n"
+                      "-----+---+--------\n"
+                      "NULL |   | a\\nb\\tc\n"
+                      "   2 |   | a\\r\\nb \n\n"
+                      "2 rows, 0 ms")
+                 (s/replace (query {"sql" (str "SELECT CASE WHEN x = 1 THEN NULL "
+                                               "ELSE x END AS n, '' AS e, "
+                                               "CASE WHEN x = 1 "
+                                               "THEN 'a' || CHAR(10) || 'b' "
+                                               "|| CHAR(9) || 'c' "
+                                               "ELSE 'a' || CHAR(13) || CHAR(10) "
+                                               "|| 'b' END AS s "
+                                               "FROM SYSTEM_RANGE(1, 2)")})
+                            #"\d+ ms" "0 ms"))))
+        (testing "ASCII borders whatever Emacs draws."
+          (with-redefs [o/use-unicode (atom true)]
+            (doseq [[tool args] [["query" {"sql" "SELECT x, x AS y FROM SYSTEM_RANGE(1, 2)"}]
+                                 ["describe_table" {"table" "users"}]
+                                 ["find_columns" {"column" "login"}]]]
+              (let [result (text (call tool (merge {"connection" "h2"} args)))]
+                (is (re-find #"\n-+\+-+" result) tool)
+                (is (not (re-find #"[^\x00-\x7F]" result)) tool)))))
+        (is (re-find #"argument max_column_width must be an integer >= 0"
+                     (query {"sql" pair "max_column_width" -1}))))))
   (testing "SQL errors."
     (let [result (call "query" {"connection" "h2"
                                 "sql" "SELECT * FROM no_such_table"})]
@@ -510,7 +583,7 @@
                        "delimiter X")))
     (is (= ["admin" "neo" "trinity" "smith" "a" "b"] (logins))))
   (testing "Result sets."
-    (is (re-find #"\| login +\|[\s\S]*\n6 rows, \d+ ms$"
+    (is (re-find #"^login +\n-+\n[\s\S]*\n6 rows, \d+ ms$"
                  (text (call "execute" {"connection" "h2-rw"
                                         "sql" "SELECT login FROM users"})))))
   (testing "Any statement invalidates the cache, DDL after a comment too."
@@ -557,12 +630,29 @@
     (let [result (call "describe_table" {"connection" "h2" "table" "users"})]
       (is (not (:isError result)))
       (is (s/starts-with? (text result) "Table \"PUBLIC.USERS\" description:"))
-      (is (re-find #"\| ID +\| INTEGER +\| not null +\|" (text result)))
-      (is (re-find #"\| LOGIN +\| CHARACTER VARYING\(20\) +\| +\|" (text result)))
+      (is (re-find #"\nID +\| INTEGER +\| not null" (text result)))
+      (is (re-find #"\nLOGIN +\| CHARACTER VARYING\(20\) +\| +\n" (text result)))
       (is (re-find #"\nPrimary key \w+: ID\n" (text result))))
     (let [result (call "describe_table" {"connection" "h2" "table" "nope"})]
       (is (:isError result))
       (is (s/starts-with? (text result) "Error: "))))
+  (testing "describe_table shows indexes and cuts values to max_column_width."
+    (j/db-do-commands h2-db [(str "CREATE TABLE notes (id INT, body VARCHAR(80) "
+                                  "DEFAULT 'a default longer than thirty "
+                                  "characters')")
+                             "CREATE INDEX notes_id ON notes (id)"])
+    (with-redefs [o/column-width-limit (atom 30)]
+      (let [describe #(text (call "describe_table"
+                                  (merge {"connection" "h2" "table" "notes"} %)))]
+        (is (re-find #"\nIndexes:\n\n.*\n.*\nNOTES_ID +\| ID" (describe {})))
+        (is (s/includes? (describe {}) "| 'a default longer than thir...\n"))
+        (is (s/includes? (describe {"max_column_width" 0})
+                         "| 'a default longer than thirty characters'\n")))))
+  (testing "describe_table masks the errors only, not the names and the values."
+    (j/db-do-commands h2-db ["COMMENT ON COLUMN users.login IS 's3cret word'"])
+    (is (s/includes? (text (call "describe_table" {"connection" "h2"
+                                                   "table" "users"}))
+                     "| s3cret word")))
   (testing "describe_table with the constraints query failing."
     (let [script structure/select-db-meta-script]
       (with-redefs [structure/select-db-meta-script
@@ -578,12 +668,53 @@
           (is (re-find #"Constraints:\s+Error: .*MISSING_CONSTRAINTS_VIEW"
                        (text result))))))))
 
+(deftest find-columns-test
+  (j/db-do-commands h2-db ["CREATE SCHEMA other"
+                           (str "CREATE TABLE other.user_logs "
+                                "(user_id INT, userxid INT, login_at TIMESTAMP)")])
+  (let [find #(text (call "find_columns" (merge {"connection" "h2"} %)))]
+    (testing "The current schema first, then all of them, ignoring case."
+      (is (re-find (re-pattern
+                    (str "\nPUBLIC +\\| USERS +\\| LOGIN +"
+                         "\\| CHARACTER VARYING\\(20\\) *\n"
+                         "OTHER +\\| USER_LOGS +\\| LOGIN_AT +"
+                         "\\| TIMESTAMP *\n\n2 columns$"))
+                   (find {"column" "login"}))))
+    (testing "In one owner."
+      (is (re-find #"\nOTHER +\| USER_LOGS +\| LOGIN_AT +\| TIMESTAMP *\n\n1 column$"
+                   (find {"column" "Login" "owner" "other"}))))
+    (testing "The `_` of the name is not a wildcard."
+      (let [found (find {"column" "user_id" "owner" "OTHER"})]
+        (is (s/includes? found "USER_ID"))
+        (is (not (s/includes? found "USERXID")))))
+    (testing "No columns, too many columns."
+      (is (= "No columns found." (find {"column" "zzz"})))
+      (with-redefs [mcp/find-columns-limit 1]
+        (is (re-find #"\n1 column, truncated at 1; give the owner or a longer part of the name$"
+                     (find {"column" "login"})))))))
+
+(deftest connection-info-test
+  (let [result (call "connection_info" {"connection" "h2"})]
+    (is (not (:isError result)))
+    (is (re-matches (re-pattern (str "Database: H2 2\\.\\S+ .*\n"
+                                     "Driver: H2 JDBC Driver 2\\..*\n"
+                                     "Catalog: EJC_MCP_TEST\n"
+                                     "Schema: PUBLIC\n"
+                                     "Unquoted names are kept upper-cased; "
+                                     "quote names with \""))
+                    (text result))
+        (text result))
+    (doseq [secret ["a_user" "s3cret"]]
+      (is (not (s/includes? (text result) secret)) secret))))
+
 (deftest shared-state-test
   (testing "The tools don't touch the state shared with Emacs."
     (let [db-before (reset! c/db {:subprotocol "emacs"})
           query-before (reset! c/current-query {:start-time 42})]
       (doseq [[tool args] [["list_connections" {}]
+                           ["connection_info" {"connection" "h2"}]
                            ["list_tables" {"connection" "h2"}]
+                           ["find_columns" {"connection" "h2" "column" "id"}]
                            ["describe_table" {"connection" "h2" "table" "users"}]
                            ["query" {"connection" "h2" "sql" "SELECT 1"}]
                            ["execute" {"connection" "h2-rw"
@@ -657,6 +788,16 @@
                  listing))
           (doseq [secret ["alice" "sword"]]
             (is (not (s/includes? listing secret)) secret)))))
+    (testing "A password which is a name too."
+      (with-redefs [mcp/registry
+                    (atom {"postgres-local" {:subprotocol "postgresql"
+                                             :subname "//localhost/postgres"
+                                             :user "postgres"
+                                             :password "postgres"}})]
+        (is (= (str "Connections:\n"
+                    "- postgres-local: postgresql, host localhost, "
+                    "database postgres, read-only")
+               (text (call "list_connections" {}))))))
     (testing "Writable."
       (is (s/includes? (text (call "list_connections" {}))
                        "- h2-rw: h2, database ejc_mcp_test, writable")))))

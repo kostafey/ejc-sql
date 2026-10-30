@@ -27,7 +27,8 @@
    [ejc-sql.connect :as c]
    [ejc-sql.output :as o]
    [ejc-sql.keywords :as k])
-  (:import [java.sql Connection DatabaseMetaData ResultSet SQLException Types]))
+  (:import [java.sql Connection DatabaseMetaData ResultSet SQLException
+            SQLFeatureNotSupportedException Types]))
 
 (defn- safe-query
   "Return `sql` query result or nil in case of error."
@@ -1160,7 +1161,7 @@
   (with-open [rs rs]
     (doall (j/result-set-seq rs))))
 
-(defn- current-schema
+(defn current-schema
   "The current schema of `conn`, nil if the driver can't tell: `.getSchema`
   came with JDBC 4.1."
   [^Connection conn]
@@ -1213,15 +1214,38 @@
        (map #(sort-by (comp long :key_seq) %))
        (sort-by (comp (juxt :fktable_name :fk_name) first))))
 
+(defn- indexes
+  "Group the `.getIndexInfo` rows into one row list per index, in the
+  `:ordinal_position` order. The rows of the table statistics, which some
+  drivers return among them, are left out."
+  [rows]
+  (->> rows
+       (remove #(= DatabaseMetaData/tableIndexStatistic
+                   (some-> (:type %) long)))
+       (group-by :index_name)
+       vals
+       (map #(sort-by (comp long :ordinal_position) %))
+       (sort-by (comp str :index_name first))))
+
+(defn- index-rows
+  "The `.getIndexInfo` rows of `table`, nil if the driver doesn't support it.
+  The statistics are asked for approximate: for exact ones the Oracle driver
+  runs ANALYZE on the table."
+  [^DatabaseMetaData meta catalog schema table]
+  (try
+    (result-maps (.getIndexInfo meta catalog schema table false true))
+    (catch SQLFeatureNotSupportedException _ nil)))
+
 (defn table-details
-  "The columns, the primary key and the foreign keys of `table`, of `owner`
-  if given, from the JDBC metadata of `conn`. The name and the owner are
+  "The columns, the keys and the indexes of `table`, of `owner` if given,
+  from the JDBC metadata of `conn`. The name and the owner are
   tried as given, upper-cased and lower-cased. Return a map of
   `:catalog`, `:schema` and `:table`, as the database keeps them,
   `:columns` - `.getColumns` rows,
   `:primary-key` - `.getPrimaryKeys` rows,
   `:foreign-keys` - lists of `.getImportedKeys` rows, one per key,
-  `:referenced-by` - lists of `.getExportedKeys` rows, one per key.
+  `:referenced-by` - lists of `.getExportedKeys` rows, one per key,
+  `:indexes` - lists of `.getIndexInfo` rows, one per index.
   nil if the metadata knows no such table, e.g. for a synonym."
   [^Connection conn owner table]
   (let [meta (.getMetaData conn)]
@@ -1240,7 +1264,8 @@
                          (.getImportedKeys meta catalog schema table)))
          :referenced-by (foreign-keys
                          (result-maps
-                          (.getExportedKeys meta catalog schema table)))}))))
+                          (.getExportedKeys meta catalog schema table)))
+         :indexes (indexes (index-rows meta catalog schema table))}))))
 
 (def ^:private sized-types
   "The `java.sql.Types` of the columns shown with their size."
@@ -1276,6 +1301,59 @@
     table
     (str schema "." table)))
 
+(defn- search-pattern
+  "`name` as a `.getColumns` pattern of the names holding it: `%name%`, its
+  `_` escaped with the `escape` of the driver, if it has one. `name-re` of
+  the MCP server leaves no other wildcard in it."
+  [name escape]
+  (str "%"
+       (if (s/blank? escape)
+         name
+         (s/replace name "_" (str escape "_")))
+       "%"))
+
+(defn find-columns
+  "The columns whose names hold `column`, ignoring case, of `owner` if given,
+  from the JDBC metadata of `conn`, at most `limit` of them, as maps of
+  `:owner`, `:table`, `:column` and `:type`. The database does the search:
+  `column` goes to `.getColumns` as given, upper-cased and lower-cased, the
+  owner too. With no `owner` the columns of the current schema come first,
+  then the ones of all the schemas."
+  [^Connection conn owner column limit]
+  (let [meta (.getMetaData conn)
+        escape (.getSearchStringEscape meta)
+        locations (if owner
+                    (for [o (identifier-variants owner)]
+                      ;; MySQL keeps its databases as catalogs.
+                      (if (.supportsSchemasInTableDefinitions meta)
+                        [nil o]
+                        [o nil]))
+                    (distinct [[(.getCatalog conn) (current-schema conn)]
+                               [nil nil]]))
+        rows (for [[catalog schema] locations
+                   pattern (identifier-variants column)
+                   row (with-open [rs (.getColumns
+                                       meta catalog schema "%"
+                                       (search-pattern pattern escape))]
+                         (doall (take limit (j/result-set-seq rs))))]
+               row)]
+    (->> rows
+         ;; A driver may take `_` for a wildcard still.
+         (filter #(s/includes? (s/lower-case (str (:column_name %)))
+                               (s/lower-case column)))
+         (map (fn [row]
+                {:owner (if (s/blank? (:table_schem row))
+                          (:table_cat row)
+                          (:table_schem row))
+                 :table (:table_name row)
+                 :column (:column_name row)
+                 :type (column-type row)}))
+         distinct
+         ;; Realized while `conn` is open. The lazy `for` asks the
+         ;; database no more once `limit` columns are found.
+         (take limit)
+         vec)))
+
 (defn- print-rows
   "Print the maps `rows` as a table of the keys `ks`, leaving out the
   `optional` ones no row has a value of."
@@ -1299,10 +1377,30 @@
     (str (qualified-name owner ((k "name") row) this-owner)
          "(" (s/join ", " (map (keyword (str side "column_name")) rows)) ")")))
 
+(defn- primary-key-index?
+  "Check if the index of the `.getIndexInfo` rows `rows` is the one of the
+  `primary-key` rows: unique, of the same columns. The databases create it
+  along with the key, and it says nothing the key doesn't."
+  [rows primary-key]
+  (and (seq primary-key)
+       (false? (:non_unique (first rows)))
+       (= (map :column_name rows) (map :column_name primary-key))))
+
+(defn- index-columns
+  "The columns of the index of the `.getIndexInfo` rows `rows`, e.g.
+  `USER_ID, CREATED DESC`. A column of no name, as some drivers return it
+  for an expression, is left out."
+  [rows]
+  (s/join ", " (for [row rows
+                     :when (:column_name row)]
+                 (str (:column_name row)
+                      (when (= "D" (:asc_or_desc row)) " DESC")))))
+
 (defn print-table-details
   "Print the table `details`, as `table-details` returns them: the columns,
-  the primary key and the foreign keys, to and from the table."
-  [{:keys [catalog schema table columns primary-key foreign-keys
+  the primary key, the indexes but the one of the key, and the foreign
+  keys, to and from the table."
+  [{:keys [catalog schema table columns primary-key indexes foreign-keys
            referenced-by]}]
   (let [owner (if (s/blank? schema) catalog schema)]
     (println (format "Table \"%s\" description:" (qualified-name owner table)))
@@ -1326,6 +1424,19 @@
                     (some->> (:pk_name (first primary-key)) not-empty (str " "))
                     ": "
                     (s/join ", " (map :column_name primary-key)))))
+    (when-let [indexes (seq (remove #(primary-key-index? % primary-key)
+                                    indexes))]
+      (println)
+      (println "Indexes:")
+      (println)
+      (print-rows [:name :columns :unique :condition]
+                  #{:unique :condition}
+                  (for [rows indexes]
+                    {:name (:index_name (first rows))
+                     :columns (index-columns rows)
+                     :unique (when (false? (:non_unique (first rows)))
+                               "unique")
+                     :condition (:filter_condition (first rows))})))
     (doseq [[title key-rows key-fn]
             [["Foreign keys:" foreign-keys
               #(s/join ", " (map :fkcolumn_name %))]

@@ -21,12 +21,22 @@
             [clojure.java.io :refer [file writer]]
             [ejc-sql.lib :refer [*max-column-width* dml? simple-join windows?]])
   (:import (java.io File IOException)
-           (java.lang Character$UnicodeBlock)
            (org.apache.commons.lang3 StringUtils)
            (org.hibernate.engine.jdbc.internal BasicFormatterImpl
                                                DDLFormatterImpl)))
 
 (def ^:dynamic *add-outside-borders* true)
+
+(def ^:dynamic *null-text*
+  "The text of a NULL value: none, as psql and Emacs show it, or NULL, as
+  the MCP server does, to tell it from an empty string."
+  "")
+
+(def ^:dynamic *ascii-borders*
+  "Draw the borders of ASCII whatever `use-unicode` says, as the MCP server
+  does: a line of `-` takes the agent fewer tokens than one of box-drawing
+  characters."
+  false)
 
 (defn get-log-dir
   "The query log directory: `ejc-sql` in `%AppData%` on Windows,
@@ -155,7 +165,7 @@
   (reset! use-unicode val))
 
 (defn u? [unicode-str ascii-str]
-  (if @use-unicode unicode-str ascii-str))
+  (if (and @use-unicode (not *ascii-borders*)) unicode-str ascii-str))
 
 (defn print-maps
   "Prints a collection of maps in a textual table. Prints table headings
@@ -201,26 +211,91 @@
   (min (if (> x 0) x y)
        (if (> y 0) y x)))
 
-(defn- cjk-char?
-  "Return true if argument char is CJK character."
-  [char]
-  (= (Character$UnicodeBlock/of char)
-     Character$UnicodeBlock/CJK_UNIFIED_IDEOGRAPHS))
-
 (defn- cjk-chars-count
-  "Return count of CJK characters in string."
-  [text]
-  (count (filter cjk-char? text)))
+  "Return count of CJK characters in string: of the block
+  `Character$UnicodeBlock/CJK_UNIFIED_IDEOGRAPHS`, U+4E00..U+9FFF, checked
+  as a range of primitive chars. It's run on every character of a table,
+  and `Character$UnicodeBlock/of` looks the block up."
+  [^String text]
+  (loop [i 0
+         n 0]
+    (if (< i (.length text))
+      (recur (inc i) (let [c (int (.charAt text i))]
+                       ;; Not (<= 0x4E00 c 0x9FFF): its three arguments
+                       ;; are boxed.
+                       (if (and (<= 0x4E00 c) (<= c 0x9FFF))
+                         (inc n)
+                         n)))
+      n)))
 
 (defn- string-length
   "Return string length, given that CJK characters have a length of 2."
-  [text]
-  (loop [string text
-         length 0]
-    (if (= (count string) 0)
-      length
-      (recur (next string) (+ length
-                              (if (cjk-char? (first string)) 2 1))))))
+  [^String text]
+  (+ (.length text) (cjk-chars-count text)))
+
+(defn- pad
+  "`text` followed by spaces up to `width`, given that CJK characters have
+  a length of 2. Unlike `format` with a width, it parses no pattern."
+  [text width]
+  (let [n (- width (string-length text))]
+    (if (pos? n)
+      (str text (apply str (repeat n \space)))
+      text)))
+
+(defn- pad-left
+  "Spaces up to `width` followed by `text`, as `pad` counts them."
+  [text width]
+  (let [n (- width (string-length text))]
+    (if (pos? n)
+      (str (apply str (repeat n \space)) text)
+      text)))
+
+(defn- fraction-length
+  "The length of the fraction of the number `text`, its `.` included, 0 if
+  it has none."
+  [^String text]
+  (let [i (.indexOf text (int \.))]
+    (if (neg? i) 0 (- (.length text) i))))
+
+(defn- number-columns
+  "For each column of `rows`: the length of the longest fraction of its
+  numbers, for a column of numbers and NULLs, nil for any other column."
+  [rows]
+  (when (seq rows)
+    (apply map
+           (fn [& values]
+             (when (and (some number? values)
+                        (every? #(or (nil? %) (number? %)) values))
+               (apply max (map #(fraction-length (str %))
+                               (filter number? values)))))
+           rows)))
+
+(defn- cell-text
+  "The text of the `value` of a column, cut to `*max-column-width*`. A
+  number is never cut, and in a column of numbers it's followed by spaces
+  up to the `fraction` length of the column: right-aligned, the numbers
+  then have their `.` one under another."
+  [value fraction]
+  (cond
+    (nil? value) *null-text*
+    (number? value) (let [text (str value)]
+                      (if fraction
+                        (str text (apply str (repeat (- fraction
+                                                        (fraction-length text))
+                                                     \space)))
+                        text))
+    :else (trim-max-width value)))
+
+(defn- one-line
+  "`text` with its line breaks and tabs replaced by spaces, to align the
+  columns. Most values have none, and `.indexOf` finds it out several
+  times faster than the regex replacement."
+  [^String text]
+  (if (or (<= 0 (.indexOf text (int \newline)))
+          (<= 0 (.indexOf text (int \return)))
+          (<= 0 (.indexOf text (int \tab))))
+    (s/replace text #"\r\n|[\r\n\t]" " ")
+    text))
 
 (defn print-table
   "Converts a seq of seqs to a textual table. Uses the first seq as the table
@@ -255,13 +330,18 @@
            [single-column-and-row
             cell-value] (when-let [single-cell? (and (= (count rows) 1)
                                                      (= (count (first rows)) 1))]
-                          [single-cell? (ffirst rows)])
+                          [single-cell? (or (ffirst rows) *null-text*)])
+           fractions (when-not (or rotated single-column-and-row)
+                       (number-columns rows))
            [headers rows] (if (or rotated single-column-and-row)
                             ;; Do not restrict column width if result
                             ;; set has only 1 row or 1 column & 1 row.
-                            [headers rows]
+                            [headers
+                             (map (fn [row] (map #(if (nil? %) *null-text* %)
+                                                 row))
+                                  rows)]
                             [(map trim-max-width headers)
-                             (map #(map trim-max-width %) rows)])
+                             (map #(map cell-text % fractions) rows)])
            rn #"(\r\n)|\n|\r"
            nl (System/getProperty "line.separator")
            rows (for [row rows]
@@ -270,10 +350,7 @@
                             ;; In case of only 1 column & 1 row unify
                             ;; newline separators to system line break.
                             (s/replace % rn nl)
-                            (-> %
-                                (s/replace rn " ")
-                                ;; Tabs to spaces to align columns widths.
-                                (s/replace #"\t" " ")))
+                            (one-line %))
                           ;; Do not remove newline separators if result
                           ;; set cell is not a string.
                           %)
@@ -289,21 +366,15 @@
                     (for [col (rotate-table (conj rows headers))]
                       (apply max (map #(string-length (str %)) col))))
            spacers (map #(apply str (repeat % (u? "─" "-"))) widths)
-           ;; TODO: #(str "%" % "d") for numbers
            fmts (if (and rotated (not aob))
                   ;; Remove trailing spaces for data column of single-row
                   ;; result if no outer borders required.
-                  (list (fn [text] (let [width (- (first widths)
-                                                  (cjk-chars-count text))
-                                         pattern (str "%-" width "s")]
-                                     (format pattern text)))
-                        (fn [text] (let [pattern "%s"]
-                                     (format pattern text))))
-                  (map (fn [w]
-                         (fn [text] (let [width (- w (cjk-chars-count text))
-                                          pattern (str "%-" width "s")]
-                                      (format pattern text))))
-                       widths))
+                  (list #(pad % (first widths)) identity)
+                  ;; Numbers to the right, their headers too.
+                  (map (fn [w fraction]
+                         (if fraction #(pad-left % w) #(pad % w)))
+                       widths
+                       (or fractions (repeat nil))))
            fmt-row (fn [leader divider trailer row]
                      (str leader
                           (apply str (interpose
