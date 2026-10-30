@@ -164,6 +164,21 @@ select * from urls;""")
                     statement (.execute statement "CREATE TABLE u (id INT)"))))
             (.execute statement "DROP TABLE u")))))))
 
+(deftest clob-to-string-test
+  (testing "clob-to-string fn test."
+    (with-open [conn (j/get-connection h2-db)]
+      (let [sql (str "SELECT CAST(CASE x WHEN 1 "
+                     "THEN 'first line' || CHAR(10) || 'second line' "
+                     "ELSE '' END AS CLOB) AS c "
+                     "FROM SYSTEM_RANGE(1, %d) ORDER BY x")]
+        (is (= [[:c] ["first line\nsecond line"]]
+               (fetch-rows h2-db conn (format sql 1) {})))
+        (is (= [[:c] ["first line\nsecond line"] [""]]
+               (fetch-rows h2-db conn (format sql 2) {})))
+        (binding [*max-column-width* 14]
+          (is (= [[:c] ["first line\n..."] [""]]
+                 (fetch-rows h2-db conn (format sql 2) {}))))))))
+
 (deftest eval-sql-core-test
   (with-h2-table
     (fn []

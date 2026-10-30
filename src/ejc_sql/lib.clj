@@ -17,8 +17,7 @@
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 (ns ejc-sql.lib
-  (:require [clojure.string :as s]
-            [clojure.reflect :refer [resolve-class]]))
+  (:require [clojure.string :as s]))
 
 (def ^:dynamic *max-column-width* 30)
 
@@ -54,29 +53,27 @@
   (s/join
    (for [_ (range 0 n)] s)))
 
-(defn class-exists? [c]
-  (resolve-class (.getContextClassLoader (Thread/currentThread)) c))
-
-(defn is-clob? [x]
-  (or (instance? java.sql.Clob x)
-      (and (class-exists? 'oracle.sql.CLOB)
-           (instance? (Class/forName "oracle.sql.CLOB") x))))
+(defn is-clob?
+  "true if `x` is a CLOB, `oracle.sql.CLOB` included: it implements
+  `java.sql.Clob`. Called on every value read, so it must stay cheap, with no
+  class lookup on the classpath."
+  [x]
+  (instance? java.sql.Clob x))
 
 (defn clob-to-string
-  "Turn an Oracle Clob into a String"
+  "The text of `clob`, line breaks kept. Unless `single-record?`, it's cut to
+  `*max-column-width*`, ending with ..., and only that much is read, since a
+  CLOB can be large."
   ([clob]
    (clob-to-string clob true))
-  ([clob single-record?]
-   (with-open [rdr (java.io.BufferedReader. (.getCharacterStream clob))]
-     (if (or single-record? (not *max-column-width*))
-       (apply str (line-seq rdr))
-       ;; Show only first `*max-column-width*` (30 by default) symbols
-       ;; of Clob field. If longer, replace last 3 symbols by dots.
-       (let [result (apply str (take (+ *max-column-width* 1)
-                                     (mapcat seq (line-seq rdr))))]
-         (if (> (count result) *max-column-width*)
-           (str (subs result 0 (- *max-column-width* 3)) "...")
-           result))))))
+  ([^java.sql.Clob clob single-record?]
+   (if (or single-record? (not *max-column-width*))
+     (slurp (.getCharacterStream clob))
+     ;; One character more tells whether the text has to be cut.
+     (let [result (.getSubString clob 1 (inc *max-column-width*))]
+       (if (> (count result) *max-column-width*)
+         (str (subs result 0 (- *max-column-width* 3)) "...")
+         result)))))
 
 (defn lob-to-string-row
   "Check all data in row if it's a LOB and convert CLOB/BLOB to string."
