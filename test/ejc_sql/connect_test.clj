@@ -162,7 +162,14 @@ select * from urls;""")
             (is (= "Executed"
                    (execution-message
                     statement (.execute statement "CREATE TABLE u (id INT)"))))
-            (.execute statement "DROP TABLE u")))))))
+            (.execute statement "DROP TABLE u")))
+        ;; Oracle answers -1 when the update count is read again.
+        (let [calls (atom 0)
+              statement (reify java.sql.Statement
+                          (getUpdateCount [_]
+                            (if (= 1 (swap! calls inc)) 4 -1)))]
+          (is (= "Records affected: 4"
+                 (execution-message statement false))))))))
 
 (deftest clob-to-string-test
   (testing "clob-to-string fn test."

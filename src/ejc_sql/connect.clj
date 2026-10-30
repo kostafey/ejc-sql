@@ -180,15 +180,14 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 
 (defn execution-message
   "Describe the outcome of `(.execute statement sql)`, which returned
-  `result-set?`: \"Records affected: N\" or \"Executed\"."
+  `result-set?`: \"Records affected: N\" or \"Executed\". The update count is
+  read once, as JDBC requires: Oracle answers -1 to a second call."
   [^java.sql.Statement statement result-set?]
-  (if-let [result (when
-                   (and
-                    (not result-set?)
-                    (> (.getUpdateCount statement) 0))
-                    (.getUpdateCount statement))]
-    (str "Records affected: " result)
-    "Executed"))
+  (let [result (when-not result-set?
+                 (.getUpdateCount statement))]
+    (if (and result (pos? result))
+      (str "Records affected: " result)
+      "Executed")))
 
 (defn eval-sql-core
   "The core SQL evaluation function."
