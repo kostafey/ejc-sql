@@ -17,9 +17,10 @@ make elpa                          # cask install - REQUIRED before the first `m
 make test                          # the whole suite (see below)
 lein test                          # Clojure side only, no Emacs needed
 lein test ejc-sql.deps-resolver-test   # a single Clojure namespace
-lein check                         # reflection warnings - not a clean baseline,
-                                   # classpath.clj, lib.clj and output.clj have
-                                   # their own, clj-http's are third-party
+lein check                         # reflection warnings - not a clean baseline:
+                                   # structure.clj, connect.clj, output.clj and
+                                   # classpath.clj have their own; leiningen-core,
+                                   # pomegranate and clj-http's are third-party
 ```
 
 `make test` runs `cask exec emacs --script test/ejc-tests.el`, which starts a
@@ -87,7 +88,7 @@ network, hence its own `ejc-dependencies-resolve-timeout` instead of the global
 SQL snippets per database type (`:oracle`, `:postgresql`, `:mysql`, `:sqlserver`,
 `:informix`, `:h2`, `:sqlite`), selected by `select-db-meta-script` and keyed by
 what is being asked for (`:tables`, `:columns`, `:procedures`, `:constraints`,
-…). Adding support for a database means adding entries to those maps, not
+...). Adding support for a database means adding entries to those maps, not
 writing new code paths. Results are memoized in `src/ejc_sql/cache.clj`, which is
 what `ejc-print-cache` and `ejc-invalidate-cache` operate on; the cache lives in
 memory only and is lost with the nREPL.
@@ -127,7 +128,7 @@ it, in `ejc-result-mode` or `orgtbl-mode` according to `ejc-result-table-impl`.
 - Commit subjects that address an issue are prefixed `[#NNN]`.
 - Releases are annotated tags `vX.Y.Z`. The version is written in three places
   and they are bumped together: `;; Version:` in `ejc-sql.el`, `defproject` in
-  `project.clj` (as `-SNAPSHOT`) and two `[ejc-sql "…-SNAPSHOT"]` references in
-  `README.md`.
+  `project.clj` (as `-SNAPSHOT`) and two `[ejc-sql "...-SNAPSHOT"]` references
+  in `README.md`.
 - `README.md` carries a hand-maintained table of contents; a new heading needs
   an entry there.

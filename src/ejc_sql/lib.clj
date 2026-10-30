@@ -81,7 +81,7 @@
   (mapv (fn [field]
           (cond
             (is-clob? field) (clob-to-string field single-record?)
-            (bytes? field) (String. field)
+            (bytes? field) (String. ^bytes field)
             :else field))
         row))
 
