@@ -1227,11 +1227,11 @@ With the log off, the statements of the agents are not logged either.
 <a id="mcp-server"></a>
 ### MCP server for AI agents
 
-`ejc-sql` can serve the databases you have connected to as tools for AI
-coding agents: Claude Code or Codex, or any other
-[MCP](https://modelcontextprotocol.io) client. The server runs inside the
-`ejc-sql` nREPL, so it reuses the JDBC drivers, the database structure cache
-and the output formatting already there.
+`ejc-sql` can serve your databases as tools for AI coding agents: Claude Code
+or Codex, or any other [MCP](https://modelcontextprotocol.io) client. The
+server runs inside the `ejc-sql` nREPL, so it reuses the JDBC drivers, the
+database structure cache and the output formatting already there, or
+[without Emacs](#mcp-without-emacs) at all.
 It is off by default and needs Java 11 or newer.
 
 To turn it on, create `~/.ejc-sql/mcp.edn` (or the file set in
@@ -1251,10 +1251,42 @@ the port is busy. `:port` is read once, when the server starts; `:token` and
 file to turn the server off: it answers `503` to everything while the file is
 gone.
 
-**What an agent sees.** Only the connections you have connected to with
-`ejc-connect` (or used from an org-mode block with `:ejc-sql`) since the
-`ejc-sql` nREPL was started, by their names. Users, passwords and JDBC URLs of
-the connections are never shown.
+**What an agent sees.** The connections of
+[`databases.edn`](#mcp-databases), if there is one, and the ones you have
+connected to with `ejc-connect` (or used from an org-mode block with
+`:ejc-sql`) since the `ejc-sql` nREPL was started, by their names. A
+connection of Emacs replaces the one of `databases.edn` with the same name.
+Users, passwords and JDBC URLs of the connections are never shown.
+
+<a id="mcp-databases"></a>
+**Connections without `ejc-connect`.** An agent can use a database you have
+not connected to since Emacs started, or with no Emacs running, when you list
+it in `databases.edn` next to `mcp.edn`: connection names mapped to the
+parameters of `ejc-create-connection`.
+
+```clojure
+{"dev-db" {:dependencies [[org.postgresql/postgresql "42.6.0"]]
+           :subprotocol "postgresql"
+           :subname "//localhost:5432/my_db_name"
+           :user "a_user"
+           :password "secret"}
+ "local-h2" {:classpath "~/.m2/repository/com/h2database/h2/2.5.252/h2-2.5.252.jar"
+             :subprotocol "h2"
+             :subname "file:///home/me/db/test;AUTO_SERVER=TRUE"}}
+```
+
+You write the file, `ejc-sql` never does, nor does it relate it to your
+`ejc-create-connection` calls: keeping the two in step is up to you. Every
+connection needs `:dbtype`, `:subprotocol` or `:connection-uri`, `:classpath`
+may be a path or a vector of them, starting with `~` or not. The file is read
+when the server starts and again on the first request after it changes, so the
+connections come and go without a restart. The JDBC drivers of its connections
+load when the server starts, in the background in the nREPL of Emacs; the
+`:dependencies` not downloaded yet are downloaded then. A tool waits for a
+driver still loading for 10 seconds at most. A malformed file makes every tool
+fail, telling why, until you fix it. The file holds passwords: make it
+readable to you only (`chmod 600`), and keep the agents from reading it, see
+the permissions below.
 
  Tool               | What it does
 --------------------|------------------------------------------------------------
@@ -1301,6 +1333,24 @@ says, with no outside borders, as psql draws them: fewer tokens. A result of
 tabs inside a value are written as `\n`, `\r` and `\t`, not replaced with
 spaces as in Emacs.
 
+<a id="mcp-without-emacs"></a>
+**Without Emacs.** Build the server with `lein uberjar` in the `ejc-sql`
+directory and run it:
+
+```sh
+java -jar target/ejc-sql.jar                    # with ~/.ejc-sql/mcp.edn
+java -jar target/ejc-sql.jar /path/to/mcp.edn
+```
+
+It serves the connections of `databases.edn` next to `mcp.edn`, loads their
+JDBC drivers before it starts listening, prints its URL and runs until you stop
+it. The rest is as with Emacs, but there is no `ejc-connect` to add a
+connection, and what goes wrong is printed instead of shown in `*Messages*`.
+The port is taken by the first server started: an nREPL of Emacs started next
+can't listen on it, so the agents don't see the connections made there. On
+Windows `~` is `%UserProfile%` here, which may not be the home of Emacs: pass
+the path of the `mcp.edn` Emacs uses.
+
 **`execute` changes data with your consent.** It takes both: the connection
 listed in `:writable` and your approval of the call in the client. The server
 marks `execute` so that Claude Code asks for every call, in every permission
@@ -1330,7 +1380,8 @@ The same in a project's `.mcp.json`, the token taken from the environment:
 The permissions in `~/.claude/settings.json`: run the read tools without
 asking, ask for every `execute` (in every permission mode, for the clients that
 ignore the server's mark too), keep the agent from editing
-`~/.ejc-sql/mcp.edn`, and so from making connections writable:
+`~/.ejc-sql/mcp.edn`, and so from making connections writable, and from reading
+the passwords of `~/.ejc-sql/databases.edn`:
 
 ```json
 {"permissions": {"allow": ["mcp__ejc-sql__list_connections",
@@ -1340,15 +1391,17 @@ ignore the server's mark too), keep the agent from editing
                            "mcp__ejc-sql__describe_table",
                            "mcp__ejc-sql__query"],
                  "ask": ["mcp__ejc-sql__execute"],
-                 "deny": ["Edit(~/.ejc-sql/**)"]}}
+                 "deny": ["Edit(~/.ejc-sql/**)",
+                          "Read(~/.ejc-sql/databases.edn)"]}}
 ```
 
 `~/.ejc-sql` is the directory in the home of Emacs. On Windows, where Emacs may
 take `%AppData%` for its home while Claude Code takes `%UserProfile%`, write
 the full path in the rule, e.g. `Edit(//c/Users/me/AppData/Roaming/.ejc-sql/**)`.
 
-The `Edit` rule covers the file tools of Claude Code and the shell redirections,
-not a script opening the file itself; the Claude Code
+The `Edit` rule covers the file tools of Claude Code and the shell
+redirections, the `Read` one its file tools, neither a script opening the file
+itself; the Claude Code
 [sandbox](https://code.claude.com/docs/en/sandboxing) does.
 
 **Codex setup.**
@@ -1381,7 +1434,7 @@ approval_mode = "prompt"
 For read tools only, add `disabled_tools = ["execute"]` to
 `[mcp_servers.ejc-sql]`. Codex CLI and the IDE extension share this
 configuration; see the [Codex MCP documentation](https://developers.openai.com/codex/mcp).
-After `M-x ejc-connect`, start or restart Codex. In the CLI, `/mcp` shows the
+Once the server runs, start or restart Codex. In the CLI, `/mcp` shows the
 connected server and its tools; `codex mcp list` shows its configuration.
 
 An agent knows nothing about a server it can't reach, so tell it in
@@ -1393,11 +1446,12 @@ An agent knows nothing about a server it can't reach, so tell it in
 Reach databases only through the `ejc-sql` MCP server, never by other means
 (psql, mysql, sqlplus, JDBC or database drivers in scripts). If the server is
 unavailable, or the database is missing from `list_connections`, ask me to
-connect to it with `M-x ejc-connect` in Emacs.
+add it to `databases.edn` of ejc-sql or to connect to it with `M-x ejc-connect`
+in Emacs.
 ```
 
 Claude Code started before the server gives up on it after a few attempts:
-reconnect it from `/mcp` once you have connected in Emacs.
+reconnect it from `/mcp` once the server runs.
 
 **Not supported.** The results of the agent are not shown in
 `*ejc-sql-output*`, run the statement from the query log to see one. An agent

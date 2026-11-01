@@ -16,9 +16,10 @@
 ;;; along with this program; if not, write to the Free Software Foundation,
 ;;; Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
-;;; The Model Context Protocol (MCP) server core: the registry of the
-;;; connections the user connected to in Emacs, the configuration file, the
-;;; tools and the JSON-RPC dispatcher. The transport is `ejc-sql.mcp-http'.
+;;; The Model Context Protocol (MCP) server core: the connections, the ones
+;;; of `databases.edn' and the ones the user connected to in Emacs, the
+;;; configuration file, the tools and the JSON-RPC dispatcher. The transport
+;;; is `ejc-sql.mcp-http'.
 ;;;
 ;;; Nothing here writes `ejc-sql.connect/db' or `current-query': an agent's
 ;;; query must neither be cancelled by the user's `ejc-cancel-query' nor
@@ -31,19 +32,22 @@
             [clojure.string :as s]
             [ejc-sql.cache :as cache]
             [ejc-sql.connect :as c]
+            [ejc-sql.deps-resolver :as deps]
             [ejc-sql.lib :as lib]
             [ejc-sql.output :as o]
             [ejc-sql.structure :as structure])
-  (:import [java.io File]
+  (:import [clojure.lang Compiler RT]
+           [java.io File]
            [java.sql Connection DatabaseMetaData SQLException
             SQLTimeoutException]
            [java.util Base64]
-           [java.util.concurrent Executor]
+           [java.util.concurrent ExecutionException Executor]
            [java.util.regex Pattern]))
 
 ;;; Registry
 
-(defonce ^{:doc "The connections the user connected to: {name db-spec}."}
+(defonce ^{:doc "The connections the user connected to in Emacs:
+  {name db-spec}."}
   registry
   (atom {}))
 
@@ -52,16 +56,6 @@
   `name`. A spec registered under this name before is replaced."
   [name db]
   (swap! registry assoc name db))
-
-(defn connections
-  "The registered connections: {name db-spec}."
-  []
-  @registry)
-
-(defn connection-names
-  "The registered connection names, sorted."
-  []
-  (sort (keys @registry)))
 
 ;;; Configuration
 
@@ -107,6 +101,147 @@
           (throw (ex-info (format "Malformed %s: %s" file problem) {})))
         (update config :writable set)))))
 
+;;; Databases file
+
+(defn databases-file
+  "The connections the agents may use without the user connecting to them
+  in Emacs, {name db-spec}, written by the user: `databases.edn` next to
+  `config-file`, so that Emacs sets its directory too."
+  ^File []
+  (io/file (.getParentFile (.getAbsoluteFile (io/file config-file)))
+           "databases.edn"))
+
+(defn- databases-problem
+  "Describe what's wrong with the parsed `databases`, nil if nothing."
+  [databases]
+  (if (map? databases)
+    (some (fn [[name db]]
+            (cond
+              (not (and (string? name) (not (s/blank? name))))
+              (str (pr-str name) ": a connection name must be a non-blank string")
+              (not (map? db))
+              (str name ": not a map")
+              (not (some db [:dbtype :subprotocol :connection-uri]))
+              (str name ": needs :dbtype, :subprotocol or :connection-uri")))
+          databases)
+    "not a map"))
+
+(defn read-databases
+  "Read `databases-file`: {} if there is no such file, its map otherwise.
+  Throw `ex-info` if the file is malformed."
+  []
+  (let [file (databases-file)]
+    (if (.exists file)
+      (let [databases (try
+                        (or (edn/read-string (slurp file)) {})
+                        (catch Exception e
+                          (throw (ex-info (format "Malformed %s: %s"
+                                                  file (.getMessage e))
+                                          {}))))]
+        (when-let [problem (databases-problem databases)]
+          (throw (ex-info (format "Malformed %s: %s" file problem) {})))
+        databases)
+      {})))
+
+;;; Drivers
+
+(def driver-wait-ms
+  "How long a tool waits for the JDBC driver of a connection from
+  `databases-file`, which may be downloaded, before it gives up: with the
+  longest `timeout-limit` of a statement, within the 60 s a client waits."
+  10000)
+
+(defonce ^{:doc "The class loader the JDBC drivers of `databases-file` are
+  added to, see `remember-class-loader!`."
+           :private true}
+  driver-class-loader
+  (atom nil))
+
+(defn remember-class-loader!
+  "Load the JDBC drivers of `databases-file` into the class loader of the
+  calling thread from now on: the nREPL session of Emacs, or the main
+  thread of the standalone server, which ejc-sql was loaded by. A driver is
+  of use only in a class loader `clojure.java.jdbc` was loaded below, see
+  `deps/load-driver!`, and the threads the drivers load in have none of
+  their own. Only the first call counts."
+  []
+  (compare-and-set! driver-class-loader nil (RT/baseLoader)))
+
+(defonce ^{:doc "The JDBC drivers of `databases-file`, loaded or loading:
+  {db-spec (delay (future nil))}."
+           :private true}
+  drivers
+  (atom {}))
+
+(defn- driver
+  "Start loading the JDBC driver of the db-spec `db`, unless it's loaded or
+  loading. Return {db-spec (delay (future nil))} with this one in it."
+  [db]
+  (let [loading (delay
+                  (future
+                    (with-bindings {Compiler/LOADER (or @driver-class-loader
+                                                        (RT/baseLoader))}
+                      (deps/load-driver! db))))
+        loaded (swap! drivers #(if (contains? % db) % (assoc % db loading)))]
+    (force (loaded db))
+    loaded))
+
+(defn await-driver
+  "Wait for the JDBC driver of the db-spec `db` to load, `timeout-ms` at
+  most, forever without it. Throw `ex-info` if it doesn't load in time or
+  fails; a failed one is loaded anew by the next call."
+  [db & [timeout-ms]]
+  (let [loading (get (driver db) db)
+        result (try
+                 (if timeout-ms
+                   (deref @loading timeout-ms ::timeout)
+                   @@loading)
+                 (catch ExecutionException e
+                   (swap! drivers #(if (identical? (% db) loading)
+                                     (dissoc % db)
+                                     %))
+                   (throw (ex-info (str "can't load the JDBC driver: "
+                                        (.getCause e))
+                                   {} (.getCause e)))))]
+    (when (= result ::timeout)
+      (throw (ex-info (format (str "the JDBC driver is still loading after "
+                                   "%d s, its dependencies may be being "
+                                   "downloaded. Try again later.")
+                              (quot timeout-ms 1000))
+                      {})))))
+
+(defonce ^{:doc "The last `databases-file` read: {:stamp, :databases}."
+           :private true}
+  databases-cache
+  (atom nil))
+
+(defn file-connections
+  "The connections of `databases-file`, read anew only when its path, size
+  or modification time changes, their JDBC drivers loading. Throw `ex-info`
+  if the file is malformed."
+  []
+  (let [file (databases-file)
+        stamp [file (.lastModified file) (.length file)]
+        cached @databases-cache]
+    (if (= stamp (:stamp cached))
+      (:databases cached)
+      (let [databases (read-databases)]
+        (run! driver (vals databases))
+        (reset! databases-cache {:stamp stamp :databases databases})
+        databases))))
+
+(defn connections
+  "The connections the agents may use, {name db-spec}: the ones of
+  `databases-file` and the ones connected to in Emacs, which win on the
+  same name. Throw `ex-info` if the file is malformed."
+  []
+  (merge (file-connections) @registry))
+
+(defn connection-names
+  "The names of the `connections`, sorted."
+  []
+  (sort (keys (connections))))
+
 ;;; Tools
 
 (def default-max-rows 200)
@@ -145,12 +280,12 @@
   "The tools, in the order `tools/list` returns them."
   [{:name "list_connections"
     :title "List database connections"
-    :description (str "List the database connections the user connected to "
-                      "in Emacs (ejc-sql): name, database type, host, port, "
-                      "database and whether execute may write to it. "
+    :description (str "List the database connections the user made "
+                      "available in ejc-sql: name, database type, host, "
+                      "port, database and whether execute may write to it. "
                       "Call it first. If the database you need is missing, "
-                      "ask the user to connect to it with M-x ejc-connect "
-                      "in Emacs.")
+                      "ask the user to add it to databases.edn of ejc-sql "
+                      "or to connect to it with M-x ejc-connect in Emacs.")
     :inputSchema {:type "object"
                   :properties {}
                   :additionalProperties false}
@@ -333,10 +468,13 @@
         (s/replace #"(//[^:/@\s]+:)[^@/\s]*@" "$1***@"))))
 
 (defn- mask-all-secrets
-  "`mask-secrets` of every registered connection, for a `text` which may
-  come from any of them."
+  "`mask-secrets` of every connection, for a `text` which may come from any
+  of them. The ones of `databases-file` as last read, since it may be
+  malformed now."
   [text]
-  (reduce #(mask-secrets %2 %1) (mask-secrets {} text) (vals (connections))))
+  (reduce #(mask-secrets %2 %1)
+          (mask-secrets {} text)
+          (vals (merge (:databases @databases-cache) @registry))))
 
 (defn- exception-message [^Throwable e]
   (or (.getMessage e) (str (class e))))
@@ -1089,25 +1227,27 @@
      (if (seq registered)
        (str "Connections:\n"
             (s/join "\n"
-                    (for [connection-name (connection-names)
+                    (for [connection-name (sort (keys registered))
                           :let [db (registered connection-name)]]
                       (mask-secrets {} (connection-line
                                         connection-name db
                                         (contains? (:writable config)
                                                    connection-name))))))
-       (str "No connections. Ask the user to connect to the database "
-            "with M-x ejc-connect in Emacs.")))))
+       (format (str "No connections. Ask the user to add the database to "
+                    "%s or to connect to it with M-x ejc-connect in Emacs.")
+               (databases-file))))))
 
 (defn- unknown-connection
-  "The error for a connection not registered, telling the agent what to do."
-  [connection-name]
-  (let [names (connection-names)]
-    (error-result
-     (format (str "Error: unknown connection %s. Connected: %s. If the "
-                  "database is missing, ask the user to connect to it with "
-                  "M-x ejc-connect in Emacs.")
-             connection-name
-             (if (seq names) (s/join ", " names) "none")))))
+  "The error for a connection not registered, telling the agent what to do.
+  `names` are the ones there are."
+  [connection-name names]
+  (error-result
+   (format (str "Error: unknown connection %s. Connected: %s. If the "
+                "database is missing, ask the user to add it to %s or to "
+                "connect to it with M-x ejc-connect in Emacs.")
+           connection-name
+           (if (seq names) (s/join ", " names) "none")
+           (databases-file))))
 
 (defn call-tool
   "Run the tool `tool-name` with `args` (string keys). `config` is the
@@ -1116,27 +1256,36 @@
   (let [tool (tool-by-name tool-name)]
     (if-let [problem (argument-error (:inputSchema tool) args)]
       (error-result (str "Error: " problem))
-      (if (= tool-name "list_connections")
-        (list-connections-tool config)
-        (let [connection-name (get args "connection")
-              db (get (connections) connection-name)]
-          (cond
-            (name-error args) (error-result (name-error args))
-            (nil? db) (unknown-connection connection-name)
-            :else
-            (try
-              ;; The tables printed by `output.clj` for Emacs too.
-              (binding [o/*ascii-borders* true]
-                (case tool-name
-                  "connection_info" (connection-info-tool db)
-                  "list_tables" (list-tables-tool db args)
-                  "find_columns" (find-columns-tool db args)
-                  "describe_table" (describe-table-tool db args)
-                  "query" (query-tool db connection-name args)
-                  "execute" (execute-tool db connection-name config args)))
-              (catch Exception e
-                (error-result
-                 (mask-secrets db (str "Error: " (exception-message e))))))))))))
+      (try
+        (if (= tool-name "list_connections")
+          (list-connections-tool config)
+          (let [connection-name (get args "connection")
+                connected (connections)
+                db (get connected connection-name)]
+            (cond
+              (name-error args) (error-result (name-error args))
+              (nil? db) (unknown-connection connection-name
+                                            (sort (keys connected)))
+              :else
+              (try
+                ;; Emacs loaded the driver of its connection itself.
+                (when-not (contains? @registry connection-name)
+                  (await-driver db driver-wait-ms))
+                ;; The tables printed by `output.clj` for Emacs too.
+                (binding [o/*ascii-borders* true]
+                  (case tool-name
+                    "connection_info" (connection-info-tool db)
+                    "list_tables" (list-tables-tool db args)
+                    "find_columns" (find-columns-tool db args)
+                    "describe_table" (describe-table-tool db args)
+                    "query" (query-tool db connection-name args)
+                    "execute" (execute-tool db connection-name config args)))
+                (catch Exception e
+                  (error-result
+                   (mask-secrets db (str "Error: " (exception-message e)))))))))
+        ;; A malformed `databases-file`.
+        (catch clojure.lang.ExceptionInfo e
+          (error-result (str "Error: " (.getMessage e))))))))
 
 ;;; Protocol
 
@@ -1158,12 +1307,13 @@
 
 (def instructions
   "What the server tells a client about using it."
-  (str "Databases the user connected to in Emacs (ejc-sql). Call "
+  (str "Databases the user made available in ejc-sql. Call "
        "list_connections first. query runs one read-only statement per call; "
        "execute runs one statement that changes data or schema, only on the "
        "connections the user made writable, and the user approves every "
-       "call. If a database is missing, ask the user to connect to it with "
-       "M-x ejc-connect in Emacs; never reach databases by other means."))
+       "call. If a database is missing, ask the user to add it to "
+       "databases.edn of ejc-sql or to connect to it with M-x ejc-connect in "
+       "Emacs; never reach databases by other means."))
 
 (defn server-info
   "Name and version of the server."

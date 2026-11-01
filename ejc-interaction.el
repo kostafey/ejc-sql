@@ -84,37 +84,19 @@ of Emacs can differ from the one of Java: on Windows Emacs may take
                :namespace cemerick.pomegranate.aether
                :timeout ejc-dependencies-resolve-timeout)
 
+(clomacs-defun ejc-load-driver
+               load-driver!
+               :lib-name "ejc-sql"
+               :namespace ejc-sql.deps-resolver
+               :timeout ejc-dependencies-resolve-timeout
+               :doc "Load the JDBC driver of a connection: its jar files
+resolved from `:dependencies' or `:classpath' and its `:classname'.")
+
 (defun ejc-connect-to-db (conn-struct &optional connection-name)
   "Load the JDBC driver of CONN-STRUCT and make it the current database.
 CONNECTION-NAME, the name of the connection, makes it available to the
 ejc-sql MCP server too."
-  (let* ((jars-to-load
-          (if-let (dependencies (alist-get :dependencies conn-struct))
-              ;; Resolve dependencies and prepare jars paths list to load.
-              (ejc-get-dependeces-files-list dependencies)
-            (let* ((classpath (alist-get :classpath conn-struct))
-                   (dependency-jars (-map
-                                     (lambda (jar-path)
-                                       ;; Nothing to resolve for a jar file
-                                       ;; outside of `~/.m2/repository', it is
-                                       ;; added to the classpath as is below.
-                                       (when-let ((artifact
-                                                   (ejc-path-to-lein-artifact
-                                                    jar-path)))
-                                         (ejc-get-dependeces-files-list
-                                          artifact)))
-                                     classpath)))
-              ;; Join jar files paths from `:classpath' vector of
-              ;; `ejc-create-connection' and dependencies for this jars.
-              (delq nil
-                    (delete-dups
-                     (append
-                      (-flatten dependency-jars)
-                      (append classpath nil))))))))
-    (-each jars-to-load 'ejc-add-classpath))
-  (when-let ((classname (alist-get :classname conn-struct)))
-    (ejc-class-for-name classname)
-    (ejc-import (read classname)))
+  (ejc-load-driver conn-struct)
   (ejc-sql-set-db conn-struct connection-name
                   (expand-file-name ejc-mcp-config-file)))
 

@@ -24,5 +24,7 @@
                        ejc-sql.structure/get-entity-type-fmt
                        ejc-sql.structure/get-entity-description
                        ejc-sql.structure/describe-table
+                       ejc-sql.deps-resolver/load-driver!
                        ejc-sql.mcp-http/connected!
+                       ejc-sql.mcp-http/run-standalone
                        ejc-sql.mcp-http/status}}}}

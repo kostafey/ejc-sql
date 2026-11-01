@@ -11,8 +11,10 @@
             HttpResponse$BodyHandlers]))
 
 (def config-file
-  (doto (java.io.File/createTempFile "ejc-sql-mcp" ".edn")
-    (.deleteOnExit)))
+  "The config file of the tests, in a directory of its own for databases.edn."
+  (io/file (.toFile (java.nio.file.Files/createTempDirectory
+                     "ejc-sql-mcp" (make-array java.nio.file.attribute.FileAttribute 0)))
+           "mcp.edn"))
 
 (def h2-db
   {:classname "org.h2.Driver"
@@ -28,9 +30,12 @@
   registered and the messages to Emacs recorded. Stop the server after it."
   [f]
   (spit config-file "{:port 0}")
+  (.delete (io/file (.getParentFile config-file) "databases.edn"))
   (reset! reports [])
   (with-redefs [mcp/config-file config-file
                 mcp/registry (atom {"h2" h2-db})
+                mcp/databases-cache (atom nil)
+                mcp/drivers (atom {})
                 http/report! #(swap! reports conj %)]
     (try
       (f)
@@ -266,6 +271,15 @@
         (binding [*err* err]
           (is (= h2-db (c/set-db h2-db "sixth")))))
       (is (s/starts-with? (str err) "ejc-sql MCP server: ")))))
+
+(deftest connected-databases-test
+  (testing "The server starts with a malformed databases.edn, saying why."
+    (spit (io/file (.getParentFile config-file) "databases.edn") "[1 2]")
+    (c/set-db h2-db "h2")
+    (is (http/running?))
+    (is (= 2 (count @reports)))
+    (is (some #(re-matches #"ejc-sql MCP server: Malformed .*databases\.edn: not a map" %)
+              @reports))))
 
 (def original-report!
   "`http/report!`, which the fixture replaces."

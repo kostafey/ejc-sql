@@ -1,9 +1,11 @@
 (ns ejc-sql.mcp-test
-  (:require [clojure.java.jdbc :as j]
+  (:require [clojure.java.io :as io]
+            [clojure.java.jdbc :as j]
             [clojure.string :as s]
             [clojure.test :refer :all]
             [ejc-sql.cache :as cache]
             [ejc-sql.connect :as c]
+            [ejc-sql.deps-resolver :as deps]
             [ejc-sql.lib :as lib]
             [ejc-sql.mcp :as mcp]
             [ejc-sql.output :as o]
@@ -17,6 +19,12 @@
    :password "s3cret"})
 
 (def config {:writable #{"h2-rw"}})
+
+(def config-dir
+  "The directory of `mcp/config-file` in the tests, for their databases.edn:
+  not the user's one."
+  (.toFile (java.nio.file.Files/createTempDirectory
+            "ejc-sql-mcp" (make-array java.nio.file.attribute.FileAttribute 0))))
 
 (def logged
   "SQL written to the query log by the test."
@@ -42,8 +50,12 @@
   (cache/invalidate-cache h2-db)
   (reset! logged [])
   (reset! opened 0)
+  (.delete (io/file config-dir "databases.edn"))
   (let [get-connection mcp/get-connection]
     (with-redefs [mcp/registry (atom {"h2" h2-db "h2-rw" h2-db})
+                  mcp/config-file (io/file config-dir "mcp.edn")
+                  mcp/databases-cache (atom nil)
+                  mcp/drivers (atom {})
                   o/log-sql #(swap! logged conj %)
                   mcp/get-connection (fn [db]
                                        (swap! opened inc)
@@ -801,3 +813,93 @@
     (testing "Writable."
       (is (s/includes? (text (call "list_connections" {}))
                        "- h2-rw: h2, database ejc_mcp_test, writable")))))
+
+(def ^:private databases-version
+  "The modification time of the last databases.edn written by the test."
+  (atom (System/currentTimeMillis)))
+
+(defn- write-databases
+  "Write `text` to databases.edn, with a modification time of its own, so
+  that a change within the resolution of the clock is not missed. Written
+  to `config-dir`, not to `mcp/databases-file`, which is the user's one
+  outside of the fixture."
+  [text]
+  (let [file (io/file config-dir "databases.edn")]
+    (spit file text)
+    (.setLastModified file (swap! databases-version + 1000))))
+
+(deftest databases-file-test
+  (testing "Next to the config file."
+    (is (= (io/file config-dir "databases.edn") (mcp/databases-file))))
+  (testing "No file - the Emacs connections only."
+    (is (= ["h2" "h2-rw"] (mcp/connection-names))))
+  (testing "The connections of the file, the Emacs ones winning on a name."
+    (write-databases (pr-str {"file-h2" h2-db
+                              "h2" (assoc h2-db :subname "mem:not_this_one")}))
+    (is (= ["file-h2" "h2" "h2-rw"] (mcp/connection-names)))
+    (is (= h2-db (get (mcp/connections) "h2")))
+    (is (s/includes? (text (call "list_connections" {}))
+                     "- file-h2: h2, database ejc_mcp_test, read-only"))
+    (let [result (call "query" {"connection" "file-h2"
+                                "sql" "SELECT login FROM users WHERE id = 1"})]
+      (is (not (:isError result)))
+      (is (s/starts-with? (text result) "login\n-----\nadmin\n\n1 row"))))
+  (testing "Read anew when changed."
+    (write-databases "{}")
+    (is (= ["h2" "h2-rw"] (mcp/connection-names)))
+    (let [result (call "query" {"connection" "file-h2" "sql" "SELECT 1"})]
+      (is (:isError result))
+      (is (s/includes? (text result) "databases.edn"))))
+  (testing "Malformed - every tool fails, saying why."
+    (doseq [[content problem] [["{\"a\"" "EOF while reading"]
+                               ["[1 2]" "not a map"]
+                               ["{:a {:dbtype \"h2\"}}"
+                                ":a: a connection name must be a non-blank string"]
+                               ["{\"a\" 1}" "a: not a map"]
+                               ["{\"a\" {:user \"u\"}}"
+                                "a: needs :dbtype, :subprotocol or :connection-uri"]]
+            [tool args] [["list_connections" {}]
+                         ["query" {"connection" "h2" "sql" "SELECT 1"}]]]
+      (write-databases content)
+      (let [result (call tool args)]
+        (is (:isError result) content)
+        (is (s/starts-with? (text result) "Error: Malformed ") content)
+        (is (s/includes? (text result) problem) content)))))
+
+(deftest file-drivers-test
+  (let [db h2-db
+        drivers @#'mcp/drivers]
+    (testing "A driver failing to load is loaded anew by the next call."
+      (let [loads (atom 0)]
+        (with-redefs [deps/load-driver! (fn [_]
+                                          (swap! loads inc)
+                                          (throw (ClassNotFoundException.
+                                                  "no.such.Driver")))]
+          (write-databases (pr-str {"file-h2" db}))
+          (dotimes [_ 2]
+            (let [result (call "query" {"connection" "file-h2"
+                                        "sql" "SELECT 1"})]
+              (is (:isError result))
+              (is (= (str "Error: can't load the JDBC driver: "
+                          "java.lang.ClassNotFoundException: no.such.Driver")
+                     (text result)))))
+          (is (= 2 @loads)))))
+    (testing "A tool waits for a driver `driver-wait-ms` at most."
+      (reset! drivers {})
+      (let [loaded (promise)]
+        (with-redefs [deps/load-driver! (fn [_] @loaded)
+                      mcp/driver-wait-ms 100]
+          (write-databases (pr-str {"file-h2" db}))
+          (let [result (call "query" {"connection" "file-h2"
+                                      "sql" "SELECT 1"})]
+            (is (:isError result))
+            (is (s/includes? (text result) "still loading")))
+          (deliver loaded nil)
+          (is (not (:isError (call "query" {"connection" "file-h2"
+                                            "sql" "SELECT 1"})))))))
+    (testing "The driver of an Emacs connection is not waited for."
+      (reset! drivers {})
+      (with-redefs [deps/load-driver! (fn [_] (throw (Exception. "boom")))]
+        (write-databases (pr-str {"h2" db}))
+        (is (not (:isError (call "query" {"connection" "h2"
+                                          "sql" "SELECT 1"}))))))))

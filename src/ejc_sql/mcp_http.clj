@@ -18,8 +18,8 @@
 
 ;;; Serve `ejc-sql.mcp' over MCP Streamable HTTP on 127.0.0.1: stateless,
 ;;; JSON responses only, no SSE streams, no sessions. The server is started
-;;; by `ejc-sql.connect/set-db' when `ejc-sql.mcp/config-file' exists and
-;;; dies with the JVM.
+;;; by `ejc-sql.connect/set-db' when `ejc-sql.mcp/config-file' exists, or by
+;;; `run-standalone' without Emacs, and dies with the JVM.
 
 (ns ejc-sql.mcp-http
   (:require [clojure.data.json :as json]
@@ -268,7 +268,8 @@
   "Called by `ejc-sql.connect/set-db` when the user connects to the db-spec
   `db` named `connection-name` in Emacs: register it for the agents and,
   when `mcp/config-file`, or `config-file` if given, exists, start the server
-  unless it's running. Report the start, or why it failed, to Emacs. Never
+  unless it's running, the JDBC drivers of `mcp/databases-file` loading in
+  the background. Report the start, or why it failed, to Emacs. Never
   throw."
   [connection-name db & [config-file]]
   (try
@@ -277,6 +278,11 @@
     (mcp/register-db! connection-name db)
     (when-not (running?)
       (when-let [config (mcp/read-config)]
+        (mcp/remember-class-loader!)
+        (try
+          (mcp/file-connections)
+          (catch clojure.lang.ExceptionInfo e
+            (report! (str "ejc-sql MCP server: " (.getMessage e)))))
         (let [port (or (:port config) default-port)]
           (try
             (report! (format "ejc-sql MCP server: http://%s:%d%s"
@@ -288,3 +294,46 @@
       (report! (str "ejc-sql MCP server is not started: "
                     (or (.getMessage e) e)))))
   nil)
+
+(defn- print-error
+  "Print `text` to stderr."
+  [text]
+  (binding [*out* *err*]
+    (println text)))
+
+(defn run-standalone
+  "Run the MCP server without Emacs until the JVM stops, reading
+  `config-file`, if given, instead of `mcp/config-file`. Load the JDBC
+  drivers of `mcp/databases-file` before, as long as it takes: their
+  dependencies may be downloaded at the first start. Return the exit status
+  if the server can't start."
+  [& [config-file]]
+  (when config-file
+    (mcp/set-config-file! config-file))
+  (try
+    (if-let [config (mcp/read-config)]
+      (let [port (or (:port config) default-port)
+            _ (mcp/remember-class-loader!)
+            databases (mcp/file-connections)]
+        (println (format "Loading the JDBC drivers of %d connections of %s"
+                         (count databases) (mcp/databases-file)))
+        (doseq [[connection-name db] (sort-by key databases)]
+          (try
+            (mcp/await-driver db)
+            (catch clojure.lang.ExceptionInfo e
+              (print-error (str connection-name ": " (.getMessage e))))))
+        (try
+          (println (format "ejc-sql MCP server: http://%s:%d%s"
+                           host (start! {:port port}) endpoint))
+          @(promise)
+          (catch BindException e
+            (print-error (format "ejc-sql MCP server can't listen on %s:%d: %s"
+                                 host port (.getMessage e)))
+            1)))
+      (do
+        (print-error (format "No %s, the MCP server is turned off."
+                             mcp/config-file))
+        1))
+    (catch clojure.lang.ExceptionInfo e
+      (print-error (.getMessage e))
+      1)))

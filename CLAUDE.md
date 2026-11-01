@@ -21,6 +21,7 @@ lein check                         # reflection warnings - not a clean baseline:
                                    # structure.clj, connect.clj, output.clj and
                                    # classpath.clj have their own; leiningen-core,
                                    # pomegranate and clj-http's are third-party
+lein uberjar                       # target/ejc-sql.jar, the MCP server without Emacs
 ```
 
 `make test` runs `cask exec emacs --script test/ejc-tests.el`, which starts a
@@ -74,15 +75,28 @@ to the gitignored `ejc-sql/` of the repository instead.
 
 **Connections.** `ejc-create-connection` normalizes its arguments into an alist
 in `ejc-connections`; `:classpath` is always stored as a vector of
-`file-truename`d paths. `ejc-connect-to-db` turns that into a classpath: with
-`:dependencies` it resolves Leiningen coordinates through
-`src/ejc_sql/deps_resolver.clj` (Pomegranate/Aether, one `resolve-dependencies`
-call, remote repositories involved), with `:classpath` it derives coordinates
-from the `~/.m2/repository` layout via `ejc-path-to-lein-artifact` and resolves
-those. A jar outside `~/.m2` has no derivable coordinates, so it is added to the
-classpath as is. Dependency resolution is the only request that can hit the
-network, hence its own `ejc-dependencies-resolve-timeout` instead of the global
+`file-truename`d paths. `ejc-connect-to-db` hands it to `deps-resolver/load-driver!`
+(`src/ejc_sql/deps_resolver.clj`), which turns it into a classpath: with
+`:dependencies` it resolves Leiningen coordinates (Pomegranate/Aether, one
+`resolve-dependencies` call, remote repositories involved), with `:classpath`
+it derives coordinates from the `~/.m2/repository` layout via
+`path-to-artifact` and resolves those. A jar outside `~/.m2` has no derivable
+coordinates, so it is added to the classpath as is. Dependency resolution is
+the only request that can hit the network, hence its own
+`ejc-dependencies-resolve-timeout` instead of the global
 `nrepl-sync-request-timeout`.
+
+The jars are added to the hierarchy of `Compiler/LOADER`, and that only works
+when `clojure.java.jdbc` was loaded below that class loader: `DriverManager`
+hands a driver only to the code whose class loader can load the driver class,
+and answers "No suitable driver" otherwise. In the nREPL that is the session
+loader `Compiler/LOADER` is bound to; in a thread without a binding - the HTTP
+server's, a `future` started there - `classpath/add-classpath` binds a new root
+nobody was loaded below. Hence `mcp/remember-class-loader!`, and hence
+`ejc-sql.main` binds the root before anything else is loaded and is the only
+namespace compiled ahead of time: AOT classes belong to the application class
+loader, above the root. `test/ejc_sql/main_test.clj` runs it in a JVM of its
+own, without the H2 jar on the classpath, to check this.
 
 **Database metadata is per-vendor.** `src/ejc_sql/structure.clj` holds a map of
 SQL snippets per database type (`:oracle`, `:postgresql`, `:mysql`, `:sqlserver`,
@@ -102,12 +116,19 @@ database - column candidates are the exception, since they depend on the SQL
 expression around point. `ejc-eldoc.el` reuses the same metadata for signatures.
 
 **The MCP server** for AI agents lives in the same JVM: `src/ejc_sql/mcp.clj`
-(the connection registry, `~/.ejc-sql/mcp.edn`, the tools, a pure JSON-RPC
+(the connections, `~/.ejc-sql/mcp.edn`, the tools, a pure JSON-RPC
 dispatcher) and `src/ejc_sql/mcp_http.clj` (Streamable HTTP on `127.0.0.1`
 over the JDK `HttpServer`, both the `2026-07-28` and the older MCP revisions).
 `connect/set-db` gets the Emacs connection name from `ejc-connect-to-db`,
 registers the connection and starts the server when `mcp.edn` exists, through
-`requiring-resolve`, since `mcp` requires `connect`. The MCP path opens a
+`requiring-resolve`, since `mcp` requires `connect`. The agents see these
+connections merged over the ones of `databases.edn` next to `mcp.edn`, written
+by the user and never by ejc-sql, re-read when its size or modification time
+changes, its drivers loaded in the background (`mcp/file-connections`).
+Without Emacs `ejc-sql.main` runs the server with the connections of the file
+only (`mcp-http/run-standalone`). The tests point `mcp/config-file` to a
+temporary directory and write `databases.edn` there by its explicit path: a
+test run outside its fixture would otherwise write the user's one. The MCP path opens a
 connection of its own per call and never writes `connect/db` or
 `connect/current-query`, so an agent's query and `ejc-cancel-query` never meet.
 It doesn't call Emacs either, but for one message on the server start: agent
