@@ -1,4 +1,4 @@
-(defproject ejc-sql "0.5.1-SNAPSHOT"
+(defproject ejc-sql "0.6.0-SNAPSHOT"
   :description "Interact with database via java/clojure libs to run SQL scripts"
   :url "https://github.com/kostafey/ejc-sql"
   :license {:name "GPL 2.0+"
