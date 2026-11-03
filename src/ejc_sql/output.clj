@@ -38,6 +38,18 @@
   characters."
   false)
 
+(def ^:dynamic *mark-cuts*
+  "Keep the first `*max-column-width*` characters of a value cut to them and
+  follow them with `cut-mark`, as the MCP server does, instead of ending the
+  value with ...: a value may end with ... itself, a cut one then looks
+  whole to the agent."
+  false)
+
+(defn cut-mark
+  "What follows a value cut for the agent, `n` characters of it left out."
+  [n]
+  (str "...[+" n "]"))
+
 (defn get-log-dir
   "The query log directory: `ejc-sql` in `%AppData%` on Windows,
   `~/.ejc-sql/log` elsewhere, or the `ejc-sql.log-dir` system property, which
@@ -204,7 +216,10 @@
     (if (and *max-column-width*
              (> *max-column-width* 0)
              (> (count s) *max-column-width*))
-      (str (subs s 0 (- *max-column-width* 3)) "...")
+      (if *mark-cuts*
+        (str (subs s 0 *max-column-width*)
+             (cut-mark (- (count s) *max-column-width*)))
+        (str (subs s 0 (- *max-column-width* 3)) "..."))
       s)))
 
 (defn min-not-zero [x y]

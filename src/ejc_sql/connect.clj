@@ -168,26 +168,32 @@ SELECT * FROM urls WHERE path like '%http://localhost%'"
 
 (defn fetch-rows
   "Run the SELECT `sql` on the open connection `conn`, return its result set
-  as `[[column...] row...]` with LOBs converted by `read-lobs`.
+  as `[[column...] row...]` with LOBs converted by `read-lobs`, or by the
+  `:result-set-fn` of `opts`, while the result set is open. The other
   `opts` are passed to `j/prepare-statement` (`:fetch-size`, `:max-rows`,
   `:timeout`), `on-statement` is called with the statement before it runs."
   [db conn sql opts & [on-statement]]
-  (let [stmt (j/prepare-statement conn sql opts)]
+  (let [stmt (j/prepare-statement conn sql (dissoc opts :result-set-fn))]
     (when on-statement
       (on-statement stmt))
     (j/query db stmt {:as-arrays? true
-                      :result-set-fn read-lobs})))
+                      :result-set-fn (:result-set-fn opts read-lobs)})))
+
+(defn count-message
+  "Describe the update count `result` of a statement: \"Records affected: N\",
+  or \"Executed\" for none, 0 or -1."
+  [result]
+  (if (and result (pos? result))
+    (str "Records affected: " result)
+    "Executed"))
 
 (defn execution-message
   "Describe the outcome of `(.execute statement sql)`, which returned
-  `result-set?`: \"Records affected: N\" or \"Executed\". The update count is
-  read once, as JDBC requires: Oracle answers -1 to a second call."
+  `result-set?`, by `count-message`. The update count is read once, as JDBC
+  requires: Oracle answers -1 to a second call."
   [^java.sql.Statement statement result-set?]
-  (let [result (when-not result-set?
-                 (.getUpdateCount statement))]
-    (if (and result (pos? result))
-      (str "Records affected: " result)
-      "Executed")))
+  (count-message (when-not result-set?
+                   (.getUpdateCount statement))))
 
 (defn eval-sql-core
   "The core SQL evaluation function."

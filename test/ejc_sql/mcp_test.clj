@@ -240,11 +240,31 @@
                             [{"connection" "h2" "sql" "select 1" "max_rows" 0}
                              "argument max_rows must be an integer >= 1"]
                             [{"connection" "h2" "sql" "select 1" "limit" 5}
-                             "unknown argument limit"]]]
+                             (str "unknown argument limit, the arguments are: "
+                                  "connection, sql, max_rows, timeout_s, "
+                                  "max_column_width.")]]]
       (let [result (:result (:body (legacy "tools/call" {"name" "query"
                                                          "arguments" args})))]
         (is (:isError result) (pr-str args))
-        (is (s/includes? (text result) problem) (pr-str args))))))
+        (is (s/includes? (text result) problem) (pr-str args)))))
+  (testing "The items of an array argument, their properties too."
+    (doseq [[args problem]
+            [[{"statements" []} "argument statements must be a non-empty array."]
+             [{"statements" ["DELETE FROM users"]}
+              "argument statements[0] must be an object."]
+             [{"statements" [{"sql" "DELETE FROM users"} {}]}
+              "missing required argument statements[1].sql."]
+             [{"statements" [{"sql" "DELETE FROM users" "expected" 1}]}
+              (str "unknown argument statements[0].expected, the arguments "
+                   "of statements[0] are: sql, expected_rows.")]
+             [{"statements" [{"sql" "DELETE FROM users" "expected_rows" -1}]}
+              "argument statements[0].expected_rows must be an integer >= 0."]
+             [{"sql" "DELETE FROM users" "transaction" "no"}
+              "argument transaction must be true or false."]]]
+      (let [result (call "execute" (assoc args "connection" "h2-rw"))]
+        (is (:isError result) (pr-str args))
+        (is (= (str "Error: " problem) (text result)) (pr-str args))))
+    (is (= ["admin" "neo" "trinity"] (logins)))))
 
 (deftest tools-test
   (testing "tools/list shape."
@@ -273,7 +293,7 @@
             "find_columns" ["connection" "column"]
             "describe_table" ["connection" "table"]
             "query" ["connection" "sql"]
-            "execute" ["connection" "sql"]}
+            "execute" ["connection"]}
            (into {} (map (juxt :name #(get-in % [:inputSchema :required]))
                          mcp/tools))))))
 
@@ -425,21 +445,30 @@
       (let [query #(text (call "query" (merge {"connection" "h2"} %)))
             x40 (apply str (repeat 40 "x"))
             pair "SELECT REPEAT('x', 40) AS v, x AS n FROM SYSTEM_RANGE(1, 2)"]
-        (is (re-find #"\nxxxxxxxxxxxxxxxxxxxxxxxxxxx\.\.\. \| 1\n"
-                     (query {"sql" pair})))
-        (is (re-find #"\n2 rows, \d+ ms; values cut to 30 characters, see max_column_width$"
-                     (query {"sql" pair})))
-        (is (re-find #"\nxxxxxxx\.\.\. \| 2\n\n.*; values cut to 10 characters"
-                     (query {"sql" pair "max_column_width" 10})))
+        (testing "A cut value keeps the characters it's cut to and tells how many are left out."
+          (is (s/includes? (query {"sql" pair})
+                           (str "\n" (subs x40 0 30) "...[+10] | 1\n")))
+          (is (re-find #"\n2 rows, \d+ ms; values cut to 30 characters, see max_column_width$"
+                       (query {"sql" pair})))
+          (is (re-find #"\nxxxxxxxxxx\.\.\.\[\+30\] \| 2\n\n.*; values cut to 10 characters"
+                       (query {"sql" pair "max_column_width" 10}))))
         (let [full (query {"sql" pair "max_column_width" 0})]
           (is (s/includes? full (str "\n" x40 " | 1\n")))
           (is (re-find #"\n2 rows, \d+ ms$" full)))
-        (testing "A single row is a line per column, cut too."
-          (is (= (str "v | xxxxxxxxxxxxxxxxxxxxxxxxxxx...\n"
-                      "n | 1\n\n"
-                      "1 row, 0 ms; values cut to 30 characters, see max_column_width")
-                 (s/replace (query {"sql" "SELECT REPEAT('x', 40) AS v, 1 AS n"})
-                            #"\d+ ms" "0 ms"))))
+        (testing "A single row is a line per column, not cut unless asked."
+          (let [sql "SELECT REPEAT('x', 40) AS v, 1 AS n"]
+            (is (= (str "v | " x40 "\n"
+                        "n | 1\n\n"
+                        "1 row, 0 ms")
+                   (s/replace (query {"sql" sql}) #"\d+ ms" "0 ms")))
+            (is (= (str "v | xxxxx...[+35]\n"
+                        "n | 1\n\n"
+                        "1 row, 0 ms; values cut to 5 characters, see max_column_width")
+                   (s/replace (query {"sql" sql "max_column_width" 5})
+                              #"\d+ ms" "0 ms"))))
+          (testing "A single row of several, truncated at max_rows, too."
+            (is (s/includes? (query {"sql" pair "max_rows" 1})
+                             (str "v | " x40 "\n")))))
         (testing "Numbers and dates are not cut."
           (let [result (query {"sql" (str "SELECT TIMESTAMP '2026-01-28 "
                                           "21:13:46.040123' AS t, "
@@ -449,19 +478,32 @@
                                "max_column_width" 10})]
             (is (s/includes? result (str "\n2026-01-28 21:13:46.040123 | "
                                          "12345678901234567890.123 | "
-                                         "xxxxxxx...\n"))
+                                         "xxxxxxxxxx...[+30]\n"))
                 result)))
-        (testing "A single value is not cut."
-          (is (s/includes? (query {"sql" "SELECT REPEAT('x', 40) AS v"}) x40))
-          (is (re-find #"\n1 row, \d+ ms$"
-                       (query {"sql" "SELECT REPEAT('x', 40) AS v"}))))
-        (testing "A LOB is cut as it's read."
+        (testing "A single value is not cut, even to a width asked for."
+          (doseq [args [{} {"max_column_width" 5}]
+                  sql ["SELECT REPEAT('x', 40) AS v"
+                       "SELECT CAST(REPEAT('x', 40) AS CLOB) AS v"]]
+            (let [result (query (assoc args "sql" sql))]
+              (is (s/includes? result x40) (pr-str args sql))
+              (is (re-find #"\n1 row, \d+ ms$" result) (pr-str args sql)))))
+        (testing "A LOB is cut as it's read, its length told."
           (let [sql (str "SELECT CAST(REPEAT('y', 40) AS CLOB) AS c, x AS n "
-                         "FROM SYSTEM_RANGE(1, 2)")]
+                         "FROM SYSTEM_RANGE(1, 2)")
+                y40 (apply str (repeat 40 "y"))]
+            (is (s/includes? (query {"sql" sql})
+                             (str "\n" (subs y40 0 30) "...[+10] | 1\n")))
             (is (re-find #"; values cut to 30 characters"
                          (query {"sql" sql})))
-            (is (s/includes? (query {"sql" sql "max_column_width" 0})
-                             (apply str (repeat 40 "y"))))))
+            (is (s/includes? (query {"sql" sql "max_column_width" 0}) y40))
+            (is (s/includes? (query {"sql" (str sql " WHERE x = 1")}) y40))
+            (testing "Its line breaks escaped."
+              (is (s/includes?
+                   (query {"sql" (str "SELECT CAST('a' || CHAR(10) || 'b' || "
+                                      "REPEAT('c', 10) AS CLOB) AS c "
+                                      "FROM SYSTEM_RANGE(1, 2)")
+                           "max_column_width" 4})
+                   "\na\\nbc...[+9]\n")))))
         (testing "NULL, line breaks and tabs."
           (is (= (str "   n | e | s      \n"
                       "-----+---+--------\n"
@@ -610,6 +652,171 @@
       (is (:isError result))
       (is (s/starts-with? (text result) "Error: ")))))
 
+(defn- execute [args]
+  (call "execute" (merge {"connection" "h2-rw"} args)))
+
+(deftest expected-rows-test
+  (testing "The count matching, the change is committed."
+    (let [result (execute {"sql" "UPDATE users SET login = 'root' WHERE id = 1"
+                           "expected_rows" 1})]
+      (is (not (:isError result)))
+      (is (= "Records affected: 1" (text result))))
+    (is (= ["root" "neo" "trinity"] (logins))))
+  (testing "Another count, the change is rolled back."
+    (let [result (execute {"sql" "DELETE FROM users WHERE id > 1"
+                           "expected_rows" 1})]
+      (is (:isError result))
+      (is (= "Error: 2 rows affected, not expected_rows 1.\nRolled back."
+             (text result))))
+    (is (= ["root" "neo" "trinity"] (logins))))
+  (testing "Sent as 1.0, or 0."
+    (is (= "Records affected: 1"
+           (text (execute {"sql" "DELETE FROM users WHERE id = 3"
+                           "expected_rows" 1.0}))))
+    (is (= "Executed" (text (execute {"sql" "DELETE FROM users WHERE id = 9"
+                                      "expected_rows" 0}))))
+    (is (= ["root" "neo"] (logins))))
+  (testing "A result set has no count of rows changed."
+    (let [result (execute {"sql" "SELECT * FROM users" "expected_rows" 2})]
+      (is (:isError result))
+      (is (s/includes? (text result) "it returned rows"))))
+  (testing "Not on a statement committing itself, which is not run."
+    (reset! logged [])
+    (let [result (execute {"sql" "DROP TABLE users" "expected_rows" 0})]
+      (is (:isError result))
+      (is (= (str "Error: DROP commits the transaction on h2, so it can't be "
+                  "rolled back as expected_rows needs.")
+             (text result))))
+    (is (= [] @logged))
+    (is (= ["root" "neo"] (logins)))))
+
+(deftest execute-statements-test
+  (testing "In one transaction, committed."
+    (let [result (execute {"statements"
+                           [{"sql" "UPDATE users SET login = 'root' WHERE id = 1"
+                             "expected_rows" 1}
+                            {"sql" "DELETE FROM users WHERE id = 3;"}
+                            {"sql" "SELECT login FROM users ORDER BY id"}]})]
+      (is (not (:isError result)))
+      (is (re-matches (re-pattern (str "1\\. Records affected: 1\n"
+                                       "2\\. Records affected: 1\n"
+                                       "3\\.\nlogin *\n-+\nroot *\nneo *\n\n"
+                                       "2 rows, \\d+ ms\n"
+                                       "Committed\\."))
+                      (text result))
+          (text result)))
+    (is (= ["root" "neo"] (logins))))
+  (testing "Rolled back at the first failure, the ones after it not run."
+    (reset! logged [])
+    (let [result (execute {"statements"
+                           [{"sql" "INSERT INTO users VALUES (4, 'smith')"}
+                            {"sql" "INSERT INTO nope VALUES (1)"}
+                            {"sql" "INSERT INTO users VALUES (5, 'oracle')"}]})]
+      (is (:isError result))
+      (is (re-matches #"(?s)1\. Records affected: 1\n2\. Error: [^\n]*NOPE.*\n3\. Not run\.\nRolled back\."
+                      (text result))
+          (text result)))
+    (is (= 2 (count @logged)))
+    (is (= ["root" "neo"] (logins))))
+  (testing "An expected_rows of one of them rolls back all of them."
+    (let [result (execute {"statements"
+                           [{"sql" "DELETE FROM users WHERE id = 2"
+                             "expected_rows" 1}
+                            {"sql" "DELETE FROM users" "expected_rows" 0}]})]
+      (is (:isError result))
+      (is (= (str "1. Records affected: 1\n"
+                  "2. Error: 1 row affected, not expected_rows 0.\n"
+                  "Rolled back.")
+             (text result))))
+    (is (= ["root" "neo"] (logins))))
+  (testing "Rolled back whatever is thrown, before the connection is closed."
+    (let [calls (atom [])
+          get-connection mcp/get-connection]
+      (with-redefs [mcp/get-connection #(recording-connection
+                                         (get-connection %) calls)
+                    c/count-message (fn [_] (throw (RuntimeException. "boom")))]
+        (let [result (execute {"statements"
+                               [{"sql" "DELETE FROM users WHERE id = 2"}
+                                {"sql" "DELETE FROM users WHERE id = 1"}]})]
+          (is (:isError result))
+          (is (= "Error: boom" (text result)))))
+      ;; The statement is closed, then the connection.
+      (is (= [["setAutoCommit" false] ["close"] ["rollback"] ["close"]]
+             (filter (comp #{"setAutoCommit" "commit" "rollback" "close"} first)
+                     @calls))
+          (pr-str @calls)))
+    (is (= ["root" "neo"] (logins))))
+  (testing "DDL is rejected where it commits the transaction, unless transaction is false."
+    (let [statements [{"sql" "CREATE TABLE t3 (id INT)"}
+                      {"sql" "INSERT INTO t3 VALUES (1)"}]]
+      (is (= (str "Error: statement 1: CREATE commits the transaction on h2, "
+                  "so the statements can't run in one transaction. Send it in "
+                  "a call of its own, or pass transaction false to run the "
+                  "statements one by one, each committed at once.")
+             (text (execute {"statements" statements}))))
+      (is (= "1. Executed\n2. Records affected: 1\nCommitted."
+             (text (execute {"statements" statements "transaction" false}))))))
+  (testing "One by one, stopping at the first failure."
+    (let [result (execute {"statements"
+                           [{"sql" "INSERT INTO t3 VALUES (2)"}
+                            {"sql" "DELETE FROM t3" "expected_rows" 1}
+                            {"sql" "INSERT INTO t3 VALUES (3)"}]
+                           "transaction" false})]
+      (is (:isError result))
+      (is (= (str "1. Records affected: 1\n"
+                  "2. Error: 2 rows affected, not expected_rows 1.\n"
+                  "3. Not run.\n"
+                  "Stopped at statement 2, the ones before it are committed.")
+             (text result))))
+    (is (= [1 2] (map :id (j/query h2-db ["SELECT id FROM t3 ORDER BY id"])))))
+  (testing "A single one is no transaction, a DDL one is not rejected."
+    (is (= "1. Executed\nCommitted."
+           (text (execute {"statements" [{"sql" "DROP TABLE t3"}]})))))
+  (testing "A statement ending the transaction is rejected in one."
+    (doseq [[sql problem] [["COMMIT" "COMMIT may end the transaction"]
+                           ["begin" "BEGIN may end the transaction"]
+                           ["/*!40101 SET x = 1 */ DELETE FROM users"
+                            "ejc-sql can't tell what it starts with"]]]
+      (is (s/starts-with? (text (execute {"statements"
+                                          [{"sql" "DELETE FROM users"}
+                                           {"sql" sql}]}))
+                          (str "Error: statement 2: " problem))
+          sql))
+    (is (= ["root" "neo"] (logins))))
+  (testing "The timeout is for all of them together."
+    (let [result (execute {"statements"
+                           [{"sql" "DELETE FROM users WHERE id = 2"}
+                            ;; H2 checks the timeout every 128 rows.
+                            {"sql" (str "SELECT COUNT(SLEEP(2000000)) "
+                                        "FROM SYSTEM_RANGE(1, 2000)")}
+                            {"sql" "DELETE FROM users WHERE id = 1"}]
+                           "timeout_s" 1})]
+      (is (:isError result))
+      (is (re-matches #"(?s)1\. Records affected: 1\n2\. Error: cancelled by the timeout of 1 s.*\n3\. Not run\.\nRolled back\."
+                      (text result))
+          (text result)))
+    (is (= ["root" "neo"] (logins))))
+  (testing "sql or statements, and the arguments of each."
+    (doseq [[args error]
+            [[{} "Error: send either sql or statements."]
+             [{"sql" "DELETE FROM users" "statements" [{"sql" "DELETE FROM users"}]}
+              "Error: send either sql or statements."]
+             [{"statements" [{"sql" "DELETE FROM users"}] "expected_rows" 1}
+              "Error: with statements, give the expected_rows of each"]
+             [{"sql" "DELETE FROM users" "transaction" true}
+              "Error: transaction is for statements"]
+             [{"statements" [{"sql" "DELETE FROM users"}
+                             {"sql" "DELETE FROM users; DELETE FROM users"}]}
+              "Error: statement 2: one statement only, this SQL has 2 parts"]]]
+      (let [result (execute args)]
+        (is (:isError result) (pr-str args))
+        (is (s/starts-with? (text result) error) (pr-str args))))
+    (is (= ["root" "neo"] (logins))))
+  (testing "Not writable."
+    (is (= "Error: writes to h2 are not allowed; ask the user."
+           (text (call "execute" {"connection" "h2"
+                                  "statements" [{"sql" "DELETE FROM users"}]}))))))
+
 (deftest metadata-test
   (testing "list_tables."
     (j/db-do-commands h2-db ["CREATE SCHEMA other"
@@ -657,7 +864,7 @@
       (let [describe #(text (call "describe_table"
                                   (merge {"connection" "h2" "table" "notes"} %)))]
         (is (re-find #"\nIndexes:\n\n.*\n.*\nNOTES_ID +\| ID" (describe {})))
-        (is (s/includes? (describe {}) "| 'a default longer than thir...\n"))
+        (is (s/includes? (describe {}) "| 'a default longer than thirty ...[+11]\n"))
         (is (s/includes? (describe {"max_column_width" 0})
                          "| 'a default longer than thirty characters'\n")))))
   (testing "describe_table masks the errors only, not the names and the values."
@@ -702,8 +909,22 @@
     (testing "No columns, too many columns."
       (is (= "No columns found." (find {"column" "zzz"})))
       (with-redefs [mcp/find-columns-limit 1]
-        (is (re-find #"\n1 column, truncated at 1; give the owner or a longer part of the name$"
-                     (find {"column" "login"})))))))
+        (is (re-find #"\n1 column, truncated at 1; give the owner, the table or a longer part of the name$"
+                     (find {"column" "login"})))))
+    (testing "Of the tables whose names hold a part, ignoring case."
+      (is (re-find #"^owner +\| table +\| column +\| type *\n-.*\nOTHER +\| USER_LOGS +\| LOGIN_AT +\| TIMESTAMP *\n\n1 column$"
+                   (find {"column" "login" "table" "Logs"})))
+      (is (= "No columns found." (find {"column" "login" "table" "nope"}))))
+    (testing "The `_` of the table name is not a wildcard."
+      (is (= "No columns found." (find {"column" "login" "table" "userxlogs"})))
+      (is (s/includes? (find {"column" "login" "table" "user_logs"}) "LOGIN_AT")))
+    (testing "The table name is checked as the other names."
+      (is (s/includes? (find {"column" "login" "table" "users'--"})
+                       "argument table is not a valid name")))
+    (testing "An unknown argument is told with the known ones."
+      (is (= (str "Error: unknown argument pattern, the arguments are: "
+                  "connection, column, table, owner.")
+             (find {"pattern" "login"}))))))
 
 (deftest connection-info-test
   (let [result (call "connection_info" {"connection" "h2"})]
@@ -844,6 +1065,14 @@
                                 "sql" "SELECT login FROM users WHERE id = 1"})]
       (is (not (:isError result)))
       (is (s/starts-with? (text result) "login\n-----\nadmin\n\n1 row"))))
+  (testing "A description, on one line, the driver not minding it."
+    (write-databases (pr-str {"vm" (assoc h2-db :description
+                                          "Test VM,\n  through an ssh tunnel ")}))
+    (is (s/ends-with? (text (call "list_connections" {}))
+                      "\n- vm: h2, database ejc_mcp_test, read-only -- Test VM, through an ssh tunnel"))
+    (is (s/starts-with? (text (call "connection_info" {"connection" "vm"}))
+                        "Description: Test VM, through an ssh tunnel\nDatabase: H2 "))
+    (is (not (:isError (call "query" {"connection" "vm" "sql" "SELECT 1"})))))
   (testing "Read anew when changed."
     (write-databases "{}")
     (is (= ["h2" "h2-rw"] (mcp/connection-names)))
@@ -857,7 +1086,9 @@
                                 ":a: a connection name must be a non-blank string"]
                                ["{\"a\" 1}" "a: not a map"]
                                ["{\"a\" {:user \"u\"}}"
-                                "a: needs :dbtype, :subprotocol or :connection-uri"]]
+                                "a: needs :dbtype, :subprotocol or :connection-uri"]
+                               ["{\"a\" {:dbtype \"h2\" :description 1}}"
+                                "a: :description must be a string"]]
             [tool args] [["list_connections" {}]
                          ["query" {"connection" "h2" "sql" "SELECT 1"}]]]
       (write-databases content)

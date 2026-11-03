@@ -122,7 +122,9 @@
               (not (map? db))
               (str name ": not a map")
               (not (some db [:dbtype :subprotocol :connection-uri]))
-              (str name ": needs :dbtype, :subprotocol or :connection-uri")))
+              (str name ": needs :dbtype, :subprotocol or :connection-uri")
+              (not (or (nil? (:description db)) (string? (:description db))))
+              (str name ": :description must be a string")))
           databases)
     "not a map"))
 
@@ -265,16 +267,35 @@
   {:type "string"
    :description "Owner or schema name."})
 
-(def ^:private max-column-width-property
+(defn- max-column-width-property
+  "The `max_column_width` argument, its `default` told."
+  [default]
   {:type "integer"
    :minimum 0
    :description (str "Cut longer text values to this many characters, "
-                     "ending with ..., 30 by default (as set in Emacs), 0 "
-                     "for no limit. Numbers and dates are never cut.")})
+                     "followed by ...[+N], N the number of the characters "
+                     "left out. " default " 0 for no limit. Numbers and "
+                     "dates are never cut.")})
 
 (def find-columns-limit
   "The most columns `find_columns` returns."
   200)
+
+(def ^:private timeout-property
+  {:type "integer"
+   :minimum 1
+   :description (format (str "Seconds before the statement is cancelled, %d "
+                             "by default, at most %d.")
+                        default-timeout
+                        timeout-limit)})
+
+(def ^:private expected-rows-property
+  {:type "integer"
+   :minimum 0
+   :description (str "The number of rows the statement inserts, updates or "
+                     "deletes, counted with query before. The statement "
+                     "runs in a transaction then, rolled back if it changes "
+                     "another number of rows.")})
 
 (def tools
   "The tools, in the order `tools/list` returns them."
@@ -282,8 +303,10 @@
     :title "List database connections"
     :description (str "List the database connections the user made "
                       "available in ejc-sql: name, database type, host, "
-                      "port, database and whether execute may write to it. "
-                      "Call it first. If the database you need is missing, "
+                      "port, database, whether execute may write to it and "
+                      "the user's description of it, if any, which tells "
+                      "e.g. where a tunnel to 127.0.0.1 leads. Call it "
+                      "first. If the database you need is missing, "
                       "ask the user to add it to databases.edn of ejc-sql "
                       "or to connect to it with M-x ejc-connect in Emacs.")
     :inputSchema {:type "object"
@@ -293,10 +316,11 @@
                   :openWorldHint false}}
    {:name "connection_info"
     :title "Show database version"
-    :description (str "Show the database product and version, the JDBC "
-                      "driver, the current catalog and schema, and how the "
-                      "database keeps unquoted names: upper-cased, "
-                      "lower-cased or as written.")
+    :description (str "Show the user's description of the connection, the "
+                      "database product and version, the JDBC driver, the "
+                      "current catalog and schema, and how the database "
+                      "keeps unquoted names: upper-cased, lower-cased or as "
+                      "written.")
     :inputSchema {:type "object"
                   :properties {:connection connection-property}
                   :required ["connection"]
@@ -326,14 +350,19 @@
                               "names contain a substring, as given, "
                               "upper-cased or lower-cased, in one owner "
                               "(schema) or, if none is given, in the "
-                              "current schema first, then in all of them. "
-                              "At most %d columns are returned.")
+                              "current schema first, then in all of them, "
+                              "of the tables whose names contain another "
+                              "one, if given. At most %d columns are "
+                              "returned.")
                          find-columns-limit)
     :inputSchema {:type "object"
                   :properties {:connection connection-property
                                :column {:type "string"
                                         :description (str "Part of the "
                                                           "column name.")}
+                               :table {:type "string"
+                                       :description (str "Part of the table "
+                                                         "or view name.")}
                                :owner owner-property}
                   :required ["connection" "column"]
                   :additionalProperties false}
@@ -351,7 +380,9 @@
                                :table {:type "string"
                                        :description "Table name, without the owner."}
                                :owner owner-property
-                               :max_column_width max-column-width-property}
+                               :max_column_width (max-column-width-property
+                                                  (str "30 by default, as "
+                                                       "set in Emacs."))}
                   :required ["connection" "table"]
                   :additionalProperties false}
     :annotations {:readOnlyHint true
@@ -385,31 +416,40 @@
                                                              "at most %d.")
                                                         default-max-rows
                                                         max-rows-limit)}
-                               :timeout_s {:type "integer"
-                                           :minimum 1
-                                           :description (format
-                                                         (str "Seconds before "
-                                                              "the statement is "
-                                                              "cancelled, %d by "
-                                                              "default, at most "
-                                                              "%d.")
-                                                         default-timeout
-                                                         timeout-limit)}
-                               :max_column_width max-column-width-property}
+                               :timeout_s timeout-property
+                               :max_column_width (max-column-width-property
+                                                  (str "By default 30, as set "
+                                                       "in Emacs, but for a "
+                                                       "single row, which is "
+                                                       "not cut. A single "
+                                                       "value is never cut."))}
                   :required ["connection" "sql"]
                   :additionalProperties false}
     :annotations {:readOnlyHint true
                   :openWorldHint false}}
    {:name "execute"
     :title "Run SQL that changes data"
-    :description (str "Run one SQL statement that changes data or schema "
-                      "(INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, CALL...) "
-                      "and commit it. The user is asked to approve every "
-                      "call. It works only on the connections the user made "
-                      "writable; on any other it fails, then ask the user "
-                      "instead of retrying. One statement per call. To send "
-                      "a statement containing ';', e.g. a procedure body, "
-                      "start the SQL with a line \"delimiter X\", where X is "
+    :description (str "Run SQL that changes data or schema (INSERT, UPDATE, "
+                      "DELETE, CREATE, ALTER, DROP, CALL...) and commit it. "
+                      "The user is asked to approve every call. It works "
+                      "only on the connections the user made writable; on "
+                      "any other it fails, then ask the user instead of "
+                      "retrying. Send one statement as sql, or several as "
+                      "statements: they run in this order in one "
+                      "transaction, committed if all of them succeed, "
+                      "rolled back at the first failure. MySQL, MariaDB, "
+                      "Oracle and H2 commit the transaction a DDL statement "
+                      "(CREATE, ALTER, DROP, TRUNCATE, GRANT...) runs in, "
+                      "so there statements holding one are rejected unless "
+                      "transaction is false; a statement starting or ending "
+                      "a transaction (BEGIN, COMMIT...) is rejected in "
+                      "statements everywhere. Before an UPDATE or a DELETE, "
+                      "count the rows it changes with query and pass the "
+                      "count as expected_rows: the user sees it when "
+                      "approving the call, and the statement is rolled back "
+                      "if it changes another number of rows. To send a "
+                      "statement containing ';', e.g. a procedure body, "
+                      "start its SQL with a line \"delimiter X\", where X is "
                       "a separator that doesn't occur in the statement, not "
                       "even in a string literal or a comment.")
     :inputSchema {:type "object"
@@ -417,17 +457,42 @@
                                :sql {:type "string"
                                      :minLength 1
                                      :description "One SQL statement."}
-                               :timeout_s {:type "integer"
-                                           :minimum 1
-                                           :description (format
-                                                         (str "Seconds before "
-                                                              "the statement is "
-                                                              "cancelled, %d by "
-                                                              "default, at most "
-                                                              "%d.")
-                                                         default-timeout
-                                                         timeout-limit)}}
-                  :required ["connection" "sql"]
+                               :expected_rows expected-rows-property
+                               :statements
+                               {:type "array"
+                                :minItems 1
+                                :description (str "Several SQL statements, "
+                                                  "instead of sql.")
+                                :items {:type "object"
+                                        :properties
+                                        {:sql {:type "string"
+                                               :minLength 1
+                                               :description "One SQL statement."}
+                                         :expected_rows expected-rows-property}
+                                        :required ["sql"]
+                                        :additionalProperties false}}
+                               :transaction
+                               {:type "boolean"
+                                :description (str "For statements: false runs "
+                                                  "them one by one, each "
+                                                  "committed at once, or "
+                                                  "rolled back if it has "
+                                                  "expected_rows and changes "
+                                                  "another number of rows, "
+                                                  "stopping at the first "
+                                                  "failure. true by "
+                                                  "default.")}
+                               :timeout_s (assoc timeout-property
+                                                 :description
+                                                 (format
+                                                  (str "Seconds before the "
+                                                       "statements, all of "
+                                                       "them together, are "
+                                                       "cancelled, %d by "
+                                                       "default, at most %d.")
+                                                  default-timeout
+                                                  timeout-limit))}
+                  :required ["connection"]
                   :additionalProperties false}
     :annotations {:readOnlyHint false
                   :destructiveHint true
@@ -492,41 +557,68 @@
 
 (defn- valid-argument?
   "Check `value` against its property schema, as far as the tools use JSON
-  Schema: the type, `minLength`, `minimum`."
-  [{:keys [type minLength minimum]} value]
+  Schema: the type, `minLength`, `minimum`, `minItems`. The items of an
+  array and the properties of an object are left to `property-error`."
+  [{:keys [type minLength minimum minItems]} value]
   (case type
     "string" (and (string? value)
                   (>= (count value) (or minLength 0)))
     "integer" (and (integral? value)
-                   (>= value (or minimum Long/MIN_VALUE)))))
+                   (>= value (or minimum Long/MIN_VALUE)))
+    "boolean" (boolean? value)
+    "array" (and (sequential? value)
+                 (>= (count value) (or minItems 0)))
+    "object" (map? value)))
 
 (defn- expected-argument
   "Describe the values a property schema accepts, for an error message."
-  [{:keys [type minLength minimum]}]
+  [{:keys [type minLength minimum minItems]}]
   (case type
     "string" (if minLength "a non-empty string" "a string")
     "integer" (if minimum
                 (format "an integer >= %d" minimum)
-                "an integer")))
+                "an integer")
+    "boolean" "true or false"
+    "array" (if minItems "a non-empty array" "an array")
+    "object" "an object"))
+
+(declare argument-error)
+
+(defn- property-error
+  "Describe what's wrong with the argument `value` named `path` according
+  to its `property` schema, its items or properties too, nil if nothing."
+  [{:keys [type items] :as property} value path]
+  (if (valid-argument? property value)
+    (case type
+      "array" (some (fn [[i item]]
+                      (property-error items item (format "%s[%d]" path i)))
+                    (map-indexed vector value))
+      "object" (argument-error property value path)
+      nil)
+    (format "argument %s must be %s." path (expected-argument property))))
 
 (defn argument-error
   "Describe what's wrong with the tool `args` (string keys) according to
-  the tool's input `schema`, nil if they match it."
-  [schema args]
-  (let [properties (:properties schema)]
-    (or (some (fn [k]
+  the tool's input `schema`, nil if they match it. `path` names `args` in
+  the message, when they are the properties of an argument. An unknown
+  argument is told first, with the known ones: an agent may take the name
+  of a similar one of another tool, the `pattern` of `list_tables` for the
+  `column` of `find_columns`, which is missing then."
+  [schema args & [path]]
+  (let [properties (:properties schema)
+        full-name #(if path (str path "." %) %)]
+    (or (some (fn [[k v]]
+                (if-let [property (get properties (keyword k))]
+                  (property-error property v (full-name k))
+                  (format "unknown argument %s, the arguments%s are: %s."
+                          (full-name k)
+                          (if path (str " of " path) "")
+                          (s/join ", " (map name (keys properties))))))
+              args)
+        (some (fn [k]
                 (when-not (contains? args k)
-                  (format "missing required argument %s." k)))
-              (:required schema))
-        (some (fn [[k v]]
-                (let [property (get properties (keyword k))]
-                  (cond
-                    (nil? property)
-                    (format "unknown argument %s." k)
-                    (not (valid-argument? property v))
-                    (format "argument %s must be %s."
-                            k (expected-argument property)))))
-              args))))
+                  (format "missing required argument %s." (full-name k))))
+              (:required schema)))))
 
 (defn- name-error
   "The error for an owner, table or column name in `args` not matching
@@ -637,16 +729,15 @@
 
 (defn- single-statement
   "Return [statement nil] for `parts` holding one statement, [nil error] else.
-  `parts` are split on `separator`, `hint` tells how to send a statement
-  holding it."
+  `parts` are split on `separator`, `hint` tells how to send several
+  statements or one holding it."
   [parts separator hint]
   (case (count parts)
     0 [nil "Error: there is no SQL statement."]
     1 [(first parts) nil]
-    [nil (format (str "Error: one statement per call, this SQL has %d parts "
+    [nil (format (str "Error: one statement only, this SQL has %d parts "
                       "separated by '%s'; one in a string literal or a "
-                      "comment separates too. Send the statements one by "
-                      "one. %s")
+                      "comment separates too. %s")
                  (count parts) separator hint)]))
 
 (def tsql-write-words
@@ -809,49 +900,84 @@
 (defn- elapsed-ms [start]
   (quot (- (System/nanoTime) start) 1000000))
 
+;; The first characters of a CLOB longer than the width of its column, read
+;; by `read-result`, and its `length`: only that much of a CLOB is read.
+(defrecord Cut [text length])
+
+(defn- cut-clob
+  "`clob` as a `Cut` of its first `width` characters if it's longer, as is
+  otherwise."
+  [^java.sql.Clob clob width]
+  (let [length (.length clob)]
+    (if (> length width)
+      (->Cut (.getSubString clob 1 (int width)) length)
+      clob)))
+
+(defn- read-result
+  "Read the result set `rows`, `[[column...] row...]`, while it's open, for
+  `render-rows`, which prints up to `max-rows` rows of it: {:rows, :width}.
+  The values are cut to the width `value`, the `max_column_width`
+  argument, if given, else the limit set in Emacs, but for a single row,
+  which `render-rows` prints as a line per column, with room for long
+  values. A single value is never cut: it is what the agent asked for, a
+  `max_column_width` given with it is more likely the one of the call
+  before. A CLOB longer than the width becomes a `Cut`, the other LOBs
+  text, as `c/read-lobs` makes them."
+  [rows max-rows value]
+  (let [single? (= 1 (min max-rows (count (rest rows))))
+        width (when-not (and single? (= 1 (count (first rows))))
+                (column-width (if (and (nil? value) single?) 0 value)))]
+    {:width width
+     :rows (mapv (fn [row]
+                   (lib/lob-to-string-row
+                    (mapv #(if (and width (lib/is-clob? %))
+                             (cut-clob % width)
+                             %)
+                          row)
+                    true))
+                 rows)}))
+
 (defn- cell
-  "The value `value` for the agent, cut to `width`, ending with ..., and
-  whether it is cut: [value cut?]. nil and a number are left to
-  `o/print-table`, which shows nil as NULL and aligns the numbers. The
-  line breaks and the tabs of any other value's text are written as
-  `\\r`, `\\n` and `\\t`, so that nothing of them is lost and a row
-  stays a line. A value `width` long ending with ... is a LOB
-  `c/read-lobs` has cut already. A date is never cut: it's short, and of
-  no use cut."
+  "The value `value` for the agent and whether it is cut: [value cut?].
+  nil and a number are left to `o/print-table`, which shows nil as NULL and
+  aligns the numbers. The text of any other value is cut to its first
+  `width` characters, followed by `o/cut-mark`, so that a cut value tells
+  it itself and how much of it is left out; a `Cut` is a CLOB
+  `read-result` has cut already. Its line breaks and tabs are written as
+  `\\r`, `\\n` and `\\t`, so that nothing of them is lost and a row stays
+  a line. A date is never cut: it's short, and of no use cut."
   [value width]
-  (let [text (when-not (or (nil? value) (number? value))
-               (s/escape (str value)
-                         {\return "\\r" \newline "\\n" \tab "\\t"}))
-        width (when-not (or (instance? java.util.Date value)
-                            (instance? java.time.temporal.Temporal value))
-                width)]
-    (cond
-      (nil? text)
-      [value false]
-      (and width (> (count text) width))
-      [(str (subs text 0 (max 0 (- width 3))) "...") true]
-      (and width (= (count text) width) (s/ends-with? text "..."))
-      [text true]
-      :else
-      [text false])))
+  (if (or (nil? value) (number? value))
+    [value false]
+    (let [text (if (instance? Cut value) (:text value) (str value))
+          left (cond
+                 (instance? Cut value)
+                 (- (:length value) (count text))
+                 (and width
+                      (> (count text) width)
+                      (not (instance? java.util.Date value))
+                      (not (instance? java.time.temporal.Temporal value)))
+                 (- (count text) width))
+          text (s/escape (if (and left (not (instance? Cut value)))
+                           (subs text 0 width)
+                           text)
+                         {\return "\\r" \newline "\\n" \tab "\\t"})]
+      (if left
+        [(str text (o/cut-mark left)) true]
+        [text false]))))
 
 (defn render-rows
-  "Print `rows`, `[[column...] row...]`, for the agent, with a footer: rows,
-  `elapsed` ms, `notes`. Up to `max-rows` rows are printed, one more tells
-  the result was truncated. The values are `cell`s, cut to
-  `lib/*max-column-width*`, but for a single value; the footer tells it,
-  followed by `cut-hint`. `o/print-table` draws them with no outside
-  borders, and so a single row as a line per column, `column | value`: no
-  counting of separators in a long line to find the column of a value."
-  [rows max-rows elapsed notes & [cut-hint]]
+  "Print `rows`, `[[column...] row...]`, of `read-result` for the agent,
+  with a footer: rows, `elapsed` ms, `notes`. Up to `max-rows` rows are
+  printed, one more tells the result was truncated. The values are
+  `cell`s, cut to `width`; the footer tells it, followed by `cut-hint`.
+  `o/print-table` draws them with no outside borders, and so a single row
+  as a line per column, `column | value`: no counting of separators in a
+  long line to find the column of a value."
+  [rows max-rows width elapsed notes & [cut-hint]]
   (let [[header & data] rows
         truncated? (> (count data) max-rows)
         data (take max-rows data)
-        width (let [width lib/*max-column-width*]
-                (when (and width
-                           (pos? width)
-                           (not= [1 1] [(count data) (count header)]))
-                  width))
         names (map #(if (keyword? %) (name %) (str %)) header)
         cells (map (fn [row] (map #(cell % width) row)) data)
         table (with-out-str
@@ -883,16 +1009,20 @@
       (= "57014" (.getSQLState e))
       (>= elapsed (* 1000 timeout))))
 
+(defn- sql-error-text
+  "The error text for `e`, thrown by a statement on `db`, secrets masked."
+  [db ^SQLException e timeout elapsed]
+  (mask-secrets
+   db
+   (if (timed-out? e timeout elapsed)
+     (format "Error: cancelled by the timeout of %d s (timeout_s): %s"
+             timeout (.getMessage e))
+     (str "Error: " (.getMessage e)))))
+
 (defn- sql-error
   "The tool error for `e`, thrown by a statement on `db`, secrets masked."
   [db ^SQLException e timeout elapsed]
-  (error-result
-   (mask-secrets
-    db
-    (if (timed-out? e timeout elapsed)
-      (format "Error: cancelled by the timeout of %d s (timeout_s): %s"
-              timeout (.getMessage e))
-      (str "Error: " (.getMessage e))))))
+  (error-result (sql-error-text db e timeout elapsed)))
 
 (defn- notes
   "The footer notes telling the agent its limits were clamped."
@@ -907,9 +1037,10 @@
   [db connection-name {:strs [sql max_rows timeout_s max_column_width]}]
   (let [[sql error] (single-statement
                      (statements sql ";") ";"
-                     (str "query takes no ';' inside a statement: leave "
-                          "out the comments holding it, build a string "
-                          "holding it with a function, e.g. CHR(59)."))
+                     (str "Send the statements one by one. query takes no "
+                          "';' inside a statement: leave out the comments "
+                          "holding it, build a string holding it with a "
+                          "function, e.g. CHR(59)."))
         error (or error
                   (when-not (lib/read-only? sql (hash-comments? db))
                     (format (str "Error: query runs only read-only "
@@ -926,39 +1057,264 @@
                                                 max-rows-limit)
             [timeout timeout-clamped?] (limit timeout_s default-timeout
                                               timeout-limit)
-            width (column-width max_column_width)
             _ (log-sql connection-name sql)
             start (System/nanoTime)]
         (try
-          (binding [lib/*max-column-width* width]
-            (let [rows (with-read-only-connection
-                         db
-                         (fn [conn]
-                           (c/fetch-rows db conn sql
-                                         {:fetch-size (or @o/fetch-size 0)
-                                          :max-rows (inc max-rows)
-                                          :timeout timeout})))]
-              (text-result
-               (render-rows rows max-rows (elapsed-ms start)
-                            (notes max-rows-clamped? timeout-clamped?)
-                            ", see max_column_width"))))
+          (let [{:keys [rows width]}
+                (with-read-only-connection
+                  db
+                  (fn [conn]
+                    (c/fetch-rows db conn sql
+                                  {:fetch-size (or @o/fetch-size 0)
+                                   :max-rows (inc max-rows)
+                                   :timeout timeout
+                                   :result-set-fn #(read-result
+                                                    % max-rows
+                                                    max_column_width)})))]
+            (text-result
+             (render-rows rows max-rows width (elapsed-ms start)
+                          (notes max-rows-clamped? timeout-clamped?)
+                          ", see max_column_width")))
           (catch SQLException e
             (sql-error db e timeout (elapsed-ms start))))))))
 
+(def ddl-commit-dbs
+  "The databases committing the transaction a DDL statement runs in, by
+  `structure/get-db-type`."
+  #{:mysql :mariadb :oracle :h2})
+
+(def ddl-commit-words
+  "The first words of the statements `ddl-commit-dbs` commit the
+  transaction with: DDL, grants, table maintenance and locks."
+  #{"ALTER" "ANALYZE" "AUDIT" "CACHE" "CHECK" "COMMENT" "CREATE" "DROP"
+    "FLASHBACK" "FLUSH" "GRANT" "INSTALL" "LOCK" "NOAUDIT" "OPTIMIZE" "PURGE"
+    "RENAME" "REPAIR" "RESET" "REVOKE" "TRUNCATE" "UNINSTALL" "UNLOCK"})
+
+(def transaction-words
+  "The first words of the statements which may end the transaction they run
+  in or start another one, on any database: `BEGIN` commits the open one on
+  MySQL, `END` commits on PostgreSQL."
+  #{"BEGIN" "COMMIT" "END" "ROLLBACK" "START"})
+
+(defn- commit-problem
+  "Describe how the statement `sql` may commit the transaction it runs in on
+  `db`, nil if it can't. A statement starting with no word, e.g. with an
+  executable comment of MySQL, may be any."
+  [db sql]
+  (let [word (lib/first-keyword sql (hash-comments? db))
+        type (db-type db)]
+    (cond
+      (nil? word)
+      (str "ejc-sql can't tell what it starts with, it may commit the "
+           "transaction")
+      (transaction-words word)
+      (format "%s may end the transaction or start another one" word)
+      (and (ddl-commit-dbs type) (ddl-commit-words word))
+      (format "%s commits the transaction on %s" word (name type)))))
+
+(defn- one-statement
+  "Return [statement nil] for the `sql` of a statement to execute, a
+  leading `delimiter X` line removed, [nil error] for no statement or
+  several."
+  [sql]
+  (let [[sql separator] (split-delimiter sql)]
+    (if separator
+      (single-statement
+       (statements sql separator) separator
+       (str "Send them one by one, or as statements. To send a statement "
+            "holding it, start its SQL with a line \"delimiter X\", where X "
+            "doesn't occur in the statement."))
+      [nil "Error: delimiter without a separator."])))
+
+(defn- of-statement
+  "`error` of the statement number `n` of `statements`, nil for `sql`."
+  [n error]
+  (if n
+    (s/replace-first error "Error: " (format "Error: statement %d: " n))
+    error))
+
+(defn- execute-plan
+  "Plan the run of the `execute` tool `args` on `db`: [groups nil], or
+  [nil error] if they are rejected. The groups run in order, as `run-group`
+  runs them, {:transaction?, :steps}; a step is a statement, {:n, :sql,
+  :expected}, `:n` its number in `statements`, nil for `sql`, its
+  `delimiter X` line removed. Several `statements` run in one transaction
+  unless `transaction` is false, a statement with `expected_rows` in one
+  of its own then. A statement which may commit the transaction it runs in,
+  ending it before the next one runs, is rejected in one with others, and
+  with `expected_rows`, which needs it rolled back."
+  [db {:strs [sql statements expected_rows transaction]}]
+  (let [together? (and (next statements) (not (false? transaction)))
+        steps (for [[i {:strs [sql expected_rows]}]
+                    (if statements
+                      (map-indexed vector statements)
+                      [[nil {"sql" sql "expected_rows" expected_rows}]])
+                    :let [n (some-> i inc)
+                          [sql error] (one-statement sql)
+                          problem (when (and sql (or together? expected_rows))
+                                    (commit-problem db sql))]]
+                {:n n
+                 :sql sql
+                 ;; JSON may send 1 as 1.0, which is not = 1.
+                 :expected (some-> expected_rows long)
+                 :error (or error
+                            (when problem
+                              (format (if together?
+                                        (str "Error: %s, so the statements "
+                                             "can't run in one transaction. "
+                                             "Send it in a call of its own, "
+                                             "or pass transaction false to "
+                                             "run the statements one by one, "
+                                             "each committed at once.")
+                                        (str "Error: %s, so it can't be "
+                                             "rolled back as expected_rows "
+                                             "needs."))
+                                      problem)))})]
+    (cond
+      (= (nil? sql) (nil? statements))
+      [nil "Error: send either sql or statements."]
+      (and statements (some? expected_rows))
+      [nil (str "Error: with statements, give the expected_rows of each of "
+                "them in its item.")]
+      (and sql (some? transaction))
+      [nil (str "Error: transaction is for statements; sql runs in a "
+                "transaction of its own with expected_rows, is committed at "
+                "once without.")]
+      :else
+      (if-let [{:keys [n error]} (first (filter :error steps))]
+        [nil (of-statement n error)]
+        [(if together?
+           [{:transaction? true :steps (vec steps)}]
+           (for [step steps]
+             {:transaction? (some? (:expected step)) :steps [step]}))
+         nil]))))
+
+(defn- run-statement
+  "Run the statement `step` of an `execute` plan on `conn`, within what's
+  left of `timeout` s since `start`: {:n, :text, :error?}. A result set is
+  printed as `query` prints one. With an `:expected` count of rows, another
+  update count is an error."
+  [db connection-name ^Connection conn {:keys [n sql expected]} timeout start]
+  (let [left (- timeout (quot (elapsed-ms start) 1000))]
+    (if (< left 1)
+      {:n n
+       :error? true
+       :text (format "Error: not run, the timeout of %d s (timeout_s) is over."
+                     timeout)}
+      (try
+        (log-sql connection-name sql)
+        (with-open [statement (.createStatement conn)]
+          (.setQueryTimeout statement (int left))
+          (.setMaxRows statement (inc default-max-rows))
+          (let [result-set? (.execute statement sql)
+                ;; Read once, see `c/execution-message`.
+                result (when-not result-set?
+                         (.getUpdateCount statement))]
+            (cond
+              (and expected result-set?)
+              {:n n
+               :error? true
+               :text (format (str "Error: it returned rows, not a number of "
+                                  "rows changed, as expected_rows %d needs.")
+                             expected)}
+              (and expected (not= expected (max result 0)))
+              {:n n
+               :error? true
+               :text (format "Error: %d row%s affected, not expected_rows %d."
+                             (max result 0) (if (= 1 result) "" "s") expected)}
+              result-set?
+              {:n n
+               :text (let [{:keys [rows width]}
+                           (read-result (j/result-set-seq (.getResultSet statement)
+                                                          {:as-arrays? true})
+                                        default-max-rows nil)]
+                       (render-rows rows default-max-rows width
+                                    (elapsed-ms start) []))}
+              :else
+              {:n n :text (c/count-message result)})))
+        (catch SQLException e
+          {:n n
+           :error? true
+           :text (sql-error-text db e timeout (elapsed-ms start))})))))
+
+(defn- run-group
+  "Run the statements of `group` of an `execute` plan on `conn`, up to the
+  first failure: their outcomes, as `run-statement` returns them, and one
+  more, `:commit?`, if the commit fails. A `:transaction?` group runs in a
+  transaction, committed if all of them succeed, rolled back otherwise,
+  whatever is thrown: it's never left open, Oracle commits it when the
+  connection is closed. Any other runs in autocommit mode."
+  [db connection-name ^Connection conn {:keys [transaction? steps]} timeout
+   start]
+  (let [run (fn []
+              (reduce (fn [outcomes step]
+                        (let [outcome (run-statement db connection-name conn
+                                                     step timeout start)
+                              outcomes (conj outcomes outcome)]
+                          (if (:error? outcome)
+                            (reduced outcomes)
+                            outcomes)))
+                      []
+                      steps))]
+    (.setAutoCommit conn (not transaction?))
+    (if-not transaction?
+      (run)
+      (let [committed? (volatile! false)]
+        (try
+          (let [outcomes (run)]
+            (if (some :error? outcomes)
+              outcomes
+              (try
+                (.commit conn)
+                (vreset! committed? true)
+                outcomes
+                (catch SQLException e
+                  (conj outcomes
+                        {:n (:n (peek outcomes))
+                         :commit? true
+                         :error? true
+                         :text (mask-secrets
+                                db (str "Error: the commit failed: "
+                                        (.getMessage e)))})))))
+          (finally
+            (when-not @committed?
+              (try
+                (.rollback conn)
+                (catch SQLException _)))))))))
+
+(defn- batch-report
+  "The `execute` result text of `statements`: the `outcomes` of its `steps`,
+  a line per statement, numbered as in `statements`, the ones not run too,
+  then how it ended, all of them in `one-transaction?` or not."
+  [steps outcomes one-transaction?]
+  (let [by-n (into {} (map (juxt :n identity) (remove :commit? outcomes)))
+        failed (first (filter :error? outcomes))]
+    (s/join "\n"
+            (concat
+             (for [{:keys [n]} steps]
+               (if-let [{:keys [text error?]} (by-n n)]
+                 ;; A table under the number, its columns aligned.
+                 (str n "." (if (and (not error?) (s/includes? text "\n"))
+                              "\n"
+                              " ")
+                      text)
+                 (str n ". Not run.")))
+             (keep #(when (:commit? %) (:text %)) outcomes)
+             [(cond
+                (nil? failed) "Committed."
+                one-transaction? "Rolled back."
+                (= 1 (:n failed)) "Stopped at statement 1, nothing is committed."
+                :else (format (str "Stopped at statement %d, the ones before "
+                                   "it are committed.")
+                              (:n failed)))]))))
+
 (defn- execute-tool
-  "Run the `execute` tool: one statement on a connection of its own to `db`,
-  in autocommit mode, if `config` makes the connection writable. The
-  completion cache of `db` is dropped after any statement: not only DDL
+  "Run the `execute` tool: the statements of its `execute-plan` on a
+  connection of its own to `db`, if `config` makes the connection writable.
+  The completion cache of `db` is dropped after any statement: not only DDL
   changes the schema, a procedure or `SELECT INTO` of SQL Server may too."
-  [db connection-name config {:strs [sql timeout_s]}]
-  (let [[sql separator] (split-delimiter sql)
-        [sql error] (if separator
-                      (single-statement
-                       (statements sql separator) separator
-                       (str "To send a statement holding it, start the SQL "
-                            "with a line \"delimiter X\", where X doesn't "
-                            "occur in the statement."))
-                      [nil "Error: delimiter without a separator."])]
+  [db connection-name config {:strs [statements timeout_s] :as args}]
+  (let [[groups error] (execute-plan db args)]
     (cond
       (not (contains? (:writable config) connection-name))
       (error-result (format "Error: writes to %s are not allowed; ask the user."
@@ -968,29 +1324,33 @@
       :else
       (let [[timeout timeout-clamped?] (limit timeout_s default-timeout
                                               timeout-limit)
-            _ (log-sql connection-name sql)
             start (System/nanoTime)]
         (try
-          (with-open [conn (get-connection db)
-                      statement (.createStatement conn)]
-            (.setAutoCommit conn true)
-            (.setQueryTimeout statement timeout)
-            (.setMaxRows statement (inc default-max-rows))
-            (let [result-set? (.execute statement sql)
-                  text (if result-set?
-                         (binding [lib/*max-column-width* @o/column-width-limit]
-                           (render-rows
-                            (c/read-lobs
-                             (j/result-set-seq (.getResultSet statement)
-                                               {:as-arrays? true}))
-                            default-max-rows
-                            (elapsed-ms start)
-                            (notes false timeout-clamped?)))
-                         (str (c/execution-message statement false)
-                              (when timeout-clamped?
-                                (format "\n(timeout_s clamped to %d)"
-                                        timeout-limit))))]
-              (text-result text)))
+          (let [outcomes (with-open [conn (get-connection db)]
+                           (reduce (fn [outcomes group]
+                                     (let [outcomes (into outcomes
+                                                          (run-group
+                                                           db connection-name
+                                                           conn group timeout
+                                                           start))]
+                                       (if (some :error? outcomes)
+                                         (reduced outcomes)
+                                         outcomes)))
+                                   []
+                                   groups))
+                one-transaction? (and (= 1 (count groups))
+                                      (:transaction? (first groups)))
+                error? (boolean (some :error? outcomes))]
+            (text-result
+             (str (if statements
+                    (batch-report (mapcat :steps groups) outcomes
+                                  one-transaction?)
+                    (s/join "\n" (cond-> (mapv :text outcomes)
+                                   (and error? one-transaction?)
+                                   (conj "Rolled back."))))
+                  (when timeout-clamped?
+                    (format "\n(timeout_s clamped to %d)" timeout-limit)))
+             error?))
           (catch SQLException e
             (sql-error db e timeout (elapsed-ms start)))
           (finally
@@ -1024,6 +1384,7 @@
         ;; `prepare-statement`, `:timeout` too.
         meta-db (fn [conn] {:connection conn :timeout metadata-timeout})
         text (binding [lib/*max-column-width* (column-width max_column_width)
+                       o/*mark-cuts* true
                        o/*add-outside-borders* false]
                (with-out-str
                  (with-read-only-connection
@@ -1088,12 +1449,12 @@
   "Run the `find_columns` tool: `structure/find-columns` on a read-only
   connection of its own to `db`, with the network wait limited, since the
   metadata calls take no query timeout."
-  [db {:strs [column owner]}]
+  [db {:strs [column owner table]}]
   (let [found (with-read-only-connection
                 db
                 (fn [conn]
                   (limit-network-wait conn)
-                  (structure/find-columns conn owner column
+                  (structure/find-columns conn owner table column
                                           (inc find-columns-limit))))
         shown (take find-columns-limit found)]
     (text-result
@@ -1104,8 +1465,8 @@
             "\n"
             (count shown) (if (= 1 (count shown)) " column" " columns")
             (when (> (count found) find-columns-limit)
-              (format (str ", truncated at %d; give the owner or a longer "
-                           "part of the name")
+              (format (str ", truncated at %d; give the owner, the table or "
+                           "a longer part of the name")
                       find-columns-limit)))
        "No columns found."))))
 
@@ -1117,10 +1478,17 @@
     (.storesLowerCaseIdentifiers meta) "lower-cased"
     :else "as written"))
 
+(defn- description
+  "The `:description` of the connection `db` the user wrote, on one line,
+  nil if there's none."
+  [db]
+  (some-> (:description db) (s/replace #"\s*[\r\n]+\s*" " ") s/trim
+          not-empty))
+
 (defn- connection-info-tool
-  "Run the `connection_info` tool: what the JDBC metadata of a read-only
-  connection of its own to `db` tells of the database, nothing of the user
-  or the URL."
+  "Run the `connection_info` tool: the `description` of `db` and what the
+  JDBC metadata of a read-only connection of its own to `db` tells of the
+  database, nothing of the user or the URL."
   [db]
   (text-result
    (with-read-only-connection
@@ -1131,7 +1499,8 @@
              quote (s/trim (str (.getIdentifierQuoteString meta)))]
          (s/join "\n"
                  (remove nil?
-                         [(str "Database: " (.getDatabaseProductName meta) " "
+                         [(some->> (description db) (str "Description: "))
+                          (str "Database: " (.getDatabaseProductName meta) " "
                                (.getDatabaseProductVersion meta))
                           (str "Driver: " (.getDriverName meta) " "
                                (.getDriverVersion meta))
@@ -1202,7 +1571,7 @@
 
 (defn- connection-line
   "Describe the connection `db` for `list_connections`: enough to choose
-  it, nothing about the user and the password."
+  it, nothing about the user and the password, its `description` last."
   [connection-name db writable?]
   (let [type (some-> (db-type db) name)
         [host port dbname] (address db)]
@@ -1213,7 +1582,8 @@
                                     (when dbname (str "database " dbname))
                                     (if writable?
                                       "writable (execute allowed)"
-                                      "read-only")])))))
+                                      "read-only")]))
+         (some->> (description db) (str " -- ")))))
 
 (defn- list-connections-tool
   "Run the `list_connections` tool. `config` tells the writable ones. The
@@ -1309,11 +1679,14 @@
   "What the server tells a client about using it."
   (str "Databases the user made available in ejc-sql. Call "
        "list_connections first. query runs one read-only statement per call; "
-       "execute runs one statement that changes data or schema, only on the "
+       "execute runs statements that change data or schema, only on the "
        "connections the user made writable, and the user approves every "
        "call. If a database is missing, ask the user to add it to "
        "databases.edn of ejc-sql or to connect to it with M-x ejc-connect in "
-       "Emacs; never reach databases by other means."))
+       "Emacs; never reach databases by other means. If the server stops "
+       "answering, ask the user to start it, with M-x ejc-connect to any "
+       "database in Emacs or with java -jar ejc-sql.jar, then to reconnect "
+       "the client to it, e.g. with /mcp in Claude Code."))
 
 (defn server-info
   "Name and version of the server."

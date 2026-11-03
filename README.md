@@ -1269,7 +1269,8 @@ parameters of `ejc-create-connection`.
            :subprotocol "postgresql"
            :subname "//localhost:5432/my_db_name"
            :user "a_user"
-           :password "secret"}
+           :password "secret"
+           :description "Test VM, through an ssh tunnel"}
  "local-h2" {:classpath "~/.m2/repository/com/h2database/h2/2.5.252/h2-2.5.252.jar"
              :subprotocol "h2"
              :subname "file:///home/me/db/test;AUTO_SERVER=TRUE"}}
@@ -1278,7 +1279,10 @@ parameters of `ejc-create-connection`.
 You write the file, `ejc-sql` never does, nor does it relate it to your
 `ejc-create-connection` calls: keeping the two in step is up to you. Every
 connection needs `:dbtype`, `:subprotocol` or `:connection-uri`, `:classpath`
-may be a path or a vector of them, starting with `~` or not. The file is read
+may be a path or a vector of them, starting with `~` or not. `:description`,
+optional, is shown to the agents by `list_connections` and `connection_info`:
+tell there what the host and the port alone don't, e.g. where a tunnel to
+`127.0.0.1` leads; `ejc-create-connection` takes it too. The file is read
 when the server starts and again on the first request after it changes, so the
 connections come and go without a restart. The JDBC drivers of its connections
 load when the server starts, in the background in the nREPL of Emacs; the
@@ -1290,13 +1294,13 @@ the permissions below.
 
  Tool               | What it does
 --------------------|------------------------------------------------------------
- `list_connections` | Connection names, database types, hosts, ports, databases, writable or not
- `connection_info`  | Database and driver versions, current catalog and schema, the case of unquoted names
+ `list_connections` | Connection names, database types, hosts, ports, databases, writable or not, descriptions
+ `connection_info`  | Description, database and driver versions, current catalog and schema, the case of unquoted names
  `list_tables`      | Tables of a connection, of an owner (schema) if given, filtered by a substring
- `find_columns`     | Columns whose names hold a substring, of an owner if given, of all of them otherwise
+ `find_columns`     | Columns whose names hold a substring, of an owner if given, of all of them otherwise, of the tables whose names hold another one if given
  `describe_table`   | Columns with types, sizes, `NOT NULL`, defaults and comments, primary key, indexes and foreign keys, as `ejc-describe-table` shows them
  `query`            | One read-only statement: `SELECT`, `WITH`, `VALUES`, `SHOW`, `EXPLAIN`, `DESCRIBE`
- `execute`          | One statement that changes data or schema, on writable connections only
+ `execute`          | Statements that change data or schema, several in one transaction, on writable connections only
 
 Every statement an agent runs is written to the [query log](#query-log)
 (`M-x ejc-open-log`) under a `-- [mcp <connection>]` line, unless the log is
@@ -1323,8 +1327,10 @@ A result is limited to 200 rows (`max_rows`, up to 1000), a statement to 30
 seconds (`timeout_s`, up to 50), below the default 60-second tool timeout in
 Claude Code and Codex. Text values of `query` and `describe_table` are cut to
 the `ejc-set-column-width-limit` of Emacs, 30 characters by default, unless the
-agent asks for another width (`max_column_width`, 0 for no limit); numbers and
-dates are never cut.
+agent asks for another width (`max_column_width`, 0 for no limit). A single
+row of `query` is cut only to a width asked for, a single value never, nor
+are numbers and dates. A cut value keeps that
+many characters and tells how many more it has: `1:alpha,2:beta,3:gamma,4:delta...[+17]`.
 
 The tables an agent gets are drawn in ASCII, whatever `ejc-set-use-unicode`
 says, with no outside borders, as psql draws them: fewer tokens. A result of
@@ -1355,10 +1361,37 @@ the path of the `mcp.edn` Emacs uses.
 listed in `:writable` and your approval of the call in the client. The server
 marks `execute` so that Claude Code asks for every call, in every permission
 mode, without "don't ask again". For Codex, configure the tool approval policy
-shown below. Every call is one statement committed at once, there are no
-transactions across calls. To send a statement containing `;`, e.g. a
-procedure body or a string literal with it, start the SQL with a
-`delimiter` line, see [Separators & delimiters](#separators-delimiters).
+shown below. The approval shows what the agent sends, the server is called
+after it: the connection name, so name a connection to tell where it leads,
+and the statements.
+
+A call is one statement, `sql`, committed at once, or several, `statements`,
+approved together and run in this order in one transaction: committed if all
+of them succeed, rolled back at the first failure, the result telling the
+outcome of each one. MySQL, MariaDB, Oracle and H2 commit the transaction a
+DDL statement runs in, so there statements holding one are rejected, unless
+the agent passes `transaction: false` to run them one by one, each committed
+at once, stopping at the first failure; `BEGIN`, `COMMIT` and the like are
+rejected among statements everywhere. What a database never rolls back is
+not rolled back either: the tables of MyISAM, a procedure committing itself.
+There are no transactions across calls.
+
+Before an `UPDATE` or a `DELETE` the agent is told to count the rows it
+changes with `query` and to pass the count as `expected_rows`: you see the
+number when approving the call, and the server runs the statement in a
+transaction, rolled back if it changes another number of rows.
+
+```json
+{"connection": "dev-db",
+ "statements": [{"sql": "UPDATE accounts SET balance = balance - 100 WHERE id = 1",
+                 "expected_rows": 1},
+                {"sql": "UPDATE accounts SET balance = balance + 100 WHERE id = 2",
+                 "expected_rows": 1}]}
+```
+
+To send a statement containing `;`, e.g. a procedure body or a string literal
+with it, start its SQL with a `delimiter` line, see
+[Separators & delimiters](#separators-delimiters).
 
 **Claude Code setup.**
 
@@ -1445,7 +1478,9 @@ An agent knows nothing about a server it can't reach, so tell it in
 
 Reach databases only through the `ejc-sql` MCP server, never by other means
 (psql, mysql, sqlplus, JDBC or database drivers in scripts). If the server is
-unavailable, or the database is missing from `list_connections`, ask me to
+unavailable (connection refused), ask me to start it, with `M-x ejc-connect`
+to any database in Emacs or with `java -jar ejc-sql.jar`, then to reconnect
+it with `/mcp`. If the database is missing from `list_connections`, ask me to
 add it to `databases.edn` of ejc-sql or to connect to it with `M-x ejc-connect`
 in Emacs.
 ```

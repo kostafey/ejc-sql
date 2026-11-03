@@ -1314,12 +1314,13 @@
 
 (defn find-columns
   "The columns whose names hold `column`, ignoring case, of `owner` if given,
-  from the JDBC metadata of `conn`, at most `limit` of them, as maps of
-  `:owner`, `:table`, `:column` and `:type`. The database does the search:
-  `column` goes to `.getColumns` as given, upper-cased and lower-cased, the
-  owner too. With no `owner` the columns of the current schema come first,
-  then the ones of all the schemas."
-  [^Connection conn owner column limit]
+  of the tables whose names hold `table` if given, from the JDBC metadata of
+  `conn`, at most `limit` of them, as maps of `:owner`, `:table`, `:column`
+  and `:type`. The database does the search: `column` goes to `.getColumns`
+  as given, upper-cased and lower-cased, the owner and the table too. With
+  no `owner` the columns of the current schema come first, then the ones of
+  all the schemas."
+  [^Connection conn owner table column limit]
   (let [meta (.getMetaData conn)
         escape (.getSearchStringEscape meta)
         locations (if owner
@@ -1330,17 +1331,23 @@
                         [o nil]))
                     (distinct [[(.getCatalog conn) (current-schema conn)]
                                [nil nil]]))
+        holds? (fn [text part]
+                 (s/includes? (s/lower-case (str text)) (s/lower-case part)))
         rows (for [[catalog schema] locations
+                   table-pattern (if table
+                                   (map #(search-pattern % escape)
+                                        (identifier-variants table))
+                                   ["%"])
                    pattern (identifier-variants column)
                    row (with-open [rs (.getColumns
-                                       meta catalog schema "%"
+                                       meta catalog schema table-pattern
                                        (search-pattern pattern escape))]
                          (doall (take limit (j/result-set-seq rs))))]
                row)]
     (->> rows
          ;; A driver may take `_` for a wildcard still.
-         (filter #(s/includes? (s/lower-case (str (:column_name %)))
-                               (s/lower-case column)))
+         (filter #(and (holds? (:column_name %) column)
+                       (or (nil? table) (holds? (:table_name %) table))))
          (map (fn [row]
                 {:owner (if (s/blank? (:table_schem row))
                           (:table_cat row)

@@ -272,12 +272,14 @@ Tell why if it can't, the tests needing it fail then."
                 :subprotocol "h2"
                 :subname db-path
                 :user "a_user"
-                :password "secret")))
+                :password "secret"
+                :description "The database of the ERT tests")))
     (should (file-exists-p (ejc-test:h2-jar)))
     (should
      (equal
       `("H2-test-connection"
         (:classname . "org.h2.Driver")
+        (:description . "The database of the ERT tests")
         (:classpath . ,classpath)
         (:password . "secret")
         (:user . "a_user")

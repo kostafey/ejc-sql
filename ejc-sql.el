@@ -284,12 +284,15 @@ results. When nil, otherwise, provide `ejc-sql' users expected behaviour."
                                  classpath
                                  separator
                                  sslmode
+                                 description
                                  ;; ----------
                                  ;; Optional:
                                  classname)
   "Add new connection configuration named CONNECTION-NAME.
 It adds new connection to `ejc-connections' list or replace existing with the
 same CONNECTION-NAME.
+DESCRIPTION, a free text, tells the AI agents of the ejc-sql MCP server what
+the database is, e.g. where a tunnel to 127.0.0.1 leads.
 For more details about parameters see `get-connection' function in jdbc.clj:
 `https://github.com/clojure/java.jdbc/blob/master/src/main/clojure/clojure/java/jdbc.clj'"
   (setq ejc-connections
@@ -318,6 +321,7 @@ For more details about parameters see `get-connection' function in jdbc.clj:
                                    (vector (file-truename classpath)))))
                          (cons :separator separator)
                          (cons :sslmode sslmode)
+                         (cons :description description)
                          (cons :classname classname))
                         (lambda (arg)
                           (if (cdr arg)
