@@ -444,6 +444,9 @@ named by this argument instead of the buffer one."
                               (org-babel-expand-noweb-references info)
                             (nth 1 info)))
            (connection (ejc-org-block-connection params)))
+      ;; Without `:ejc-sql' header argument the buffer connection is used.
+      (unless connection
+        (ejc-check-connection))
       (ejc-eval-user-sql
        expanded-body
        :db (cdr connection)
